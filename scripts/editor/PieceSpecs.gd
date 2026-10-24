@@ -53,6 +53,10 @@ static func default_size(kind: String) -> Vector2:
 			return Vector2(28, 28)
 		"prop_switch":
 			return Vector2(24, 40)
+		"prop_desk":
+			return Vector2(200, 28)
+		"prop_exit":
+			return Vector2(40, 50)
 		_:
 			return Vector2(48, 48)
 
@@ -61,8 +65,10 @@ static func anchor(kind: String) -> String:
 	## Matches how room scripts place the node origin.
 	match kind:
 		"prop_house", "prop_checkpoint", "prop_bench", "prop_vent", \
-		"prop_hatch", "prop_tower", "prop_npc", "prop_switch":
+		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_exit":
 			return "bottom"
+		"prop_desk":
+			return "center"
 		_:
 			return "center"
 
@@ -78,5 +84,7 @@ static func floor_top_for_zone(zone_id: String) -> float:
 	match zone_id:
 		"lantern_village":
 			return 500.0 ## FLOOR_CENTER 520, H 40
+		"house_keep", "house_gear", "house_inn":
+			return 500.0 ## HouseInterior FLOOR_Y
 		_:
 			return 482.0 ## FLOOR_CENTER 500, H 36

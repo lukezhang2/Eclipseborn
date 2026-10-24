@@ -1,5 +1,6 @@
 extends Node2D
 ## Playable interior zone for a village house — desk + shopkeeper behind it.
+## Dialogue defaults: HouseProfiles. Overrides: LevelData / editor save for npc_shop.
 
 
 const FLOOR_Y := 500.0
@@ -10,6 +11,7 @@ var house_title: String = "Shop"
 var keeper_name: String = "Keeper"
 var keeper_lines: PackedStringArray = PackedStringArray([])
 var return_spawn: Vector2 = Vector2(520, 460)
+var _npc_id: String = "npc_shop"
 
 
 func _ready() -> void:
@@ -31,6 +33,8 @@ func _ready() -> void:
 	_build_room()
 	_build_desk_and_keeper()
 	_build_exit()
+	LevelData.apply(self, house_id)
+	LevelData.prune_removed(self, house_id)
 
 	var spawn := Vector2(120, FLOOR_Y - 40)
 	if GameState.pending_spawn != Vector2.ZERO:
@@ -42,34 +46,19 @@ func _ready() -> void:
 
 
 func _apply_house_profile() -> void:
-	match house_id:
-		"house_gear":
-			house_title = "Gearwright"
-			keeper_name = "Gearwright"
-			return_spawn = Vector2(980, 460)
-			keeper_lines = PackedStringArray([
-				"You're the only shade-walker left. The rest of us live in the light fine.",
-				"That umbra hunger of yours — it's not natural, traveler.",
-				"I can fit gears. I can't fit whatever made you burn in daylight.",
-			])
-		"house_inn":
-			house_title = "Shade Inn"
-			keeper_name = "Innkeep"
-			return_spawn = Vector2(1780, 460)
-			keeper_lines = PackedStringArray([
-				"Most guests sit by the hearth. You… flinch from it.",
-				"You're the odd one — shade-bound while we walk the lantern streets.",
-				"Room's in the dark wing. Figured you'd prefer it that way.",
-			])
-		_:
-			house_title = "Lantern Keep"
-			keeper_name = "Keeper"
-			return_spawn = Vector2(520, 460)
-			keeper_lines = PackedStringArray([
-				"Everyone else thrives under lanterns. You alone need the dark.",
-				"Spirit, you're marked — the shade clings to you like a second skin.",
-				"We tend lamps. You flee them. That makes you the stranger here.",
-			])
+	var profile := HouseProfiles.get_profile(house_id)
+	house_title = str(profile.get("title", "Shop"))
+	keeper_name = str(profile.get("keeper_name", "Keeper"))
+	return_spawn = profile.get("return_spawn", Vector2(520, 460))
+	_npc_id = str(profile.get("npc_id", "npc_shop"))
+	keeper_lines = HouseProfiles.lines_to_packed(profile.get("lines", []))
+	## Editor / LevelData overrides for this shopkeeper.
+	var saved := LevelData.merged_piece(house_id, _npc_id)
+	if not saved.is_empty():
+		if saved.has("lines"):
+			keeper_lines = HouseProfiles.lines_to_packed(saved.get("lines"))
+		if saved.has("name") and str(saved.get("name", "")) != "":
+			keeper_name = str(saved.get("name"))
 
 
 func _build_room() -> void:
@@ -123,12 +112,21 @@ func _build_desk_and_keeper() -> void:
 	desk.add_child(front)
 	add_child(desk)
 
+	if LevelData.is_removed(house_id, _npc_id):
+		return
 	var npc := NPC.new()
 	# Behind the desk (deeper into the room than the desk face).
-	npc.position = Vector2(MAP_W * 0.5, FLOOR_Y - 40)
+	var npc_pos := Vector2(MAP_W * 0.5, FLOOR_Y - 40)
+	var saved := LevelData.merged_piece(house_id, _npc_id)
+	if saved.has("x"):
+		npc_pos.x = float(saved.get("x"))
+	if saved.has("y"):
+		npc_pos.y = float(saved.get("y"))
+	npc.position = npc_pos
 	npc.npc_name = keeper_name
 	npc.lines = keeper_lines
 	npc.z_index = -1
+	LevelData.tag(npc, _npc_id)
 	add_child(npc)
 
 

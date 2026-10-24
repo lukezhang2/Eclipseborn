@@ -81,6 +81,32 @@ static func prune_removed(parent: Node, zone_id: String) -> void:
 			child.queue_free()
 
 
+static func merged_piece(zone_id: String, piece_id: String) -> Dictionary:
+	## Catalog seed + saved overlay fields (used for NPC dialogue, positions, etc.).
+	if piece_id == "":
+		return {}
+	var base := {}
+	for cat in ZoneCatalog.pieces_for(zone_id):
+		if str(cat.get("id", "")) == piece_id:
+			base = cat.duplicate(true)
+			break
+	var data := load_raw(zone_id)
+	if data.get("removed_ids", []).has(piece_id):
+		return {}
+	for raw in data.get("pieces", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		if str(raw.get("id", "")) != piece_id:
+			continue
+		if base.is_empty():
+			base = raw.duplicate(true)
+		else:
+			for key in raw.keys():
+				base[key] = raw[key]
+		break
+	return base
+
+
 static func apply(parent: Node2D, zone_id: String) -> void:
 	var data := load_raw(zone_id)
 	var pieces: Array = data.get("pieces", [])
@@ -134,3 +160,10 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			cp.position = pos
 			cp.checkpoint_id = str(p.get("id", "editor_cp"))
 			parent.add_child(cp)
+		"prop_npc":
+			var npc := NPC.new()
+			npc.position = pos
+			npc.npc_name = str(p.get("name", "Villager"))
+			npc.lines = HouseProfiles.lines_to_packed(p.get("lines", ["…"]))
+			parent.add_child(npc)
+			LevelData.tag(npc, str(p.get("id", "")))

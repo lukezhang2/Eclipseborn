@@ -9,11 +9,17 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 | Editor UI | `scenes/editor/LevelEditor.tscn`, `scripts/editor/LevelEditor.gd` |
 | Piece proxy (draw/select/resize) | `scripts/editor/EditorPiece.gd` |
 | Canonical sizes & anchors | `scripts/editor/PieceSpecs.gd` |
-| Builtin zone seeds | `scripts/editor/ZoneCatalog.gd` |
+| Builtin zone seeds | `scripts/editor/ZoneCatalog.gd` (`cursed_cottage`, `lantern_village`, `house_keep`, `house_gear`, `house_inn`) |
+| House shopkeeper defaults | `scripts/world/HouseProfiles.gd` |
 | Load / save / spawn overlays | `scripts/autoload/LevelData.gd` |
 | Saved overlays (repo) | `data/levels/<zone_id>.json` |
 | Browser autosave | `user://editor/<zone_id>.json` |
-| Live rooms (authoritative gameplay) | `scripts/world/CursedCottage.gd`, `LanternVillage.gd` |
+| Live rooms (authoritative gameplay) | `scripts/world/CursedCottage.gd`, `LanternVillage.gd`, `HouseInterior.gd` |
+| Build version (title menu) | `project.godot` → `application/config/version` (bump patch each change) |
+
+### NPC dialogue
+
+Select a `prop_npc` piece → **NPC dialogue** box (one line per entry). Stored as `"lines": ["…"]` on the piece. House interiors read `npc_shop` via `LevelData.merged_piece`.
 
 ## Sharing a level with an AI
 

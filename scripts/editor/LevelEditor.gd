@@ -28,6 +28,8 @@ var _piece_list: ItemList
 var _name_edit: LineEdit
 var _radius_spin: SpinBox
 var _radius_row: HBoxContainer
+var _dialogue_row: VBoxContainer
+var _dialogue_edit: TextEdit
 var _status: Label
 var _tool_label: Label
 var _zone_option: OptionButton
@@ -38,6 +40,7 @@ var _panning: bool = false
 var _pan_last: Vector2 = Vector2.ZERO
 var _syncing_list: bool = false
 var _syncing_scrub: bool = false
+var _syncing_dialogue: bool = false
 var _world_right: float = MIN_WORLD_RIGHT
 
 
@@ -172,8 +175,8 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	zone_row.add_child(_lbl("Zone"))
 	_zone_option = OptionButton.new()
 	_zone_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_zone_option.add_item("cursed_cottage", 0)
-	_zone_option.add_item("lantern_village", 1)
+	for i in ZoneCatalog.zone_ids().size():
+		_zone_option.add_item(ZoneCatalog.zone_ids()[i], i)
 	_zone_option.item_selected.connect(func(i: int) -> void:
 		zone_id = _zone_option.get_item_text(i)
 		_load_zone()
@@ -223,6 +226,24 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	)
 	_radius_row.add_child(_radius_spin)
 
+	_dialogue_row = VBoxContainer.new()
+	_dialogue_row.visible = false
+	_dialogue_row.add_theme_constant_override("separation", 4)
+	col.add_child(_dialogue_row)
+	_dialogue_row.add_child(_lbl("NPC dialogue (one line per entry)"))
+	_dialogue_edit = TextEdit.new()
+	_dialogue_edit.custom_minimum_size = Vector2(280, 110)
+	_dialogue_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_dialogue_edit.placeholder_text = "Line 1\nLine 2\nLine 3"
+	_dialogue_edit.text_changed.connect(_on_dialogue_changed)
+	_dialogue_row.add_child(_dialogue_edit)
+	var dlg_hint := Label.new()
+	dlg_hint.text = "Saved with the zone. Playtest to hear lines."
+	dlg_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dlg_hint.add_theme_font_size_override("font_size", 11)
+	dlg_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
+	_dialogue_row.add_child(dlg_hint)
+
 	col.add_child(_section("Tools"))
 	var tools := HBoxContainer.new()
 	col.add_child(tools)
@@ -258,6 +279,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	for item in [
 		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Crate"],
 		["light", "Lantern"], ["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
+		["prop_npc", "NPC / Shopkeeper"], ["prop_desk", "Desk"],
 	]:
 		add_opt.add_item(item[1])
 		add_opt.set_item_metadata(add_opt.item_count - 1, item[0])
@@ -422,7 +444,7 @@ func _load_zone() -> void:
 		var merged: Dictionary = cat.duplicate(true)
 		if overrides.has(id):
 			var ov: Dictionary = overrides[id]
-			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable"]:
+			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor"]:
 				if ov.has(key):
 					merged[key] = ov[key]
 			overrides.erase(id)
@@ -470,6 +492,20 @@ func _update_inspector() -> void:
 	_radius_row.visible = is_light
 	if is_light:
 		_radius_spin.value = _selected.light_radius
+	var is_npc := _selected != null and _selected.is_npc()
+	_dialogue_row.visible = is_npc
+	_syncing_dialogue = true
+	if is_npc:
+		_dialogue_edit.text = _selected.get_dialogue_text()
+	else:
+		_dialogue_edit.text = ""
+	_syncing_dialogue = false
+
+
+func _on_dialogue_changed() -> void:
+	if _syncing_dialogue or _selected == null or not _selected.is_npc():
+		return
+	_selected.set_dialogue_text(_dialogue_edit.text)
 
 
 func _on_list_selected(index: int) -> void:
@@ -528,6 +564,9 @@ func _add_piece() -> void:
 		d["name"] = "Lantern"
 		d["radius"] = 280
 		d["pushable"] = true
+	if _palette_id == "prop_npc":
+		d["name"] = "Shopkeeper"
+		d["lines"] = ["You're the stranger here — the only one who needs the shade."]
 	_spawn_piece_dict(d)
 	_select(_pieces.back())
 	tool = Tool.MOVE
@@ -687,10 +726,17 @@ func _playtest() -> void:
 	GameState.editor_playtesting = true
 	GameState.editor_playtest_zone = zone_id
 	GameState.needs_intro_cutscene = false
+	GameState.current_zone_id = zone_id
+	if HouseProfiles.is_house(zone_id):
+		GameState.set_meta("pending_house_id", zone_id)
+		GameState.pending_spawn = Vector2(120, 460)
+		GameState.last_position = GameState.pending_spawn
+		GameState.checkpoint_position = GameState.pending_spawn
+		get_tree().change_scene_to_file("res://scenes/rooms/HouseInterior.tscn")
+		return
 	GameState.pending_spawn = Vector2(120, 440) if zone_id == "cursed_cottage" else Vector2(160, 460)
 	GameState.last_position = GameState.pending_spawn
 	GameState.checkpoint_position = GameState.pending_spawn
-	GameState.current_zone_id = zone_id
 	match zone_id:
 		"lantern_village":
 			get_tree().change_scene_to_file("res://scenes/rooms/LanternVillage.tscn")

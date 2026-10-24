@@ -19,6 +19,8 @@ var builtin: bool = false
 var catalog_kind: String = "floor"
 ## "center" or "bottom" — must match PieceSpecs.anchor(catalog_kind).
 var anchor_mode: String = "center"
+## NPC dialogue lines (one string per line). Empty for non-NPCs.
+var dialogue_lines: PackedStringArray = PackedStringArray()
 
 var _visual: Sprite2D
 var _outline: Line2D
@@ -81,6 +83,12 @@ func to_dict() -> Dictionary:
 		d["kind"] = "background"
 	elif has_meta("piece_kind"):
 		d["kind"] = str(get_meta("piece_kind"))
+	if catalog_kind == "prop_npc" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_npc"):
+		var lines_arr: Array = []
+		for s in dialogue_lines:
+			lines_arr.append(s)
+		d["lines"] = lines_arr
+		d["kind"] = "prop_npc"
 	return d
 
 
@@ -113,9 +121,22 @@ func apply_dict(d: Dictionary) -> void:
 		_:
 			kind = Kind.PROP
 			set_meta("piece_kind", k)
+			if k == "prop_npc":
+				dialogue_lines = HouseProfiles.lines_to_packed(d.get("lines", dialogue_lines))
 	if display_name == "" or display_name == "Piece":
 		display_name = piece_id if piece_id != "" else k
 	_rebuild()
+
+func is_npc() -> bool:
+	return catalog_kind == "prop_npc" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_npc")
+
+
+func set_dialogue_text(text: String) -> void:
+	dialogue_lines = HouseProfiles.lines_to_packed(text)
+
+
+func get_dialogue_text() -> String:
+	return "\n".join(dialogue_lines)
 
 
 func set_selected(on: bool) -> void:
@@ -267,6 +288,10 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.4, 0.38, 0.36)
 		"prop_valve":
 			col = Color(0.55, 0.2, 0.15)
+		"prop_desk":
+			col = Color(0.32, 0.24, 0.16)
+		"prop_exit":
+			col = Color(0.12, 0.08, 0.06)
 		_:
 			col = Color(0.4, 0.42, 0.48)
 	for y in h:

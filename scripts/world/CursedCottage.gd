@@ -31,7 +31,6 @@ func _ready() -> void:
 		LevelCommon.add_brick_wall_face(self, 400.0 + i * 800.0, face_y, 800.0, face_h)
 
 	LevelCommon.add_pipe(self, Vector2(40, ROOF_BOTTOM + 20), Vector2(MAP_W - 100, ROOF_BOTTOM + 20), 12.0)
-	LevelCommon.add_pipe(self, Vector2(220, ROOF_BOTTOM + 20), Vector2(220, ROOF_BOTTOM + 90), 10.0)
 	LevelCommon.add_valve(self, Vector2(220, ROOF_BOTTOM + 90))
 	LevelCommon.add_window(self, 180, ROOF_BOTTOM + 100, 48, 56, true)
 	LevelCommon.add_window(self, 980, ROOF_BOTTOM + 100, 48, 56, true)
@@ -99,7 +98,7 @@ func _build_crate_room() -> void:
 	add_child(lamp)
 	var box := PushableBox.new()
 	box.box_size = Vector2(58, 58)  # ~1.2× of 48 — matches PieceSpecs.CRATE_COTTAGE
-	box.position = Vector2(980, _box_y(box.box_size.y))
+	box.position = Vector2(1222.13659667969, _box_y(box.box_size.y))
 	LevelData.tag(box, "box_push_a")
 	add_child(box)
 
@@ -110,23 +109,22 @@ func _build_pull_room() -> void:
 	var tall_x := 2080.0
 	LevelCommon.add_wall(self, tall_x, FLOOR_TOP - tall_h * 0.5, 32, tall_h)
 
-	var backstop_h := 40.0
-	var backstop_x := 1860.0
-	LevelCommon.add_wall(self, backstop_x, FLOOR_TOP - backstop_h * 0.5, 24, backstop_h)
+	var backstop_h := 49.701171875
+	var backstop_w := 33.0551719665527
+	var backstop_x := 1854.39147949219
+	LevelCommon.add_wall(self, backstop_x, FLOOR_TOP - backstop_h * 0.5, backstop_w, backstop_h)
 
 	var box := PushableBox.new()
 	box.box_size = Vector2(58, 58)
-	box.position = Vector2(backstop_x + 12 + 24, _box_y(box.box_size.y))
+	box.position = Vector2(1901.41931152344, _box_y(box.box_size.y))
 	box.name = "PullCrate"
 	LevelData.tag(box, "box_pull_a")
 	add_child(box)
-	LevelCommon.add_pipe(self, Vector2(1840, ROOF_BOTTOM + 80), Vector2(2140, ROOF_BOTTOM + 80), 8.0)
 
 
 func _build_jump_room() -> void:
 	LevelCommon.add_steel_floor(self, 2700, FLOOR_TOP - 55, 140, 22)
 	LevelCommon.add_steel_floor(self, 2840, FLOOR_TOP - 100, 100, 22)
-	LevelCommon.add_pipe(self, Vector2(2580, ROOF_BOTTOM + 120), Vector2(2900, ROOF_BOTTOM + 120), 8.0)
 
 
 func _build_hatch_room() -> void:

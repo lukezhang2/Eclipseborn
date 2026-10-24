@@ -1,14 +1,26 @@
 extends RefCounted
 class_name ZoneCatalog
 ## Named props that make up each zone (mirrors the live room scripts).
-## Sizes/anchors come from PieceSpecs — keep in sync with CursedCottage / LanternVillage.
+## Sizes/anchors come from PieceSpecs — keep in sync with CursedCottage / LanternVillage / HouseInterior.
 ## See docs/LEVEL_EDITOR.md for the JSON schema.
+
+
+static func zone_ids() -> PackedStringArray:
+	return PackedStringArray([
+		"cursed_cottage",
+		"lantern_village",
+		"house_keep",
+		"house_gear",
+		"house_inn",
+	])
 
 
 static func pieces_for(zone_id: String) -> Array:
 	match zone_id:
 		"lantern_village":
 			return _village()
+		"house_keep", "house_gear", "house_inn":
+			return _house_interior(zone_id)
 		_:
 			return _cottage()
 
@@ -35,7 +47,6 @@ static func _cottage() -> Array:
 	out.append(_p("vent_a", "prop_vent", "Steam Vent", 860, FLOOR_TOP - 4, 36, 16))
 	out.append(_p("decor_crate_a", "prop_crate", "Decor Crate A", 520, FLOOR_TOP - 14, 36, 28))
 	out.append(_p("decor_crate_b", "prop_crate", "Decor Crate B", 2920, FLOOR_TOP - 15, 40, 30))
-	## Pushable crates: 58×58 sitting on FLOOR_TOP (center = FLOOR_TOP - 29).
 	out.append(_p("box_push_a", "crate", "Pushable Crate (lamp room)", 980, PieceSpecs.sit_on_floor_y("crate", FLOOR_TOP, crate), crate.x, crate.y))
 	out.append(_p("box_pull_a", "crate", "Pushable Crate (pull puzzle)", 1896, PieceSpecs.sit_on_floor_y("crate", FLOOR_TOP, crate), crate.x, crate.y))
 	out.append(_p("wall_tall", "wall", "Tall Pull Wall", 2080, FLOOR_TOP - 50, 32, 100))
@@ -73,10 +84,6 @@ static func _village() -> Array:
 	out.append(_p("house_keep", "prop_house", "House: Lantern Keep", 520, FLOOR_TOP, 130, 100))
 	out.append(_p("house_gear", "prop_house", "House: Gearwright", 980, FLOOR_TOP, 110, 88))
 	out.append(_p("house_inn", "prop_house", "House: Shade Inn", 1780, FLOOR_TOP, 140, 110))
-	## NPCs live inside houses now — kept in catalog as removable stubs only.
-	out.append(_p("npc_keeper", "prop_npc", "NPC: Keeper (interior)", 600, FLOOR_TOP, 28, 48))
-	out.append(_p("npc_gear", "prop_npc", "NPC: Gearwright (interior)", 1100, FLOOR_TOP, 28, 48))
-	out.append(_p("npc_inn", "prop_npc", "NPC: Innkeep (interior)", 1900, FLOOR_TOP, 28, 48))
 	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, PieceSpecs.sit_on_floor_y("crate", FLOOR_TOP, crate), crate.x, crate.y))
 	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1300, 240, 380))
 	out.append(_plight("lamp_street", "Street Lamp", 700, 280, 280))
@@ -90,6 +97,28 @@ static func _village() -> Array:
 	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_W - 200, FLOOR_TOP, 160, 280))
 	out.append(_p("shade_heart", "prop_pickup", "Shade Heart", 2100, FLOOR_TOP - 100, 28, 28))
 	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate)", 200, FLOOR_TOP, 56, 28))
+	return out
+
+
+static func _house_interior(house_id: String) -> Array:
+	var profile := HouseProfiles.get_profile(house_id)
+	var FLOOR_TOP := 500.0
+	var MAP_W := 720.0
+	var out: Array = []
+	out.append(_p("floor_main", "floor", "Shop Floor", MAP_W * 0.5, FLOOR_TOP + 20.0, MAP_W, 40))
+	out.append(_p("roof_main", "wall", "Shop Roof", MAP_W * 0.5, 180.0, MAP_W, 36))
+	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
+	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
+	out.append(_p("desk", "prop_desk", "Shop Desk", MAP_W * 0.5, FLOOR_TOP - 8, 200, 28))
+	out.append(_p("exit_door", "prop_exit", "Exit Door", 80, FLOOR_TOP, 40, 50))
+	out.append(_plight("lamp_moon", "Moon Lamp", MAP_W - 100, 260, 140))
+	out.append(_pnpc(
+		str(profile.get("npc_id", "npc_shop")),
+		str(profile.get("keeper_name", "Keeper")),
+		MAP_W * 0.5,
+		FLOOR_TOP - 40,
+		profile.get("lines", [])
+	))
 	return out
 
 
@@ -120,4 +149,23 @@ static func _plight(id: String, name: String, x: float, y: float, radius: float)
 		"anchor": "center",
 		"builtin": true,
 		"pushable": false,
+	}
+
+
+static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant) -> Dictionary:
+	var packed := HouseProfiles.lines_to_packed(lines)
+	var arr: Array = []
+	for s in packed:
+		arr.append(s)
+	return {
+		"id": id,
+		"kind": "prop_npc",
+		"name": name,
+		"x": x,
+		"y": y,
+		"w": 28,
+		"h": 48,
+		"anchor": "bottom",
+		"builtin": true,
+		"lines": arr,
 	}
