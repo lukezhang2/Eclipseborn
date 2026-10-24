@@ -1,33 +1,31 @@
 extends CharacterBody2D
 class_name Player
-## Shadow spirit: black fire, walk/run/jump, attack, shade/health, box push.
+## Eclipseborn spirit: humanoid shadow body, aim up/down, directed attack slashes.
 
 const WALK_SPEED := 140.0
 const RUN_SPEED := 240.0
 const JUMP_VELOCITY := -360.0
 const DOUBLE_JUMP_VELOCITY := -320.0
 const GRAVITY := 980.0
-const ATTACK_STARTUP := 0.06
-const ATTACK_ACTIVE := 0.10
-const ATTACK_RECOVERY := 0.14
+const ATTACK_STARTUP := 0.05
+const ATTACK_ACTIVE := 0.12
+const ATTACK_RECOVERY := 0.12
 const ATTACK_DAMAGE := 12
 
-enum AnimState { IDLE, WALK, RUN, JUMP, DOUBLE_JUMP, FALL, PUSH, BUMP, ATTACK, SHADE_DRAIN, LIGHT_BURN }
-
 var facing: float = 1.0
+## -1 down, 0 forward, 1 up
+var look_aim: int = 0
 var _jumps_remaining: int = 1
 var _attack_timer: float = 0.0
-var _attack_phase: String = "none"  # none, startup, active, recovery
+var _attack_phase: String = "none"
 var _bump_timer: float = 0.0
 var _pushing: bool = false
 var _in_vulnerable_light: bool = false
 var _active_light_kind: int = GameState.LightKind.HEARTH
-var _anim: AnimState = AnimState.IDLE
+var _anim_name: String = "idle"
 
 @onready var visual: Node2D = $Visual
-@onready var flame: Polygon2D = $Visual/Flame
-@onready var eye_l: Polygon2D = $Visual/EyeL
-@onready var eye_r: Polygon2D = $Visual/EyeR
+@onready var sprite: AnimatedSprite2D = $Visual/Sprite
 @onready var hurtbox: Hurtbox = $Hurtbox
 @onready var hitbox: Hitbox = $Hitbox
 @onready var hitbox_shape: CollisionShape2D = $Hitbox/CollisionShape2D
@@ -37,7 +35,7 @@ var _anim: AnimState = AnimState.IDLE
 func _ready() -> void:
 	GameState.player = self
 	collision_layer = 2
-	collision_mask = 1 | 4 | 8  # world, shadow ground, boxes
+	collision_mask = 1 | 4 | 8
 	hurtbox.team = "player"
 	hurtbox.owner_body = self
 	hurtbox.hurt.connect(_on_hurt)
@@ -47,6 +45,11 @@ func _ready() -> void:
 	hitbox.deactivate()
 	light_probe.area_entered.connect(_on_light_area_entered)
 	light_probe.area_exited.connect(_on_light_area_exited)
+	sprite.sprite_frames = SpiritSprites.build_frames()
+	sprite.play("idle")
+	sprite.centered = true
+	sprite.position = Vector2(0, -32)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	if GameState.checkpoint_position == Vector2.ZERO:
 		GameState.set_checkpoint(global_position)
 	add_to_group("player")
@@ -56,6 +59,7 @@ func _physics_process(delta: float) -> void:
 	if GameState.is_paused:
 		return
 
+	_update_look()
 	_update_light_exposure(delta)
 	_update_attack(delta)
 
@@ -91,20 +95,33 @@ func _physics_process(delta: float) -> void:
 		_start_attack()
 
 	move_and_slide()
-	_update_visual(delta, dir)
+	_update_visual(dir)
 	_sync_hitbox_position()
+
+
+func _update_look() -> void:
+	if _attack_phase != "none":
+		return
+	var up := Input.is_action_pressed("look_up")
+	var down := Input.is_action_pressed("look_down")
+	if up and not down:
+		look_aim = 1
+	elif down and not up:
+		look_aim = -1
+	else:
+		look_aim = 0
 
 
 func _try_jump() -> void:
 	if is_on_floor():
 		velocity.y = JUMP_VELOCITY
 		_jumps_remaining = 1 if GameState.has_double_jump else 0
-		_anim = AnimState.JUMP
+		_play_anim("jump")
 		return
 	if GameState.has_double_jump and _jumps_remaining > 0:
 		velocity.y = DOUBLE_JUMP_VELOCITY
 		_jumps_remaining -= 1
-		_anim = AnimState.DOUBLE_JUMP
+		_play_anim("jump")
 
 
 func _try_push_boxes(dir: float, delta: float) -> void:
@@ -136,7 +153,15 @@ func _find_lamp_owner(node: Node) -> Node:
 func _start_attack() -> void:
 	_attack_phase = "startup"
 	_attack_timer = ATTACK_STARTUP
-	_anim = AnimState.ATTACK
+	var anim := "attack_forward"
+	if look_aim > 0:
+		anim = "attack_up"
+	elif look_aim < 0:
+		anim = "attack_down"
+	_play_anim(anim)
+	var slash := AttackSlash.new()
+	add_child(slash)
+	slash.play(look_aim, facing)
 
 
 func _update_attack(delta: float) -> void:
@@ -160,8 +185,16 @@ func _update_attack(delta: float) -> void:
 
 
 func _sync_hitbox_position() -> void:
-	hitbox.position = Vector2(28.0 * facing, -8.0)
+	var offset := Vector2(30.0 * facing, -12.0)
+	if look_aim > 0:
+		offset = Vector2(18.0 * facing, -40.0)
+	elif look_aim < 0:
+		offset = Vector2(18.0 * facing, 8.0)
+	hitbox.position = offset
+	hitbox.rotation_degrees = -50.0 * look_aim
 	hitbox.scale.x = facing
+	if hitbox_shape and hitbox_shape.shape is RectangleShape2D:
+		(hitbox_shape.shape as RectangleShape2D).size = Vector2(40, 24)
 
 
 func _update_light_exposure(delta: float) -> void:
@@ -175,20 +208,13 @@ func _on_light_area_entered(area: Area2D) -> void:
 	if not area.has_meta("light_kind"):
 		return
 	var kind: int = area.get_meta("light_kind")
-	# Prefer the harshest light if multiple.
 	if kind == GameState.LightKind.SUNSHAFT or not _in_vulnerable_light:
 		_active_light_kind = kind
 	if kind in [GameState.LightKind.HEARTH, GameState.LightKind.CANDLE, GameState.LightKind.SUNSHAFT]:
 		_in_vulnerable_light = true
-	elif kind in [GameState.LightKind.MOON, GameState.LightKind.CRIMSON]:
-		# Safe light: still counts as "out of vulnerable".
-		pass
 
 
-func _on_light_area_exited(area: Area2D) -> void:
-	if not area.has_meta("light_kind"):
-		return
-	# Recompute from overlapping areas.
+func _on_light_area_exited(_area: Area2D) -> void:
 	_in_vulnerable_light = false
 	_active_light_kind = GameState.LightKind.HEARTH
 	for a in light_probe.get_overlapping_areas():
@@ -206,50 +232,35 @@ func _on_hurt(amount: int, _from: Node) -> void:
 	GameState.take_damage(amount)
 
 
-func _update_visual(delta: float, dir: float) -> void:
+func _update_visual(dir: float) -> void:
 	visual.scale.x = facing
+	sprite.flip_h = false
 
-	# Breathing idle flicker.
-	var t := Time.get_ticks_msec() / 1000.0
-	var breath := 1.0 + sin(t * 3.0) * 0.06
-	if _attack_phase == "none":
-		flame.scale = Vector2(breath, breath + sin(t * 5.0) * 0.04)
-
-	# Eyes drift slightly.
-	eye_l.position = Vector2(-6 * facing, -18) + Vector2(sin(t * 1.3) * 1.2, cos(t * 1.1) * 0.8)
-	eye_r.position = Vector2(6 * facing, -18) + Vector2(sin(t * 1.5 + 1.0) * 1.2, cos(t * 1.2) * 0.8)
-
-	# State pick for presentation.
 	if _attack_phase != "none":
-		_anim = AnimState.ATTACK
-		flame.color = Color(0.08, 0.05, 0.1)
-	elif GameState.shade <= 0.0 and _in_vulnerable_light:
-		_anim = AnimState.LIGHT_BURN
-		flame.modulate = Color(1, 0.7, 0.5, 0.7)
-	elif _in_vulnerable_light and GameState.shade > 0.0:
-		_anim = AnimState.SHADE_DRAIN
-		flame.modulate = Color(0.85, 0.85, 0.9, 0.85)
-		flame.scale *= 0.92
-	elif _bump_timer > 0.0:
-		_anim = AnimState.BUMP
-		flame.modulate = Color.WHITE
-	elif _pushing:
-		_anim = AnimState.PUSH
-		flame.scale = Vector2(1.25, 0.75)
-		flame.modulate = Color.WHITE
-	elif not is_on_floor():
-		_anim = AnimState.FALL if velocity.y > 0.0 else _anim
-		flame.modulate = Color.WHITE
-	elif absf(dir) > 0.01:
-		_anim = AnimState.RUN if Input.is_action_pressed("run") else AnimState.WALK
-		flame.scale = Vector2(1.15 if _anim == AnimState.RUN else 1.0, 0.9)
-		flame.modulate = Color.WHITE
-	else:
-		_anim = AnimState.IDLE
-		flame.modulate = Color.WHITE
+		return
 
-	# Attack lash stretch.
-	if _attack_phase == "active":
-		flame.scale = Vector2(1.6, 0.7)
-	elif _attack_phase == "startup":
-		flame.scale = Vector2(0.7, 1.2)
+	if GameState.shade <= 0.0 and _in_vulnerable_light:
+		_play_anim("light_burn")
+	elif _in_vulnerable_light and GameState.shade > 0.0:
+		_play_anim("shade_drain")
+	elif _bump_timer > 0.0:
+		_play_anim("bump")
+	elif _pushing:
+		_play_anim("push")
+	elif not is_on_floor():
+		_play_anim("fall" if velocity.y > 40.0 else "jump")
+	elif absf(dir) > 0.01:
+		_play_anim("run" if Input.is_action_pressed("run") else "walk")
+	else:
+		_play_anim("idle")
+
+	# Head tilt cue: nudge sprite offset when looking.
+	sprite.position.y = -32 + (-2 if look_aim > 0 else (2 if look_aim < 0 else 0))
+
+
+func _play_anim(anim: String) -> void:
+	if _anim_name == anim and sprite.is_playing():
+		return
+	_anim_name = anim
+	if sprite.sprite_frames and sprite.sprite_frames.has_animation(anim):
+		sprite.play(anim)

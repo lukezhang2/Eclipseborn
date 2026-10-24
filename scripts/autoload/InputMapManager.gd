@@ -4,6 +4,8 @@ extends Node
 const ACTIONS := [
 	"move_left",
 	"move_right",
+	"look_up",
+	"look_down",
 	"run",
 	"jump",
 	"attack",
@@ -14,6 +16,8 @@ const ACTIONS := [
 const DISPLAY_NAMES := {
 	"move_left": "Move Left",
 	"move_right": "Move Right",
+	"look_up": "Look Up",
+	"look_down": "Look Down",
 	"run": "Run",
 	"jump": "Jump",
 	"attack": "Attack",
@@ -30,14 +34,24 @@ var _listening_action: String = ""
 
 func _ready() -> void:
 	_ensure_defaults()
+	_ensure_look_actions()
 	load_bindings()
 
 
 func _ensure_defaults() -> void:
-	# project.godot already defines defaults; this is a safety net.
 	for action in ACTIONS:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
+
+
+func _ensure_look_actions() -> void:
+	# Safety if project.godot is missing the new actions.
+	if InputMap.action_get_events("look_up").is_empty():
+		_add_key("look_up", KEY_W)
+		_add_key("look_up", KEY_UP)
+	if InputMap.action_get_events("look_down").is_empty():
+		_add_key("look_down", KEY_S)
+		_add_key("look_down", KEY_DOWN)
 
 
 func get_action_display(action: String) -> String:
@@ -47,8 +61,11 @@ func get_action_display(action: String) -> String:
 func get_binding_text(action: String) -> String:
 	var events := InputMap.action_get_events(action)
 	if events.is_empty():
-		return "(unbound)"
-	return _event_to_text(events[0])
+		return "(none)"
+	var parts: PackedStringArray = []
+	for ev in events:
+		parts.append(_event_to_text(ev))
+	return ", ".join(parts)
 
 
 func begin_rebind(action: String) -> void:
@@ -78,7 +95,6 @@ func _input(event: InputEvent) -> void:
 
 
 func _apply_rebind(action: String, key_event: InputEventKey) -> void:
-	# Remove this key from any other action (no shared keys).
 	for other in ACTIONS:
 		if other == action:
 			continue
@@ -102,24 +118,27 @@ func _apply_rebind(action: String, key_event: InputEventKey) -> void:
 func reset_defaults() -> void:
 	_set_key("move_left", KEY_A)
 	_set_key("move_right", KEY_D)
+	_set_key("look_up", KEY_W)
+	_set_key("look_down", KEY_S)
 	_set_key("run", KEY_SHIFT)
 	_set_key("jump", KEY_SPACE)
 	_set_key("attack", KEY_F)
 	_set_key("zone_map", KEY_TAB)
 	_set_key("menu", KEY_ESCAPE)
-	# Also keep arrows for move.
-	var left_arrow := InputEventKey.new()
-	left_arrow.physical_keycode = KEY_LEFT
-	InputMap.action_add_event("move_left", left_arrow)
-	var right_arrow := InputEventKey.new()
-	right_arrow.physical_keycode = KEY_RIGHT
-	InputMap.action_add_event("move_right", right_arrow)
+	_add_key("move_left", KEY_LEFT)
+	_add_key("move_right", KEY_RIGHT)
+	_add_key("look_up", KEY_UP)
+	_add_key("look_down", KEY_DOWN)
 	save_bindings()
 	bindings_changed.emit()
 
 
 func _set_key(action: String, keycode: Key) -> void:
 	InputMap.action_erase_events(action)
+	_add_key(action, keycode)
+
+
+func _add_key(action: String, keycode: Key) -> void:
 	var ev := InputEventKey.new()
 	ev.physical_keycode = keycode
 	InputMap.action_add_event(action, ev)
@@ -149,6 +168,7 @@ func load_bindings() -> void:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = code as Key
 			InputMap.action_add_event(action, ev)
+	_ensure_look_actions()
 	bindings_changed.emit()
 
 

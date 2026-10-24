@@ -273,14 +273,15 @@ Two actions cannot share a key. A reset puts the defaults back. Every action bel
 
 | Action | Default key |
 |---|---|
-| Move left / right | A / D, or the arrow keys |
+| Move left / right | A / D, or Left / Right arrows |
+| Look up / down | W / S, or Up / Down arrows |
 | Run | Shift |
 | Jump | Space |
-| Attack | F |
+| Attack | F (slash aims with look) |
 | Zone map | Tab |
 | Menu | Esc |
 
-During a game, **Esc** opens this same menu. In **single player** the game pauses. The spirit, enemies, lights, boxes, shade, and health all stop until the menu closes. In **co-op** Esc opens the menu for that player only, and the world does not pause.
+During a game, **Esc** opens this same menu. In **single player** the game pauses. The spirit, enemies, lights, boxes, shade, and health all stop until the menu closes. In **co-op** Esc opens the menu for that player only, and the world does not pause. **Tab** opens the zone map as a live overlay and does **not** pause.
 
 ### Zone map
 
@@ -289,7 +290,7 @@ During a game, **Esc** opens this same menu. In **single player** the game pause
 - A room is drawn after he enters it. Rooms he has never entered stay blank.
 - Each living player gets an icon on the room they are in. The icons look different, so co-op players can tell who is who. A partner's icon shows even in a room this player has not mapped yet, so nobody gets lost.
 - The map does not move lamps or fight. It only shows where people are.
-- In single player, Tab pauses the game the same way Esc does, so shade does not drain while the map is up. In co-op, Tab does not pause the world.
+- Tab never pauses. The map is a live overlay so shade can still drain while it is open.
 
 ## Multiplayer
 
@@ -302,7 +303,7 @@ During a game, **Esc** opens this same menu. In **single player** the game pause
 - **Players could cast shadows too.** A player standing in front of a light would make a small shadow a teammate can stand on. It's fun, but it makes puzzles harder to design. **(open)**
 - A player whose health hits 0 comes back as a small wisp and can be revived at a checkpoint or by a teammate.
 - In single player, co-op puzzles change so one person can solve them, for example with a lever that locks a gear in place.
-- Esc and Tab pause only in single player. In co-op the world keeps moving while one player has the menu or the zone map open.
+- Esc pauses only in single player. Tab never pauses. In co-op the world keeps moving while one player has the menu or the zone map open.
 
 ### Save files
 

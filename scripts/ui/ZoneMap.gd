@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Tab map of the current zone with player icons. Pauses in single player.
+## Tab map of the current zone with player icons. Does not pause the game.
 
 const ZONE_LAYOUTS := {
 	"cursed_cottage": [
@@ -29,6 +29,15 @@ func _ready() -> void:
 	root.visible = false
 	if draw_area.get_script() == null:
 		draw_area.set_script(preload("res://scripts/ui/MapDraw.gd"))
+	var dim := root.get_node_or_null("Dim")
+	if dim is ColorRect:
+		(dim as ColorRect).color = Color(0, 0, 0, 0.35)
+		(dim as ColorRect).mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _process(_delta: float) -> void:
+	if root.visible:
+		_refresh_map()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -46,18 +55,18 @@ func toggle() -> void:
 
 func open() -> void:
 	root.visible = true
-	title.text = "Zone: %s" % GameState.current_zone_id.replace("_", " ").capitalize()
-	var zone := GameState.current_zone_id
-	var layout: Array = ZONE_LAYOUTS.get(zone, [])
-	var discovered: Array = GameState.discovered_rooms.get(zone, [])
-	if draw_area.has_method("set_map_data"):
-		draw_area.set_map_data(layout, discovered, GameState.current_room_id)
-	else:
-		draw_area.set_script(preload("res://scripts/ui/MapDraw.gd"))
-		draw_area.set_map_data(layout, discovered, GameState.current_room_id)
-	GameState.set_paused(true)
+	title.text = "Zone: %s (live)" % GameState.current_zone_id.replace("_", " ").capitalize()
+	_refresh_map()
 
 
 func close() -> void:
 	root.visible = false
-	GameState.set_paused(false)
+
+
+func _refresh_map() -> void:
+	var zone := GameState.current_zone_id
+	var layout: Array = ZONE_LAYOUTS.get(zone, [])
+	var discovered: Array = GameState.discovered_rooms.get(zone, [])
+	if not draw_area.has_method("set_map_data"):
+		draw_area.set_script(preload("res://scripts/ui/MapDraw.gd"))
+	draw_area.set_map_data(layout, discovered, GameState.current_room_id)

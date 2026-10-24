@@ -25,8 +25,11 @@ Status after the first implementation pass. ✅ in game now · 🚧 stub / parti
 - ✅ Hatch breaks with F → Lantern Village
 - ✅ Lamplighter (tough enemy) unlocks double jump on defeat
 - 🚧 Sounds / music (hooks only — no audio assets yet)
-- ✅ Tab zone map with player icon (cottage + village layouts)
-- ✅ Steel-and-steam visual language (riveted floors, pipes, iron doors)
+- ✅ Tab zone map with player icon (live overlay, does not pause)
+- ✅ Steel-and-steam maps with brick faces, windows, lamp posts, cobbles
+- ✅ Humanoid spirit sprites (idle/walk/run/jump/attack aim poses)
+- ✅ Look up/down (W/S + arrows) aims F slash + hitbox
+- ✅ Screen-edge VFX for shade drain vs health burn
 - ✅ One shade heart in Lantern Village (+25 max HP)
 - ✅ Basic enemy with hit/hurt boxes + pogo bounce
 

@@ -1,11 +1,32 @@
-[gd_scene load_steps=5 format=3 uid="uid://game_ui"]
+[gd_scene load_steps=6 format=3 uid="uid://game_ui"]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/PauseMenu.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/ui/ZoneMap.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/ui/TutorialHint.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/ui/ScreenVFX.gd" id="5"]
 
 [node name="GameUI" type="Node"]
+
+[node name="ScreenVFX" type="CanvasLayer" parent="."]
+layer = 8
+script = ExtResource("5")
+
+[node name="ShadeEdges" type="Control" parent="ScreenVFX"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0)
+
+[node name="HealthEdges" type="Control" parent="ScreenVFX"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0)
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("1")
