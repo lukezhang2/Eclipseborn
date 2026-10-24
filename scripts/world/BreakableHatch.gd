@@ -117,13 +117,16 @@ func try_enter(player: Node) -> bool:
 
 
 func _begin_transition() -> void:
+	## Transition node lives on the root so its await survives this scene unloading.
 	GameState.set_paused(false)
 	GameState.current_zone_id = "lantern_village"
 	GameState.last_position = spawn_in_next
 	GameState.checkpoint_position = spawn_in_next
 	GameState.needs_intro_cutscene = false
 	SaveManager.autosave()
-	var fx := preload("res://scripts/ui/ZoneTransition.gd").new()
-	get_tree().root.add_child(fx)
-	await fx.play_out()
-	get_tree().change_scene_to_file(next_scene)
+	var tree := get_tree()
+	ZoneTransition.clear_stale(tree)
+	var fx := ZoneTransition.new()
+	tree.root.add_child(fx)
+	# Do not await here — this hatch is freed with the cottage scene.
+	fx.begin_scene_change(next_scene)

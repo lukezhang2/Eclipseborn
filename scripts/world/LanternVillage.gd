@@ -75,11 +75,7 @@ func _ready() -> void:
 	LevelCommon.configure_camera(player, ROOF_TOP, FLOOR_CENTER + FLOOR_H * 0.5 + 40.0, GameState.map_min_x, GameState.map_max_x)
 	GameState.enter_room("lantern_village", "gate")
 	SaveManager.autosave()
-
-	# Fade in after hatch transition (black screen → village).
-	var fx := preload("res://scripts/ui/ZoneTransition.gd").new()
-	add_child(fx)
-	fx.play_in()
+	# Hatch transition owns fade-in on the root FX. Direct loads need no overlay.
 
 
 func _resolve_spawn() -> Vector2:

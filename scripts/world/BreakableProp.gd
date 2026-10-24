@@ -102,9 +102,10 @@ func _on_hurt(_amount: int, _from: Node) -> void:
 	# Spawn silver gears with a little pop.
 	for i in currency_drops:
 		var gear := CurrencyPickup.new()
-		gear.global_position = global_position + Vector2(randf_range(-6, 6), -8)
-		gear.pop_velocity = Vector2(randf_range(-80, 80), randf_range(-220, -120))
+		gear.pop_velocity = Vector2(randf_range(-110, 110), randf_range(-260, -140))
 		get_parent().add_child(gear)
+		gear.global_position = global_position + Vector2(randf_range(-6, 6), -10)
+		gear.velocity = gear.pop_velocity
 	# Shatter fade
 	if _glow:
 		_glow.visible = false

@@ -1,32 +1,55 @@
-extends Area2D
+extends CharacterBody2D
 class_name CurrencyPickup
-## Silver gear pickup. Spreads for a moment before it can be collected.
+## Silver gear pickup. Spreads, bounces on floors/walls, then can be collected.
 
 const PICKUP_RADIUS := 52.0
 const MAGNET_RADIUS := 90.0
 const VALUE := 1
 const PICKUP_DELAY := 1.0
+const BODY_RADIUS := 8.0
 
 var pop_velocity: Vector2 = Vector2.ZERO
 var _spin: float = 0.0
 var _visual: Node2D
 var _age: float = 0.0
 var _can_pickup: bool = false
+var _pickup_area: Area2D
 
 
 func _ready() -> void:
+	# Solid vs world geometry; not on a layer the player walks into.
 	collision_layer = 0
-	collision_mask = 2
-	monitoring = true
-	monitorable = false
+	collision_mask = 1
+	up_direction = Vector2.UP
+	floor_stop_on_slope = true
+	_build_body()
+	_build_visual()
+	_build_pickup_area()
+	velocity = pop_velocity
+	add_to_group("currency")
+
+
+func _build_body() -> void:
+	var cs := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = BODY_RADIUS
+	cs.shape = circle
+	add_child(cs)
+
+
+func _build_pickup_area() -> void:
+	_pickup_area = Area2D.new()
+	_pickup_area.collision_layer = 0
+	_pickup_area.collision_mask = 2
+	_pickup_area.monitoring = true
+	_pickup_area.monitorable = false
 	var cs := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = PICKUP_RADIUS
 	cs.shape = circle
-	add_child(cs)
-	_build_visual()
-	body_entered.connect(_on_body)
-	add_to_group("currency")
+	_pickup_area.add_child(cs)
+	_pickup_area.body_entered.connect(_on_body)
+	add_child(_pickup_area)
 
 
 func _build_visual() -> void:
@@ -57,15 +80,24 @@ func _physics_process(delta: float) -> void:
 	if _visual:
 		_visual.rotation = _spin
 		_visual.modulate.a = 0.55 + 0.45 * clampf(_age / PICKUP_DELAY, 0.0, 1.0)
+
 	if not _can_pickup:
-		pop_velocity.y += 900.0 * delta
-		pop_velocity.x = move_toward(pop_velocity.x, 0.0, 40.0 * delta)
-		position += pop_velocity * delta
+		velocity.y += 980.0 * delta
+		move_and_slide()
+		if is_on_floor():
+			velocity.y = 0.0
+			velocity.x *= 0.82
+			if absf(velocity.x) < 12.0:
+				velocity.x = 0.0
+		if is_on_wall():
+			velocity.x *= -0.55
+		_clamp_to_map()
 		if _age >= PICKUP_DELAY:
 			_can_pickup = true
-			pop_velocity = Vector2.ZERO
+			velocity = Vector2.ZERO
 		return
 
+	_clamp_to_map()
 	var player = GameState.player
 	if player == null or not is_instance_valid(player):
 		return
@@ -75,7 +107,19 @@ func _physics_process(delta: float) -> void:
 		_collect()
 		return
 	if dist <= MAGNET_RADIUS:
+		# Magnet phase — no world collision so it can float to the player.
 		global_position += to_p.normalized() * 220.0 * delta
+
+
+func _clamp_to_map() -> void:
+	var min_x := GameState.map_min_x + BODY_RADIUS
+	var max_x := GameState.map_max_x - BODY_RADIUS
+	if global_position.x < min_x:
+		global_position.x = min_x
+		velocity.x = absf(velocity.x) * 0.5
+	elif global_position.x > max_x:
+		global_position.x = max_x
+		velocity.x = -absf(velocity.x) * 0.5
 
 
 func _on_body(body: Node) -> void:

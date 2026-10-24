@@ -2,7 +2,7 @@ extends Control
 ## Password-gated level designer: Background / Blocks / Lights, move + resize.
 
 
-enum Tool { SELECT, MOVE, RESIZE }
+enum Tool { SELECT, MOVE, RESIZE, DELETE }
 enum Tab { BACKGROUND, BLOCKS, LIGHTS }
 
 var zone_id: String = "cursed_cottage"
@@ -14,6 +14,8 @@ var _world: Node2D
 var _cam: Camera2D
 var _hud: VBoxContainer
 var _status: Label
+var _delete_btn: Button
+var _selection_bar: HBoxContainer
 var _panning: bool = false
 var _pan_last: Vector2 = Vector2.ZERO
 
@@ -74,16 +76,24 @@ func _build_ui() -> void:
 	_add_toggle(tools, "Select", func() -> void: tool = Tool.SELECT)
 	_add_toggle(tools, "Move", func() -> void: tool = Tool.MOVE)
 	_add_toggle(tools, "Resize", func() -> void: tool = Tool.RESIZE)
+	_add_toggle(tools, "Delete", func() -> void: tool = Tool.DELETE)
 
 	_hud.add_child(_make_section("Palette"))
 	var add_btn := Button.new()
 	add_btn.text = "Add Piece"
 	add_btn.pressed.connect(_add_piece_for_tab)
 	_hud.add_child(add_btn)
-	var del_btn := Button.new()
-	del_btn.text = "Delete Selected"
-	del_btn.pressed.connect(_delete_selected)
-	_hud.add_child(del_btn)
+
+	_selection_bar = HBoxContainer.new()
+	_selection_bar.visible = false
+	_hud.add_child(_selection_bar)
+	var sel_label := Label.new()
+	sel_label.text = "Selected:"
+	_selection_bar.add_child(sel_label)
+	_delete_btn = Button.new()
+	_delete_btn.text = "Delete"
+	_delete_btn.pressed.connect(_delete_selected)
+	_selection_bar.add_child(_delete_btn)
 
 	var save_btn := Button.new()
 	save_btn.text = "Save (this browser only)"
@@ -111,7 +121,7 @@ func _build_ui() -> void:
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size.x = 240
-	_status.text = "Editor works locally. Save is THIS browser only — other players will NOT see it. Copy Level JSON and paste it in chat / commit to data/levels/ to ship for everyone. MMB pan, wheel zoom."
+	_status.text = "Editor works locally. Tools: Select / Move / Resize / Delete. With a piece selected, press Delete (or Del/Backspace). MMB pan, wheel zoom. Save is THIS browser only."
 	_hud.add_child(_status)
 
 
@@ -185,9 +195,13 @@ func _add_piece_for_tab() -> void:
 func _delete_selected() -> void:
 	if _selected == null:
 		return
-	_pieces.erase(_selected)
-	_selected.queue_free()
+	var doomed := _selected
 	_selected = null
+	_pieces.erase(doomed)
+	if is_instance_valid(doomed):
+		doomed.queue_free()
+	_update_selection_ui()
+	_status.text = "Deleted piece. %d remaining." % _pieces.size()
 
 
 func _select(piece: EditorPiece) -> void:
@@ -196,6 +210,14 @@ func _select(piece: EditorPiece) -> void:
 	_selected = piece
 	if _selected:
 		_selected.set_selected(true)
+	_update_selection_ui()
+
+
+func _update_selection_ui() -> void:
+	if _selection_bar:
+		_selection_bar.visible = _selected != null
+	if _delete_btn:
+		_delete_btn.disabled = _selected == null
 
 
 func _build_data() -> Dictionary:
@@ -252,6 +274,13 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		var key := event as InputEventKey
+		if key.keycode == KEY_DELETE or key.keycode == KEY_BACKSPACE:
+			if _selected:
+				_delete_selected()
+				get_viewport().set_input_as_handled()
+				return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_MIDDLE:
@@ -269,7 +298,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if mb.pressed:
 				_on_click(world)
 			else:
-				if _selected:
+				if _selected and tool != Tool.DELETE:
 					_selected.end_interact()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -278,7 +307,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pan_last = mm.position
 			_cam.position -= delta / _cam.zoom
 			return
-		if _selected == null:
+		if _selected == null or tool == Tool.DELETE:
 			return
 		var world := _screen_to_world(mm.position)
 		if tool == Tool.MOVE or (_selected._dragging):
@@ -304,6 +333,10 @@ func _on_click(world: Vector2) -> void:
 	for i in range(_pieces.size() - 1, -1, -1):
 		var p := _pieces[i]
 		if p.contains_point(p.to_local(world)):
+			if tool == Tool.DELETE:
+				_select(p)
+				_delete_selected()
+				return
 			_select(p)
 			if tool == Tool.MOVE or tool == Tool.SELECT:
 				p.begin_drag(world)
