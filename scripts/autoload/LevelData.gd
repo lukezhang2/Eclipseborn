@@ -23,13 +23,13 @@ static func path_for(zone_id: String, prefer_user: bool = true) -> String:
 static func load_raw(zone_id: String) -> Dictionary:
 	var path := path_for(zone_id)
 	if not FileAccess.file_exists(path):
-		return {"zone": zone_id, "pieces": []}
+		return {"zone": zone_id, "pieces": [], "removed_ids": []}
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
-		return {"zone": zone_id, "pieces": []}
+		return {"zone": zone_id, "pieces": [], "removed_ids": []}
 	var parsed: Variant = JSON.parse_string(f.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
-		return {"zone": zone_id, "pieces": []}
+		return {"zone": zone_id, "pieces": [], "removed_ids": []}
 	return parsed
 
 
@@ -46,13 +46,42 @@ static func save_raw(zone_id: String, data: Dictionary, to_res: bool = false) ->
 	return OK
 
 
+static func is_removed(zone_id: String, catalog_id: String) -> bool:
+	if catalog_id == "":
+		return false
+	var data := load_raw(zone_id)
+	var removed: Array = data.get("removed_ids", [])
+	return removed.has(catalog_id)
+
+
+static func tag(node: Node, catalog_id: String) -> void:
+	if node:
+		node.set_meta("catalog_id", catalog_id)
+
+
+static func prune_removed(parent: Node, zone_id: String) -> void:
+	var data := load_raw(zone_id)
+	var removed: Array = data.get("removed_ids", [])
+	if removed.is_empty():
+		return
+	for child in parent.get_children():
+		if child.has_meta("catalog_id") and removed.has(str(child.get_meta("catalog_id"))):
+			child.queue_free()
+
+
 static func apply(parent: Node2D, zone_id: String) -> void:
 	var data := load_raw(zone_id)
 	var pieces: Array = data.get("pieces", [])
 	for p in pieces:
 		if typeof(p) != TYPE_DICTIONARY:
 			continue
+		if bool(p.get("builtin", false)):
+			continue  # builtins are spawned by the room script
+		var id := str(p.get("id", ""))
+		if id != "" and data.get("removed_ids", []).has(id):
+			continue
 		_spawn_piece(parent, p)
+	prune_removed(parent, zone_id)
 
 
 static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
@@ -84,3 +113,8 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			LevelCommon.add_steam_vent(parent, pos)
 		"prop_crate":
 			LevelCommon.add_crate_prop(parent, pos, size)
+		"prop_checkpoint":
+			var cp := Checkpoint.new()
+			cp.position = pos
+			cp.checkpoint_id = str(p.get("id", "editor_cp"))
+			parent.add_child(cp)

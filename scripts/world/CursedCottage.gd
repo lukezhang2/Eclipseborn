@@ -53,6 +53,7 @@ func _ready() -> void:
 	_build_currency_breakables()
 
 	LevelData.apply(self, "cursed_cottage")
+	LevelData.prune_removed(self, "cursed_cottage")
 
 	var spawn := Vector2(120, FLOOR_TOP - 40)
 	if GameState.pending_spawn != Vector2.ZERO:
@@ -146,10 +147,12 @@ func _build_hatch_room() -> void:
 	])
 	add_child(brace)
 
-	var cp := Checkpoint.new()
-	cp.position = Vector2(3300, FLOOR_TOP - 4)
-	cp.checkpoint_id = "cottage_hatch"
-	add_child(cp)
+	if not LevelData.is_removed("cursed_cottage", "checkpoint_hatch"):
+		var cp := Checkpoint.new()
+		cp.position = Vector2(3300, FLOOR_TOP - 4)
+		cp.checkpoint_id = "cottage_hatch"
+		LevelData.tag(cp, "checkpoint_hatch")
+		add_child(cp)
 
 
 func _build_ambient_lamps() -> void:

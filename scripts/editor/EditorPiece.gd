@@ -1,22 +1,25 @@
 extends Node2D
 class_name EditorPiece
-## Selectable / movable / resizable editor proxy. Rebuilds texture on resize.
+## Selectable / movable / resizable editor proxy with a visible name tag.
 
 
 signal selected(piece: EditorPiece)
 
-enum Kind { BACKGROUND, BLOCK, LIGHT }
+enum Kind { BACKGROUND, BLOCK, LIGHT, PROP }
 
 var kind: Kind = Kind.BLOCK
 var piece_id: String = ""
+var display_name: String = "Piece"
 var size: Vector2 = Vector2(64, 48)
 var light_radius: float = 280.0
 var light_kind: int = 0
 var pushable: bool = true
+var builtin: bool = false
+var catalog_kind: String = "floor"
 
 var _visual: Sprite2D
 var _outline: Line2D
-var _handles: Array[ColorRect] = []
+var _name_label: Label
 var _dragging: bool = false
 var _resizing: bool = false
 var _resize_corner: int = -1
@@ -29,11 +32,14 @@ func _ready() -> void:
 	_rebuild()
 
 
-func setup(k: Kind, pos: Vector2, sz: Vector2) -> void:
+func setup(k: Kind, pos: Vector2, sz: Vector2, pname: String = "") -> void:
 	kind = k
 	position = pos
 	size = sz
-	piece_id = "%s_%d" % [_kind_name(), Time.get_ticks_msec()]
+	if pname != "":
+		display_name = pname
+	if piece_id == "":
+		piece_id = "%s_%d" % [_kind_name(), Time.get_ticks_msec()]
 	if is_inside_tree():
 		_rebuild()
 
@@ -44,17 +50,22 @@ func _kind_name() -> String:
 			return "background"
 		Kind.LIGHT:
 			return "light"
+		Kind.PROP:
+			return catalog_kind if catalog_kind != "" else "prop"
 		_:
-			return "block"
+			return catalog_kind if catalog_kind != "" else "floor"
 
 
 func to_dict() -> Dictionary:
 	var d := {
-		"kind": _kind_name() if kind != Kind.BLOCK else "floor",
+		"id": piece_id,
+		"name": display_name,
+		"kind": _kind_name(),
 		"x": position.x,
 		"y": position.y,
 		"w": size.x,
 		"h": size.y,
+		"builtin": builtin,
 	}
 	if kind == Kind.LIGHT:
 		d["kind"] = "light"
@@ -69,9 +80,13 @@ func to_dict() -> Dictionary:
 
 
 func apply_dict(d: Dictionary) -> void:
+	piece_id = str(d.get("id", piece_id))
+	display_name = str(d.get("name", display_name if display_name != "Piece" else piece_id))
+	builtin = bool(d.get("builtin", false))
 	position = Vector2(float(d.get("x", 0)), float(d.get("y", 0)))
 	size = Vector2(float(d.get("w", 64)), float(d.get("h", 48)))
 	var k: String = str(d.get("kind", "block"))
+	catalog_kind = k
 	match k:
 		"background":
 			kind = Kind.BACKGROUND
@@ -80,24 +95,33 @@ func apply_dict(d: Dictionary) -> void:
 			light_radius = float(d.get("radius", 280))
 			light_kind = int(d.get("light_kind", 0))
 			pushable = bool(d.get("pushable", true))
-		_:
+		"floor", "block", "wall", "crate":
 			kind = Kind.BLOCK
-			if k not in ["block", "floor"]:
-				set_meta("piece_kind", k)
+			set_meta("piece_kind", k)
+		_:
+			kind = Kind.PROP
+			set_meta("piece_kind", k)
+	if display_name == "" or display_name == "Piece":
+		display_name = piece_id if piece_id != "" else k
 	_rebuild()
 
 
 func set_selected(on: bool) -> void:
 	is_selected = on
 	if _outline:
-		_outline.default_color = Color(0.3, 1.0, 0.5, 1.0) if on else Color(0.9, 0.9, 0.2, 0.6)
-	_show_handles(on)
+		_outline.default_color = Color(0.25, 1.0, 0.55, 1.0) if on else Color(0.85, 0.8, 0.35, 0.7)
+		_outline.width = 3.0 if on else 2.0
+	if _name_label:
+		_name_label.visible = true
+		_name_label.add_theme_color_override(
+			"font_color",
+			Color(0.4, 1.0, 0.65) if on else Color(0.9, 0.88, 0.75)
+		)
 
 
 func _rebuild() -> void:
 	for c in get_children():
 		c.queue_free()
-	_handles.clear()
 	_visual = Sprite2D.new()
 	_visual.centered = true
 	_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -107,17 +131,19 @@ func _rebuild() -> void:
 			_visual.modulate = Color(1, 1, 1, 0.85)
 		Kind.LIGHT:
 			_visual.texture = _make_light_tex(48, 48)
-			size = Vector2(48, 48)
+			size = Vector2(maxi(48, int(size.x)), maxi(48, int(size.y)))
+		Kind.PROP:
+			_visual.texture = _make_prop_tex(int(size.x), int(size.y), catalog_kind)
 		_:
-			_visual.texture = _make_block_tex(int(size.x), int(size.y))
-	_visual.scale = Vector2(
-		size.x / float(_visual.texture.get_width()),
-		size.y / float(_visual.texture.get_height())
-	)
+			_visual.texture = _make_block_tex(int(size.x), int(size.y), catalog_kind)
+	var tw := maxi(_visual.texture.get_width(), 1)
+	var th := maxi(_visual.texture.get_height(), 1)
+	_visual.scale = Vector2(size.x / float(tw), size.y / float(th))
 	add_child(_visual)
+
 	_outline = Line2D.new()
 	_outline.width = 2.0
-	_outline.default_color = Color(0.9, 0.9, 0.2, 0.6)
+	_outline.default_color = Color(0.85, 0.8, 0.35, 0.7)
 	var hx := size.x * 0.5
 	var hy := size.y * 0.5
 	_outline.add_point(Vector2(-hx, -hy))
@@ -126,52 +152,86 @@ func _rebuild() -> void:
 	_outline.add_point(Vector2(-hx, hy))
 	_outline.add_point(Vector2(-hx, -hy))
 	add_child(_outline)
+
+	_name_label = Label.new()
+	_name_label.text = display_name
+	_name_label.position = Vector2(-mini(hx, 80.0), -hy - 22.0)
+	_name_label.add_theme_font_size_override("font_size", 12)
+	_name_label.add_theme_color_override("font_color", Color(0.9, 0.88, 0.75))
+	_name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_name_label.add_theme_constant_override("outline_size", 4)
+	add_child(_name_label)
+
 	if kind == Kind.LIGHT:
 		var ring := Line2D.new()
 		ring.width = 1.0
-		ring.default_color = Color(1.0, 0.85, 0.4, 0.5)
+		ring.default_color = Color(1.0, 0.85, 0.4, 0.45)
 		for i in 24:
 			var a := TAU * float(i) / 24.0
 			ring.add_point(Vector2(cos(a), sin(a)) * light_radius)
 		ring.add_point(ring.get_point_position(0))
 		add_child(ring)
 
-
-func _show_handles(on: bool) -> void:
-	for h in _handles:
-		if is_instance_valid(h):
-			h.queue_free()
-	_handles.clear()
-	if not on or kind == Kind.LIGHT:
-		return
-	# Four corner handles as Control nodes in local space via Node2D markers
-	var hx := size.x * 0.5
-	var hy := size.y * 0.5
-	var corners := [Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)]
-	for i in 4:
-		var marker := Node2D.new()
-		marker.position = corners[i]
-		marker.name = "Handle%d" % i
-		var poly := Polygon2D.new()
-		poly.color = Color(0.2, 0.95, 0.45)
-		poly.polygon = PackedVector2Array([
-			Vector2(-5, -5), Vector2(5, -5), Vector2(5, 5), Vector2(-5, 5)
-		])
-		marker.add_child(poly)
-		marker.set_meta("corner", i)
-		add_child(marker)
+	set_selected(is_selected)
 
 
-func _make_block_tex(w: int, h: int) -> ImageTexture:
+func _make_block_tex(w: int, h: int, k: String) -> ImageTexture:
 	w = clampi(w, 8, 512)
 	h = clampi(h, 8, 256)
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var base := Color(0.28, 0.29, 0.32)
+	if k == "wall":
+		base = Color(0.22, 0.18, 0.16)
+	elif k == "crate":
+		base = Color(0.42, 0.3, 0.18)
 	for y in h:
 		for x in w:
-			var c := Color(0.28, 0.29, 0.32)
+			var c := base
 			if x % 48 < 2 or y < 2 or y >= h - 2:
 				c = c.darkened(0.3)
 			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
+func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
+	w = clampi(w, 16, 512)
+	h = clampi(h, 16, 512)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var col := Color(0.45, 0.4, 0.35)
+	match k:
+		"prop_checkpoint":
+			col = Color(0.35, 0.32, 0.4)  # hearth — was the cryptic … prop
+		"prop_house":
+			col = Color(0.4, 0.28, 0.2)
+		"prop_npc":
+			col = Color(0.5, 0.45, 0.55)
+		"prop_breakable":
+			col = Color(0.45, 0.55, 0.65)
+		"prop_enemy":
+			col = Color(0.35, 0.2, 0.4)
+		"prop_lantern", "prop_tower":
+			col = Color(0.55, 0.45, 0.25)
+		"prop_bg_gear":
+			col = Color(0.4, 0.38, 0.36)
+		_:
+			col = Color(0.4, 0.42, 0.48)
+	for y in h:
+		for x in w:
+			var edge := x < 2 or y < 2 or x >= w - 2 or y >= h - 2
+			img.set_pixel(x, y, col.darkened(0.25) if edge else col)
+	# Checkpoint marker: three clear dots so it matches what you saw in-game.
+	if k == "prop_checkpoint":
+		for i in 3:
+			var cx := int(w * (0.25 + i * 0.25))
+			var cy := int(h * 0.35)
+			for oy in range(-2, 3):
+				for ox in range(-2, 3):
+					if ox * ox + oy * oy <= 4:
+						var px := cx + ox
+						var py := cy + oy
+						if px >= 0 and py >= 0 and px < w and py < h:
+							img.set_pixel(px, py, Color(0.65, 0.75, 0.95))
 	return ImageTexture.create_from_image(img)
 
 
@@ -210,7 +270,7 @@ func handle_at(local_pt: Vector2) -> int:
 	var hy := size.y * 0.5
 	var corners := [Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)]
 	for i in 4:
-		if local_pt.distance_to(corners[i]) < 12.0:
+		if local_pt.distance_to(corners[i]) < 14.0:
 			return i
 	return -1
 

@@ -65,12 +65,15 @@ func _ready() -> void:
 
 	add_child(_make_shade_heart(Vector2(2100, FLOOR_TOP - 100)))
 
-	var cp := Checkpoint.new()
-	cp.position = Vector2(200, FLOOR_TOP)
-	cp.checkpoint_id = "village_gate"
-	add_child(cp)
+	if not LevelData.is_removed("lantern_village", "checkpoint_gate"):
+		var cp := Checkpoint.new()
+		cp.position = Vector2(200, FLOOR_TOP)
+		cp.checkpoint_id = "village_gate"
+		LevelData.tag(cp, "checkpoint_gate")
+		add_child(cp)
 
 	LevelData.apply(self, "lantern_village")
+	LevelData.prune_removed(self, "lantern_village")
 
 	var spawn := _resolve_spawn()
 	var player := LevelCommon.spawn_player(self, spawn)
@@ -103,59 +106,71 @@ func _resolve_spawn() -> Vector2:
 
 
 func _build_houses_and_npcs() -> void:
-	var h1 := House.new()
-	h1.position = Vector2(520, FLOOR_TOP)
-	h1.house_name = "Lantern Keep"
-	h1.width = 130.0
-	h1.height = 100.0
-	h1.interior_blurb = "Shelves of snuffed lanterns line the walls. A keeper's ledger ticks softly."
-	add_child(h1)
+	if not LevelData.is_removed("lantern_village", "house_keep"):
+		var h1 := House.new()
+		h1.position = Vector2(520, FLOOR_TOP)
+		h1.house_name = "Lantern Keep"
+		h1.width = 130.0
+		h1.height = 100.0
+		h1.interior_blurb = "Shelves of snuffed lanterns line the walls. A keeper's ledger ticks softly."
+		LevelData.tag(h1, "house_keep")
+		add_child(h1)
 
-	var h2 := House.new()
-	h2.position = Vector2(980, FLOOR_TOP)
-	h2.house_name = "Gearwright"
-	h2.width = 110.0
-	h2.height = 88.0
-	h2.interior_blurb = "Brass filings glitter on the workbench. Half-built walkway gears hang from hooks."
-	add_child(h2)
+	if not LevelData.is_removed("lantern_village", "house_gear"):
+		var h2 := House.new()
+		h2.position = Vector2(980, FLOOR_TOP)
+		h2.house_name = "Gearwright"
+		h2.width = 110.0
+		h2.height = 88.0
+		h2.interior_blurb = "Brass filings glitter on the workbench. Half-built walkway gears hang from hooks."
+		LevelData.tag(h2, "house_gear")
+		add_child(h2)
 
-	var h3 := House.new()
-	h3.position = Vector2(1780, FLOOR_TOP)
-	h3.house_name = "Shade Inn"
-	h3.width = 140.0
-	h3.height = 110.0
-	h3.interior_blurb = "Low tables, cool dark, and a hearth banked so it barely burns."
-	add_child(h3)
+	if not LevelData.is_removed("lantern_village", "house_inn"):
+		var h3 := House.new()
+		h3.position = Vector2(1780, FLOOR_TOP)
+		h3.house_name = "Shade Inn"
+		h3.width = 140.0
+		h3.height = 110.0
+		h3.interior_blurb = "Low tables, cool dark, and a hearth banked so it barely burns."
+		LevelData.tag(h3, "house_inn")
+		add_child(h3)
 
-	var n1 := NPC.new()
-	n1.position = Vector2(600, FLOOR_TOP)
-	n1.npc_name = "Keeper"
-	n1.lines = PackedStringArray([
-		"Stay in the umbra, traveler.",
-		"The lamps burn shade — duck under platforms.",
-		"The Clockwork Tower wakes at the far end.",
-	])
-	add_child(n1)
+	if not LevelData.is_removed("lantern_village", "npc_keeper"):
+		var n1 := NPC.new()
+		n1.position = Vector2(600, FLOOR_TOP)
+		n1.npc_name = "Keeper"
+		n1.lines = PackedStringArray([
+			"Stay in the umbra, traveler.",
+			"The lamps burn shade — duck under platforms.",
+			"The Clockwork Tower wakes at the far end.",
+		])
+		LevelData.tag(n1, "npc_keeper")
+		add_child(n1)
 
-	var n2 := NPC.new()
-	n2.position = Vector2(1100, FLOOR_TOP)
-	n2.npc_name = "Gearwright"
-	n2.lines = PackedStringArray([
-		"Those background gears spin the walkways.",
-		"Push crates — wood drinks the light.",
-		"Silver gears buy favors… someday.",
-	])
-	add_child(n2)
+	if not LevelData.is_removed("lantern_village", "npc_gear"):
+		var n2 := NPC.new()
+		n2.position = Vector2(1100, FLOOR_TOP)
+		n2.npc_name = "Gearwright"
+		n2.lines = PackedStringArray([
+			"Those background gears spin the walkways.",
+			"Push crates — wood drinks the light.",
+			"Silver gears buy favors… someday.",
+		])
+		LevelData.tag(n2, "npc_gear")
+		add_child(n2)
 
-	var n3 := NPC.new()
-	n3.position = Vector2(1900, FLOOR_TOP)
-	n3.npc_name = "Innkeep"
-	n3.lines = PackedStringArray([
-		"Rest under the eaves if the hearth bites.",
-		"Wanderers stalk the square — careful.",
-		"Climb the tower when you're ready.",
-	])
-	add_child(n3)
+	if not LevelData.is_removed("lantern_village", "npc_inn"):
+		var n3 := NPC.new()
+		n3.position = Vector2(1900, FLOOR_TOP)
+		n3.npc_name = "Innkeep"
+		n3.lines = PackedStringArray([
+			"Rest under the eaves if the hearth bites.",
+			"Wanderers stalk the square — careful.",
+			"Climb the tower when you're ready.",
+		])
+		LevelData.tag(n3, "npc_inn")
+		add_child(n3)
 
 
 func _build_light_puzzle() -> void:
