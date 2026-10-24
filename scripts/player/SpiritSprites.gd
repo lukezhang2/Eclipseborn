@@ -12,7 +12,10 @@ static func build_frames() -> SpriteFrames:
 		"jump": [_draw_pose(0, 0, -2, true, false, 0)],
 		"fall": [_draw_pose(0, 0, 3, true, false, 0)],
 		"push": [_draw_pose(2, 1, 0, false, true, 0)],
+		"pull": [_draw_pose(-2, 1, 0, false, true, 0)],
 		"bump": [_draw_pose(-1, 0, 0, false, false, 0)],
+		"crouch": [_draw_crouch(0)],
+		"crouch_walk": [_draw_crouch(1), _draw_crouch(2), _draw_crouch(1), _draw_crouch(0)],
 		"attack_forward": _attack_frames(0),
 		"attack_up": _attack_frames(1),
 		"attack_down": _attack_frames(-1),
@@ -67,6 +70,34 @@ static func _attack_frames(aim: int) -> Array:
 		_draw_pose(0, 0, 0, false, false, aim, Color.WHITE, 0, false, 2),
 		_draw_pose(0, 0, 0, false, false, aim, Color.WHITE, 0, false, 3),
 	]
+
+
+static func _draw_crouch(leg_phase: int = 0) -> Image:
+	## Shorter pose: knees bent, head lower.
+	var w := 48
+	var h := 64
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var body := Color(0.05, 0.04, 0.08, 1.0)
+	var edge := Color(0.45, 0.14, 0.1, 0.9)
+	var eye := Color(0.95, 0.95, 0.92, 1.0)
+	var cx := 24
+	var base_y := 56
+	var leg_l := cx - 6 + (1 if leg_phase == 1 else 0)
+	var leg_r := cx + 5 - (1 if leg_phase == 2 else 0)
+	_fill_rect(img, leg_l - 2, base_y - 10, 4, 10, body)
+	_fill_rect(img, leg_r - 2, base_y - 10, 4, 10, body)
+	_fill_rect(img, cx - 8, base_y - 22, 16, 12, body)
+	_fill_rect(img, cx - 9, base_y - 21, 1, 10, edge)
+	_fill_rect(img, cx + 8, base_y - 21, 1, 10, edge)
+	_fill_rect(img, cx - 11, base_y - 20, 4, 8, body)
+	_fill_rect(img, cx + 7, base_y - 20, 4, 8, body)
+	var head_y := base_y - 32
+	_fill_rect(img, cx - 7, head_y, 14, 12, body)
+	_fill_rect(img, cx - 6, head_y - 2, 12, 3, edge)
+	_fill_rect(img, cx - 5, head_y + 6, 3, 3, eye)
+	_fill_rect(img, cx + 2, head_y + 6, 3, 3, eye)
+	return img
 
 
 static func _draw_pose(

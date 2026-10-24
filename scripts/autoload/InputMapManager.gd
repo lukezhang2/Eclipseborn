@@ -1,11 +1,13 @@
 extends Node
-## Rebindable controls. Defaults match the plan. Two actions cannot share a key.
+## Rebindable controls. Two actions cannot share a key.
 
 const ACTIONS := [
 	"move_left",
 	"move_right",
 	"look_up",
 	"look_down",
+	"crouch",
+	"pull",
 	"run",
 	"jump",
 	"attack",
@@ -18,6 +20,8 @@ const DISPLAY_NAMES := {
 	"move_right": "Move Right",
 	"look_up": "Look Up",
 	"look_down": "Look Down",
+	"crouch": "Crouch",
+	"pull": "Pull Box",
 	"run": "Run",
 	"jump": "Jump",
 	"attack": "Attack",
@@ -34,7 +38,7 @@ var _listening_action: String = ""
 
 func _ready() -> void:
 	_ensure_defaults()
-	_ensure_look_actions()
+	_ensure_extra_actions()
 	load_bindings()
 
 
@@ -44,14 +48,33 @@ func _ensure_defaults() -> void:
 			InputMap.add_action(action)
 
 
-func _ensure_look_actions() -> void:
-	# Safety if project.godot is missing the new actions.
+func _ensure_extra_actions() -> void:
 	if InputMap.action_get_events("look_up").is_empty():
 		_add_key("look_up", KEY_W)
 		_add_key("look_up", KEY_UP)
 	if InputMap.action_get_events("look_down").is_empty():
-		_add_key("look_down", KEY_S)
 		_add_key("look_down", KEY_DOWN)
+	# Migrate: S used to be look_down; crouch owns S now.
+	_remove_key_from_action("look_down", KEY_S)
+	if InputMap.action_get_events("crouch").is_empty():
+		_add_key("crouch", KEY_S)
+	if InputMap.action_get_events("pull").is_empty():
+		_add_key("pull", KEY_V)
+	if InputMap.action_get_events("look_down").is_empty():
+		_add_key("look_down", KEY_DOWN)
+
+
+func _remove_key_from_action(action: String, keycode: Key) -> void:
+	if not InputMap.has_action(action):
+		return
+	var kept: Array[InputEvent] = []
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventKey and (ev as InputEventKey).physical_keycode == keycode:
+			continue
+		kept.append(ev)
+	InputMap.action_erase_events(action)
+	for ev in kept:
+		InputMap.action_add_event(action, ev)
 
 
 func get_action_display(action: String) -> String:
@@ -119,7 +142,9 @@ func reset_defaults() -> void:
 	_set_key("move_left", KEY_A)
 	_set_key("move_right", KEY_D)
 	_set_key("look_up", KEY_W)
-	_set_key("look_down", KEY_S)
+	_set_key("look_down", KEY_DOWN)
+	_set_key("crouch", KEY_S)
+	_set_key("pull", KEY_V)
 	_set_key("run", KEY_SHIFT)
 	_set_key("jump", KEY_SPACE)
 	_set_key("attack", KEY_F)
@@ -128,7 +153,6 @@ func reset_defaults() -> void:
 	_add_key("move_left", KEY_LEFT)
 	_add_key("move_right", KEY_RIGHT)
 	_add_key("look_up", KEY_UP)
-	_add_key("look_down", KEY_DOWN)
 	save_bindings()
 	bindings_changed.emit()
 
@@ -168,12 +192,11 @@ func load_bindings() -> void:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = code as Key
 			InputMap.action_add_event(action, ev)
-	_ensure_look_actions()
+	_ensure_extra_actions()
 	bindings_changed.emit()
 
 
 func _event_to_text(event: InputEvent) -> String:
 	if event is InputEventKey:
-		var k := event as InputEventKey
-		return OS.get_keycode_string(k.physical_keycode)
+		return OS.get_keycode_string((event as InputEventKey).physical_keycode)
 	return str(event)

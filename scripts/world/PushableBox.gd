@@ -68,10 +68,27 @@ func try_push(from_global: Vector2, direction: float, delta: float) -> String:
 	if not moveable:
 		_shake_time = 0.18
 		return "bump"
-	# Only push from a side the player can stand near (horizontal contact).
 	var my_center := global_position
 	if absf(from_global.y - my_center.y) > box_size.y * 0.75:
 		return ""
 	position.x += direction * push_speed * delta
 	ShadowWorld.mark_dirty()
 	return "push"
+
+
+func try_pull(from_global: Vector2, pull_direction: float, delta: float) -> String:
+	## Pull the box toward / with the player while V is held.
+	## pull_direction is the player's move direction (box follows).
+	if not moveable:
+		_shake_time = 0.18
+		return "bump"
+	var my_center := global_position
+	if absf(from_global.y - my_center.y) > box_size.y * 0.9:
+		return ""
+	var dist_x := absf(from_global.x - my_center.x)
+	if dist_x > box_size.x * 0.5 + 36.0:
+		return ""
+	# Player must be on one side; pull moves the box the same way the player walks.
+	position.x += pull_direction * push_speed * 0.95 * delta
+	ShadowWorld.mark_dirty()
+	return "pull"

@@ -27,9 +27,13 @@ Status after the first implementation pass. ✅ in game now · 🚧 stub / parti
 - 🚧 Sounds / music (hooks only — no audio assets yet)
 - ✅ Tab zone map with player icon (live overlay, does not pause)
 - ✅ Steel-and-steam maps with brick faces, windows, lamp posts, cobbles
-- ✅ Humanoid spirit sprites (idle/walk/run/jump/attack aim poses)
-- ✅ Look up/down (W/S + arrows) aims F slash + hitbox
+- ✅ Humanoid spirit sprites (idle/walk/run/jump/crouch/pull/attack aim poses)
+- ✅ Look up/down aims F slash; crouch on S (40% slower); pull boxes with V
+- ✅ Center-only light probe (lenient shade)
+- ✅ New-game intro cutscene + web boot crack/gear splash with SFX
+- ✅ Hallway-echo SFX: attack, walk, jump/land, boot crack/gears
 - ✅ Screen-edge VFX for shade drain vs health burn
+- ✅ Pull tutorial room in the Cursed Cottage
 - ✅ One shade heart in Lantern Village (+25 max HP)
 - ✅ Basic enemy with hit/hurt boxes + pogo bounce
 

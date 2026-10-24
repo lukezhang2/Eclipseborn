@@ -3,10 +3,11 @@ extends CanvasLayer
 
 const ZONE_LAYOUTS := {
 	"cursed_cottage": [
-		{"id": "hall", "rect": Rect2(40, 120, 160, 80)},
-		{"id": "crate", "rect": Rect2(220, 120, 160, 80)},
-		{"id": "chest", "rect": Rect2(400, 120, 160, 80)},
-		{"id": "hatch", "rect": Rect2(580, 120, 160, 80)},
+		{"id": "hall", "rect": Rect2(40, 120, 140, 80)},
+		{"id": "crate", "rect": Rect2(200, 120, 140, 80)},
+		{"id": "pull", "rect": Rect2(360, 120, 140, 80)},
+		{"id": "chest", "rect": Rect2(520, 120, 140, 80)},
+		{"id": "hatch", "rect": Rect2(680, 120, 140, 80)},
 	],
 	"lantern_village": [
 		{"id": "gate", "rect": Rect2(40, 100, 140, 70)},

@@ -233,7 +233,7 @@ Production time for this game is short, so each of our zones is about **half** t
 
 | Area | Rooms | Hollow Knight stand-in | Description |
 |---|---|---|---|
-| **The Cursed Cottage** | **4** | Howling Cliffs, 6 rooms | Where you start. A boiler-house home and the tutorial. One new control per room, then the door into Lantern Village. |
+| **The Cursed Cottage** | **5** | Howling Cliffs, 6 rooms | Where you start. A boiler-house home and the tutorial. One new control per room (including pull), then the door into Lantern Village. |
 | **Lantern Village** | **20** | Forgotten Crossroads, 40 rooms | An abandoned town. Iron lamp posts, steam leaking from street grates. The early hub. |
 | **The Clockworks** | **15** | Fungal Wastes, 30 rooms | Giant gears, pistons, and moving machines. |
 | **Moth Hollow** | **16** | Greenpath, 31 rooms | A collapsed boiler tunnel. Moths and wet fungus on the iron. |
@@ -249,8 +249,9 @@ The Cursed Cottage is the tutorial. It does not use text puzzles. Each room bloc
 |---|---|---|
 | **1. The hall** | A clear stretch of boiler-house floor. | Walk, then run. |
 | **2. The crate** | A moveable box sits in the only doorway. Walking into it plays push, and the box slides out of the way. | Push a box. |
-| **3. The riveted chest** | An immoveable box fills the path. Walking into it plays bump, and the box does not move. The top of it is one jump high. | Jump. If it will not move, go over it. |
-| **4. The hatch** | A shut iron door, the exit. One press of F breaks it. The opening leads straight into Lantern Village. | Attack, then leave the cottage. |
+| **3. The pull alcove** | A crate wedged in a recess that cannot be pushed forward. Hold **V** and walk to pull it free. | Pull a box. |
+| **4. The riveted chest** | An immoveable box fills the path. Walking into it plays bump, and the box does not move. The top of it is one jump high. | Jump. If it will not move, go over it. |
+| **5. The hatch** | A shut iron door, the exit. One press of F breaks it. The opening leads straight into Lantern Village. | Attack, then leave the cottage. |
 
 There is no enemy in the cottage. The hatch is the only thing the lash is for. Once it breaks, he is in Lantern Village, and the cottage stays open behind him.
 
@@ -274,7 +275,9 @@ Two actions cannot share a key. A reset puts the defaults back. Every action bel
 | Action | Default key |
 |---|---|
 | Move left / right | A / D, or Left / Right arrows |
-| Look up / down | W / S, or Up / Down arrows |
+| Look up / down | W / Up, Down arrow (crouching also aims down) |
+| Crouch | S (40% slower, still can move) |
+| Pull box | V (hold and walk) |
 | Run | Shift |
 | Jump | Space |
 | Attack | F (slash aims with look) |

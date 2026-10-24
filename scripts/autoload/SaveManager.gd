@@ -31,6 +31,7 @@ func slot_summary(slot: int) -> String:
 
 func new_game(slot: int) -> void:
 	GameState.reset_run()
+	GameState.needs_intro_cutscene = true
 	save_game(slot)
 
 
@@ -38,6 +39,7 @@ func save_game(slot: int) -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("meta", "zone", GameState.current_zone_id)
 	cfg.set_value("meta", "room", GameState.current_room_id)
+	cfg.set_value("meta", "intro_done", not GameState.needs_intro_cutscene)
 	cfg.set_value("player", "health", GameState.health)
 	cfg.set_value("player", "max_health", GameState.max_health)
 	cfg.set_value("player", "shade", GameState.shade)
@@ -59,6 +61,7 @@ func load_game(slot: int) -> bool:
 	GameState.reset_run()
 	GameState.current_zone_id = cfg.get_value("meta", "zone", "cursed_cottage")
 	GameState.current_room_id = cfg.get_value("meta", "room", "hall")
+	GameState.needs_intro_cutscene = not cfg.get_value("meta", "intro_done", false)
 	GameState.health = cfg.get_value("player", "health", 100)
 	GameState.max_health = cfg.get_value("player", "max_health", 100)
 	GameState.shade = cfg.get_value("player", "shade", 1.0)

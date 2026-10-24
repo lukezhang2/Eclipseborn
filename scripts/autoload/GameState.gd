@@ -37,6 +37,9 @@ var discovered_rooms: Dictionary = {}
 var is_paused: bool = false
 var single_player: bool = true
 var player: Node2D = null
+## True until the first-spawn cutscene finishes on a new save.
+var needs_intro_cutscene: bool = true
+var intro_cutscene_playing: bool = false
 
 enum LightKind { HEARTH, CANDLE, MOON, CRIMSON, SUNSHAFT }
 
@@ -67,6 +70,8 @@ func reset_run() -> void:
 		"cursed_cottage": [],
 		"lantern_village": [],
 	}
+	needs_intro_cutscene = true
+	intro_cutscene_playing = false
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
 
