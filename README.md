@@ -2,7 +2,7 @@
 
 > *You aren't moving platforms. You're changing what counts as a platform.*
 
-**Game design plan, draft 4.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
+**Game design plan, draft 5.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
 
 ## Contents
 
@@ -213,15 +213,19 @@ One connected world of **steel and steam**. The ground is riveted plate, iron be
 
 Each area is a district of that same machine, with its own music. They are not separate biomes.
 
-| Area | Description |
-|---|---|
-| **The Cursed Cottage** | Where you start. A boiler-house home: pipes in the walls, a cold furnace, the tutorial. |
-| **Lantern Village** | An abandoned town. Iron lamp posts, steam leaking from street grates. |
-| **The Clockworks** | Giant gears, pistons, and moving machines. |
-| **Moth Hollow** | A collapsed boiler tunnel. Moths and wet fungus on the iron. |
-| **Glass Spire** | A brass-and-glass tower of mirrors, gauges, and light beams. |
-| **Cathedral of Candles** | A furnace nave. Gas-fed flames. Very bright and very dangerous. |
-| **The Witch's Wood** | The final area. Trees grown through a dead foundry, roots wrapped around gears. |
+A **room** is one camera space, the same kind of room Hollow Knight loads one at a time. Hollow Knight's areas, counted as the rooms on its map, are about this big: a small pocket is 6–16 rooms (Howling Cliffs 6, Fog Canyon 13, Royal Waterways 16), a mid area is about 26–31 (Crystal Peak 26, Fungal Wastes 30, Greenpath 31), and a hub is 37–40 (City of Tears 37, Forgotten Crossroads 40). The whole of Hallownest on that map is about **307** rooms. Shops and other interiors behind doors are not in those counts.
+
+Production time for this game is short, so each of our zones is about **half** the room count of the Hollow Knight area it is closest to. Seven zones, not sixteen. The whole map is about **90 rooms**.
+
+| Area | Rooms | Hollow Knight stand-in | Description |
+|---|---|---|---|
+| **The Cursed Cottage** | **4** | Howling Cliffs, 6 rooms | Where you start. A boiler-house home: pipes in the walls, a cold furnace, the tutorial. |
+| **Lantern Village** | **20** | Forgotten Crossroads, 40 rooms | An abandoned town. Iron lamp posts, steam leaking from street grates. The early hub. |
+| **The Clockworks** | **15** | Fungal Wastes, 30 rooms | Giant gears, pistons, and moving machines. |
+| **Moth Hollow** | **16** | Greenpath, 31 rooms | A collapsed boiler tunnel. Moths and wet fungus on the iron. |
+| **Glass Spire** | **13** | Crystal Peak, 26 rooms | A brass-and-glass tower of mirrors, gauges, and light beams. |
+| **Cathedral of Candles** | **13** | Kingdom's Edge, 26 rooms | A furnace nave. Gas-fed flames. Very bright and very dangerous. |
+| **The Witch's Wood** | **9** | Queen's Gardens, 18 rooms | The final area. Trees grown through a dead foundry, roots wrapped around gears. |
 
 - Shortcuts open up as you explore. There are optional secret rooms and side bosses.
 - You save at checkpoints. One idea is that save points are dark spots, like an unlit fireplace. **(open)**
@@ -374,7 +378,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 
 ### Phase 2: First real slice
 
-1. Build the Cursed Cottage and Lantern Village, about 15 rooms.
+1. Build the Cursed Cottage, all 4 rooms, and the first stretch of Lantern Village. The full village is 20 rooms, so this slice does not have to finish it.
 2. Add the Lamplighter boss. Beating him unlocks double jump.
 3. Add the first sounds and music.
 4. Add the Tab map for the current zone, with a player icon. Build the cottage and village rooms in steel and steam.
@@ -392,7 +396,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 2. Add story scenes, the Witch, and the endings.
 3. Polish, balance, and playtest with friends.
 
-> **Scope:** Hollow Knight took a team of three about three years. A full open-world metroidvania with online multiplayer is a big project. So we build the small Phase 0 prototype first to find out if the idea is fun, and we add multiplayer in Phase 3, once the core game works. The code will be written so multiplayer is easy to add later.
+> **Scope:** Hollow Knight is about 307 mapped rooms and took a team of three about three years. This game is seven zones at about half those sizes, about 90 rooms in all. A full metroidvania with online multiplayer is still a big project at that size. So we build the small Phase 0 prototype first to find out if the idea is fun, and we add multiplayer in Phase 3, once the core game works. The code will be written so multiplayer is easy to add later.
 
 ## Open questions
 
