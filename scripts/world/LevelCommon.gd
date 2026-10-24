@@ -15,49 +15,42 @@ static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, he
 	rect.size = Vector2(width, height)
 	cs.shape = rect
 	body.add_child(cs)
-	var hx := width * 0.5
-	var hy := height * 0.5
-	var visual := Polygon2D.new()
-	visual.polygon = PackedVector2Array([
-		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
-	])
-	visual.color = Color(0.26, 0.27, 0.3)
-	body.add_child(visual)
-	# Plate seams
-	var seams := Line2D.new()
-	seams.width = 1.0
-	seams.default_color = Color(0.12, 0.12, 0.14, 0.8)
-	var i := -hx + 48.0
-	while i < hx:
-		seams.add_point(Vector2(i, -hy))
-		seams.add_point(Vector2(i, hy))
-		seams.add_point(Vector2(i, -hy))
-		i += 48.0
-	body.add_child(seams)
-	# Rivets
-	var rivets := Polygon2D.new()
-	rivets.color = Color(0.5, 0.38, 0.22)
-	var pts := PackedVector2Array()
-	var rx := -hx + 16.0
-	while rx < hx:
-		for ry in [-hy + 6.0, hy - 8.0]:
-			pts.append(Vector2(rx - 2, ry))
-			pts.append(Vector2(rx + 2, ry))
-			pts.append(Vector2(rx + 2, ry + 3))
-			pts.append(Vector2(rx - 2, ry + 3))
-		rx += 32.0
-	rivets.polygon = pts
-	body.add_child(rivets)
+	var spr := Sprite2D.new()
+	spr.texture = _make_metal_texture(mini(int(width), 512), maxi(int(height), 16))
+	spr.centered = true
+	spr.scale = Vector2(width / float(spr.texture.get_width()), height / float(spr.texture.get_height()))
+	spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	body.add_child(spr)
+	body.set_meta("editor_kind", "floor")
+	body.set_meta("editor_size", Vector2(width, height))
 	parent.add_child(body)
 	return body
 
 
+static func _make_metal_texture(w: int, h: int) -> ImageTexture:
+	w = clampi(w, 16, 512)
+	h = clampi(h, 8, 128)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		for x in w:
+			var plate := int(x / 48)
+			var shade := 0.26 + fmod(float(plate) * 0.03, 0.06)
+			var c := Color(shade, shade + 0.01, shade + 0.03, 1.0)
+			if y < 2 or y >= h - 2:
+				c = c.lightened(0.08)
+			if x % 48 < 2:
+				c = c.darkened(0.25)
+			if (x + 16) % 32 < 3 and (y == 4 or y == h - 5):
+				c = Color(0.55, 0.42, 0.25)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
 static func add_cobble_floor(parent: Node2D, x: float, y: float, width: float, height: float = 36.0) -> StaticBody2D:
 	var body := add_steel_floor(parent, x, y, width, height)
-	# Overpaint as street cobble
 	for c in body.get_children():
-		if c is Polygon2D and c.color.r < 0.4:
-			(c as Polygon2D).color = Color(0.22, 0.2, 0.19)
+		if c is Sprite2D:
+			(c as Sprite2D).modulate = Color(0.85, 0.78, 0.7)
 	var stones := Polygon2D.new()
 	stones.color = Color(0.32, 0.3, 0.28, 0.55)
 	var hx := width * 0.5

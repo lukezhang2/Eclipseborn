@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Edge vignettes: violet ink when shade drains, ash-orange when health burns.
+## Soft elliptical vignettes — violet for shade drain, ash-orange for health burn.
 
 @onready var shade_edges: Control = $ShadeEdges
 @onready var health_edges: Control = $HealthEdges
@@ -12,8 +12,8 @@ var _prev_health: int = 100
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 8
-	_fill_edges(shade_edges, Color(0.35, 0.15, 0.55, 0.55))
-	_fill_edges(health_edges, Color(0.95, 0.35, 0.12, 0.65))
+	_fill_vignette(shade_edges, Color(0.4, 0.18, 0.65, 1.0))
+	_fill_vignette(health_edges, Color(0.95, 0.35, 0.12, 1.0))
 	GameState.health_changed.connect(_on_health)
 	GameState.shade_changed.connect(_on_shade)
 	_prev_health = GameState.health
@@ -23,28 +23,34 @@ func _ready() -> void:
 	health_edges.visible = false
 
 
-func _fill_edges(root: Control, color: Color) -> void:
+func _fill_vignette(root: Control, color: Color) -> void:
 	for c in root.get_children():
 		c.queue_free()
-	var thickness := 56.0
-	for side in ["top", "bottom", "left", "right"]:
-		var r := ColorRect.new()
-		r.color = color
-		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		match side:
-			"top":
-				r.set_anchors_preset(Control.PRESET_TOP_WIDE)
-				r.offset_bottom = thickness
-			"bottom":
-				r.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-				r.offset_top = -thickness
-			"left":
-				r.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-				r.offset_right = thickness
-			"right":
-				r.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
-				r.offset_left = -thickness
-		root.add_child(r)
+	var tex := TextureRect.new()
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_SCALE
+	tex.texture = _make_radial_vignette(color)
+	root.add_child(tex)
+
+
+func _make_radial_vignette(color: Color) -> ImageTexture:
+	var w := 256
+	var h := 144
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var cx := w * 0.5
+	var cy := h * 0.5
+	for y in h:
+		for x in w:
+			var nx := (float(x) - cx) / cx
+			var ny := (float(y) - cy) / cy
+			# Elliptical distance; soft falloff from edges inward.
+			var d := sqrt(nx * nx + ny * ny)
+			var edge := clampf((d - 0.35) / 0.75, 0.0, 1.0)
+			edge = edge * edge * (3.0 - 2.0 * edge)  # smoothstep
+			img.set_pixel(x, y, Color(color.r, color.g, color.b, edge * 0.85))
+	return ImageTexture.create_from_image(img)
 
 
 func _process(delta: float) -> void:
@@ -68,14 +74,10 @@ func _process(delta: float) -> void:
 		_health_pulse = maxf(0.0, _health_pulse - delta * 2.5)
 
 	var t := Time.get_ticks_msec() / 1000.0
-	var shade_a := _shade_pulse * (0.35 + 0.2 * sin(t * 8.0))
-	var health_a := _health_pulse * (0.45 + 0.25 * absf(sin(t * 14.0)))
+	var shade_a := _shade_pulse * (0.4 + 0.2 * sin(t * 8.0))
+	var health_a := _health_pulse * (0.5 + 0.2 * absf(sin(t * 12.0)))
 	_apply(shade_edges, shade_a)
 	_apply(health_edges, health_a)
-	if health_a > 0.05:
-		for c in health_edges.get_children():
-			if c is ColorRect:
-				(c as ColorRect).color.a = health_a * (0.7 + randf() * 0.3)
 
 
 func _on_shade(ratio: float) -> void:

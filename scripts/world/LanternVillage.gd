@@ -76,6 +76,8 @@ func _ready() -> void:
 	cp.checkpoint_id = "village_gate"
 	add_child(cp)
 
+	LevelData.apply(self, "lantern_village")
+
 	LevelCommon.spawn_player(self, Vector2(100, 480))
 	GameState.enter_room("lantern_village", "gate")
 	SaveManager.save_game(0)
