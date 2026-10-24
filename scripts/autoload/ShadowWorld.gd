@@ -146,7 +146,12 @@ func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float
 	var poly: PackedVector2Array = occ.get_world_polygon()
 	if poly.size() < 3:
 		return
-	# Only if occluder is within light radius
+	# Skip giant ground/roof slabs — side edges create false mid-air dark spots.
+	var aabb := Rect2(poly[0], Vector2.ZERO)
+	for p in poly:
+		aabb = aabb.expand(p)
+	if aabb.size.x > 280.0 or aabb.size.y > 320.0:
+		return
 	var near := false
 	for p in poly:
 		if p.distance_to(light_pos) <= radius * 1.15:
@@ -155,7 +160,7 @@ func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float
 	if not near:
 		return
 	var max_len: float = light.get_shadow_length() if light.has_method("get_shadow_length") else radius
-	max_len = mini(max_len, radius * 1.2)
+	max_len = mini(max_len, radius * 1.05)
 	var n := poly.size()
 	for i in n:
 		var a := poly[i]
@@ -163,13 +168,16 @@ func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float
 		var mid := (a + b) * 0.5
 		var edge_dir := (b - a).normalized()
 		var normal := Vector2(-edge_dir.y, edge_dir.x)
-		# Face away from light = back face → casts umbra
-		if normal.dot((mid - light_pos).normalized()) <= 0.05:
+		# Only underside / light-facing edges — skip thin vertical sides that
+		# paint empty air as "blocked".
+		if absf(normal.x) > absf(normal.y) and aabb.size.x > aabb.size.y:
+			continue
+		if normal.dot((mid - light_pos).normalized()) <= 0.15:
 			continue
 		var da := (a - light_pos).normalized() * max_len
 		var db := (b - light_pos).normalized() * max_len
 		var ink := Polygon2D.new()
-		ink.color = Color(0.04, 0.02, 0.07, 0.55)
+		ink.color = Color(0.04, 0.02, 0.07, 0.45)
 		ink.z_index = -11
 		ink.polygon = PackedVector2Array([a, b, b + db, a + da])
 		_root.add_child(ink)

@@ -1,12 +1,17 @@
-[gd_scene load_steps=6 format=3 uid="uid://game_ui"]
+[gd_scene load_steps=7 format=3 uid="uid://game_ui"]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/PauseMenu.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/ui/ZoneMap.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/ui/TutorialHint.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/ui/ScreenVFX.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/ui/HitboxDebug.gd" id="6"]
 
 [node name="GameUI" type="Node"]
+
+[node name="HitboxDebug" type="CanvasLayer" parent="."]
+layer = 20
+script = ExtResource("6")
 
 [node name="ScreenVFX" type="CanvasLayer" parent="."]
 layer = 8

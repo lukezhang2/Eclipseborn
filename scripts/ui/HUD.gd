@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Shade bar + health + currency (fades in on first gear pickup).
+## Shade bar + health + silver-gear currency (custom icon, fades in on first pickup).
 
 @onready var shade_fill: ColorRect = $Root/ShadeBar/Fill
 @onready var shade_back: ColorRect = $Root/ShadeBar/Back
@@ -33,21 +33,49 @@ func _build_currency_ui() -> void:
 	_currency_root = Control.new()
 	_currency_root.name = "CurrencyHud"
 	_currency_root.position = Vector2(24, 100)
-	_currency_root.custom_minimum_size = Vector2(200, 28)
+	_currency_root.custom_minimum_size = Vector2(200, 32)
 	$Root.add_child(_currency_root)
-	var icon := Label.new()
-	icon.text = "⚙"
-	icon.add_theme_font_size_override("font_size", 20)
-	icon.add_theme_color_override("font_color", Color(0.8, 0.85, 0.92))
+	var icon := TextureRect.new()
+	icon.texture = _make_gear_icon()
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.position = Vector2(0, 0)
+	icon.size = Vector2(28, 28)
 	_currency_root.add_child(icon)
 	_currency_label = Label.new()
 	_currency_label.name = "Amount"
-	_currency_label.position = Vector2(28, 0)
+	_currency_label.position = Vector2(34, 2)
 	_currency_label.add_theme_font_size_override("font_size", 20)
 	_currency_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	_currency_label.text = "0"
 	_currency_root.add_child(_currency_label)
+
+
+func _make_gear_icon() -> ImageTexture:
+	var s := 32
+	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := Vector2(16, 16)
+	# Teeth
+	for i in 8:
+		var a := TAU * float(i) / 8.0
+		var tip := c + Vector2(cos(a), sin(a)) * 14.0
+		_fill_circle(img, tip, 3.0, Color(0.78, 0.82, 0.9, 1))
+	_fill_circle(img, c, 10.0, Color(0.72, 0.76, 0.84, 1))
+	_fill_circle(img, c, 7.5, Color(0.55, 0.58, 0.64, 1))
+	_fill_circle(img, c, 4.0, Color(0.9, 0.92, 0.96, 1))
+	_fill_circle(img, c, 2.0, Color(0.15, 0.14, 0.16, 1))
+	return ImageTexture.create_from_image(img)
+
+
+func _fill_circle(img: Image, center: Vector2, radius: float, col: Color) -> void:
+	var r := int(ceil(radius))
+	for y in range(int(center.y) - r, int(center.y) + r + 1):
+		for x in range(int(center.x) - r, int(center.x) + r + 1):
+			if Vector2(x, y).distance_to(center) <= radius:
+				if x >= 0 and y >= 0 and x < img.get_width() and y < img.get_height():
+					img.set_pixel(x, y, col)
 
 
 func _on_health(current: int, maximum: int) -> void:

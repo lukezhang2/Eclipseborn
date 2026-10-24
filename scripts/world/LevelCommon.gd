@@ -108,9 +108,84 @@ static func configure_camera(player: Node2D, roof_y: float, floor_bottom: float,
 	cam.limit_bottom = int(floor_bottom)
 	cam.limit_left = int(map_min_x - 20)
 	cam.limit_right = int(map_max_x + 20)
-	# Keep camera a bit high so roof hugs the top edge while standing.
 	cam.position = Vector2(0, -20)
 	cam.zoom = Vector2(1.35, 1.35)
+
+
+static func add_border_walls(parent: Node2D, map_w: float, floor_top: float, roof_top: float) -> void:
+	## Obvious designed end-caps so the player cannot walk off-screen.
+	var mid_y := (floor_top + roof_top) * 0.5
+	var h := floor_top - roof_top + 80.0
+	_make_border_pillar(parent, 24, mid_y, 48, h, true)
+	_make_border_pillar(parent, map_w - 24, mid_y, 48, h, false)
+
+
+static func _make_border_pillar(parent: Node2D, x: float, y: float, w: float, h: float, left: bool) -> void:
+	var body := add_wall(parent, x, y, w, h)
+	# Decorative riveted face
+	var face := Polygon2D.new()
+	face.position = Vector2(x, y)
+	face.z_index = 2
+	var hx := w * 0.45
+	var hy := h * 0.48
+	face.color = Color(0.28, 0.24, 0.2)
+	face.polygon = PackedVector2Array([
+		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
+	])
+	parent.add_child(face)
+	var brace := Polygon2D.new()
+	brace.position = Vector2(x + (14 if left else -14), y)
+	brace.color = Color(0.45, 0.35, 0.22)
+	brace.polygon = PackedVector2Array([
+		Vector2(-6, -hy * 0.6), Vector2(6, -hy * 0.6), Vector2(6, hy * 0.6), Vector2(-6, hy * 0.6)
+	])
+	parent.add_child(brace)
+	body.name = "BorderLeft" if left else "BorderRight"
+
+
+static func add_underfloor_fill(parent: Node2D, width: float, floor_bottom: float) -> void:
+	## Kill the empty black void under the walkable floor.
+	var fill := Polygon2D.new()
+	fill.z_index = -18
+	fill.color = Color(0.1, 0.09, 0.1)
+	fill.polygon = PackedVector2Array([
+		Vector2(0, floor_bottom - 2), Vector2(width, floor_bottom - 2),
+		Vector2(width, floor_bottom + 260), Vector2(0, floor_bottom + 260)
+	])
+	parent.add_child(fill)
+	var strata := Polygon2D.new()
+	strata.z_index = -17
+	strata.color = Color(0.14, 0.12, 0.11, 0.7)
+	strata.polygon = PackedVector2Array([
+		Vector2(0, floor_bottom + 40), Vector2(width, floor_bottom + 60),
+		Vector2(width, floor_bottom + 120), Vector2(0, floor_bottom + 100)
+	])
+	parent.add_child(strata)
+
+
+static func add_bg_gear(parent: Node2D, pos: Vector2, radius: float = 50.0, speed: float = 12.0) -> Node2D:
+	## Decorative background gear — no collision, no occlusion.
+	var g := Node2D.new()
+	g.position = pos
+	g.z_index = -12
+	g.modulate = Color(1, 1, 1, 0.35)
+	g.set_meta("bg_gear_speed", speed)
+	var disc := Polygon2D.new()
+	disc.color = Color(0.3, 0.28, 0.26)
+	var pts := PackedVector2Array()
+	for i in 20:
+		var a := TAU * float(i) / 20.0
+		pts.append(Vector2(cos(a), sin(a)) * radius * (0.85 if i % 2 == 0 else 1.0))
+	disc.polygon = pts
+	g.add_child(disc)
+	parent.add_child(g)
+	g.set_process(true)
+	g.process_mode = Node.PROCESS_MODE_INHERIT
+	# Spin via a tiny helper
+	var spinner := Node.new()
+	spinner.set_script(preload("res://scripts/world/BgGearSpin.gd"))
+	g.add_child(spinner)
+	return g
 
 
 static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float, height: float) -> void:

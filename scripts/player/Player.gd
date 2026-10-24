@@ -124,8 +124,6 @@ func _physics_process(delta: float) -> void:
 
 	_pushing = false
 	_pulling = false
-	if dir != 0.0:
-		_try_move_boxes(dir, delta)
 
 	var speed := RUN_SPEED if Input.is_action_pressed("run") and not crouching else WALK_SPEED
 	if crouching:
@@ -144,9 +142,13 @@ func _physics_process(delta: float) -> void:
 		_start_attack()
 
 	move_and_slide()
+	# Push/pull after slide so contact + proximity both work.
+	if dir != 0.0 or Input.is_action_pressed("pull"):
+		_try_move_boxes(dir if dir != 0.0 else facing, delta)
 	_update_visual(dir)
 	_sync_hitbox()
 	_update_crouch_collision()
+	_try_enter_hatch()
 
 
 func _wants_down_aim() -> bool:
@@ -195,6 +197,8 @@ func _try_jump() -> void:
 
 func _try_move_boxes(dir: float, delta: float) -> void:
 	var pulling := Input.is_action_pressed("pull")
+	# Prefer slide contacts, then nearest nearby box.
+	var handled := false
 	for i in get_slide_collision_count():
 		var col := get_slide_collision(i)
 		var collider := col.get_collider()
@@ -204,22 +208,49 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 				if box.try_pull(global_position, dir, delta) == "pull":
 					_pulling = true
 					_attach_pull_pose(box, dir, delta)
+					handled = true
 			else:
-				var r: String = box.try_push(global_position, dir, delta)
-				if r == "push":
+				if box.try_push(global_position, dir, delta) == "push":
 					_pushing = true
+					handled = true
 		elif collider is Node:
 			var lamp := _find_lamp_owner(collider)
 			if lamp and lamp.has_method("try_push") and not pulling:
 				lamp.try_push(dir, delta)
 				_pushing = true
-	if pulling and not _pulling:
-		for box in get_tree().get_nodes_in_group("boxes"):
-			if box is PushableBox:
-				if (box as PushableBox).try_pull(global_position, dir, delta) == "pull":
-					_pulling = true
-					_attach_pull_pose(box as PushableBox, dir, delta)
-					break
+				handled = true
+	if handled:
+		return
+	var nearest: PushableBox = null
+	var best := 9999.0
+	for node in get_tree().get_nodes_in_group("boxes"):
+		if not node is PushableBox:
+			continue
+		var box := node as PushableBox
+		var d := absf(box.global_position.x - global_position.x)
+		var dy := absf(box.global_position.y - global_position.y)
+		if dy > box.box_size.y and dy > 40.0:
+			continue
+		if d < best and d < box.box_size.x * 0.5 + 52.0:
+			best = d
+			nearest = box
+	if nearest == null:
+		return
+	if pulling:
+		if nearest.try_pull(global_position, dir, delta) == "pull":
+			_pulling = true
+			_attach_pull_pose(nearest, dir, delta)
+	else:
+		if nearest.try_push(global_position, dir, delta) == "push":
+			_pushing = true
+
+
+func _try_enter_hatch() -> void:
+	if not Input.is_action_just_pressed("crouch"):
+		return
+	for h in get_tree().get_nodes_in_group("enterable_hatches"):
+		if h.has_method("try_enter") and h.try_enter(self):
+			return
 
 
 func _attach_pull_pose(box: PushableBox, dir: float, delta: float) -> void:
@@ -283,14 +314,15 @@ func _update_attack(delta: float) -> void:
 
 
 func _sync_hitbox() -> void:
+	## Cardinal volumes sit slightly ahead of the spirit so F connects cleanly.
 	if aim_dir == Vector2.UP:
-		hitbox.position = Vector2(0, -40)
+		hitbox.position = Vector2(0, -46)
 		hitbox.rotation = 0
 	elif aim_dir == Vector2.DOWN:
-		hitbox.position = Vector2(0, 8)
+		hitbox.position = Vector2(0, 12)
 		hitbox.rotation = 0
 	else:
-		hitbox.position = Vector2(28.0 * facing, -14)
+		hitbox.position = Vector2(34.0 * facing, -16)
 		hitbox.rotation = 0
 	hitbox.scale = Vector2.ONE
 

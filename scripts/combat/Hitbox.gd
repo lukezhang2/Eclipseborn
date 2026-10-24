@@ -15,6 +15,7 @@ func _ready() -> void:
 	collision_mask = 16   # hurtbox
 	monitoring = false
 	monitorable = false
+	add_to_group("hitboxes")
 	area_entered.connect(_on_area_entered)
 
 

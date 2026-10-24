@@ -1,5 +1,5 @@
 extends Node2D
-## Compact cottage: roof at top of vision, occluding platforms, pull-wall puzzle.
+## Compact cottage: roof at top of vision, occluding platforms, pull-wall puzzle, hatch exit.
 
 
 ## Camera zoom ~1.35 → visible height ≈ 533. Floor near bottom, roof near top.
@@ -8,7 +8,7 @@ const FLOOR_H := 36.0
 const FLOOR_TOP := FLOOR_CENTER - FLOOR_H * 0.5  # 482
 const ROOF_CENTER := 200.0
 const ROOF_H := 36.0
-const ROOF_BOTTOM := ROOF_CENTER + ROOF_H * 0.5  # 218 — lines up with top of view
+const ROOF_BOTTOM := ROOF_CENTER + ROOF_H * 0.5  # 218
 const MAP_W := 4000.0
 
 
@@ -17,11 +17,11 @@ func _ready() -> void:
 	GameState.map_max_x = MAP_W - 100.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, MAP_W, 720, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5)
+	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5)
+	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_CENTER + FLOOR_H * 0.5)
 
 	LevelCommon.add_steel_floor(self, MAP_W * 0.5, FLOOR_CENTER, MAP_W, FLOOR_H)
-	LevelCommon.add_wall(self, -20, 360, 40, 360)
-	LevelCommon.add_wall(self, MAP_W - 20, 360, 40, 360)
+	LevelCommon.add_border_walls(self, MAP_W, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5)
 	# Roof — sits at top of player vision
 	LevelCommon.add_wall(self, MAP_W * 0.5, ROOF_CENTER, MAP_W, ROOF_H)
 
@@ -61,7 +61,7 @@ func _ready() -> void:
 		elif GameState.checkpoint_position != Vector2.ZERO:
 			spawn = GameState.checkpoint_position
 	var player := LevelCommon.spawn_player(self, spawn)
-	LevelCommon.configure_camera(player, ROOF_CENTER - ROOF_H * 0.5, FLOOR_CENTER + FLOOR_H * 0.5 + 20.0, GameState.map_min_x, GameState.map_max_x)
+	LevelCommon.configure_camera(player, ROOF_CENTER - ROOF_H * 0.5, FLOOR_CENTER + FLOOR_H * 0.5 + 40.0, GameState.map_min_x, GameState.map_max_x)
 	GameState.enter_room("cursed_cottage", "hall")
 	SaveManager.autosave()
 
@@ -71,11 +71,12 @@ func _box_y(size_y: float = 48.0) -> float:
 
 
 func _build_room_triggers() -> void:
-	LevelCommon.make_room_trigger(self, Vector2(400, 360), Vector2(800, 320), "cursed_cottage", "hall", "Walk and hold Shift to run", "run")
-	LevelCommon.make_room_trigger(self, Vector2(1200, 360), Vector2(800, 320), "cursed_cottage", "crate", "Push the crate under the lamp for cover", "move_right")
+	# Early breakable hint — shows as soon as you leave the spawn hall.
+	LevelCommon.make_room_trigger(self, Vector2(400, 360), Vector2(800, 320), "cursed_cottage", "hall", "Press F on the glowing object to break it", "attack")
+	LevelCommon.make_room_trigger(self, Vector2(1200, 360), Vector2(800, 320), "cursed_cottage", "crate", "Press F on the glowing object to break it", "attack")
 	LevelCommon.make_room_trigger(self, Vector2(2000, 360), Vector2(800, 320), "cursed_cottage", "pull", "Hold V, pull the crate out, then use it to jump the tall wall", "pull")
 	LevelCommon.make_room_trigger(self, Vector2(2800, 360), Vector2(800, 320), "cursed_cottage", "chest", "Jump the ledges", "jump")
-	LevelCommon.make_room_trigger(self, Vector2(3600, 360), Vector2(800, 320), "cursed_cottage", "hatch", "Aim and F to break", "attack")
+	LevelCommon.make_room_trigger(self, Vector2(3600, 360), Vector2(800, 320), "cursed_cottage", "hatch", "Break the hatch, then press S to enter", "attack")
 
 
 func _build_crate_room() -> void:
@@ -96,9 +97,8 @@ func _build_crate_room() -> void:
 
 
 func _build_pull_room() -> void:
-	## Tall wall blocks the path (too high to jump from the floor).
-	## Crate starts against a left backstop — pull it out, climb it, clear the wall.
-	var tall_h := 100.0  # jump alone ≈ 66px; needs the 48px crate as a step
+	## Tall wall blocks the path. Crate starts against a left backstop — pull, climb, clear.
+	var tall_h := 100.0
 	var tall_x := 2080.0
 	LevelCommon.add_wall(self, tall_x, FLOOR_TOP - tall_h * 0.5, 32, tall_h)
 
@@ -107,7 +107,6 @@ func _build_pull_room() -> void:
 	LevelCommon.add_wall(self, backstop_x, FLOOR_TOP - backstop_h * 0.5, 24, backstop_h)
 
 	var box := PushableBox.new()
-	# Flush against the right face of the backstop.
 	box.position = Vector2(backstop_x + 12 + 24, _box_y())
 	box.box_size = Vector2(48, 48)
 	box.name = "PullCrate"
@@ -122,11 +121,25 @@ func _build_jump_room() -> void:
 
 
 func _build_hatch_room() -> void:
-	var door := BreakableDoor.new()
-	door.position = Vector2(3550, FLOOR_TOP - 40)
-	door.door_size = Vector2(24, 80)
-	door.next_scene = "res://scenes/rooms/LanternVillage.tscn"
-	add_child(door)
+	## Hatch in the floor — break with F, then S to descend. Right side is a solid wall (no door).
+	var hatch := BreakableHatch.new()
+	hatch.position = Vector2(3480, FLOOR_TOP - 2)
+	hatch.hatch_size = Vector2(64, 16)
+	hatch.next_scene = "res://scenes/rooms/LanternVillage.tscn"
+	# Village floor top ≈ 500; spawn slightly above it.
+	hatch.spawn_in_next = Vector2(160, 460)
+	add_child(hatch)
+
+	# Designed end wall instead of a door.
+	LevelCommon.add_wall(self, 3720, FLOOR_TOP - 90, 80, 180)
+	var brace := Polygon2D.new()
+	brace.position = Vector2(3720, FLOOR_TOP - 90)
+	brace.color = Color(0.4, 0.32, 0.2)
+	brace.polygon = PackedVector2Array([
+		Vector2(-30, -70), Vector2(30, -70), Vector2(30, 70), Vector2(-30, 70)
+	])
+	add_child(brace)
+
 	var cp := Checkpoint.new()
 	cp.position = Vector2(3300, FLOOR_TOP - 4)
 	cp.checkpoint_id = "cottage_hatch"
@@ -144,7 +157,8 @@ func _build_ambient_lamps() -> void:
 
 
 func _build_currency_breakables() -> void:
-	_spawn_breakable("cottage_jar_a", Vector2(640, FLOOR_TOP - 18), 2)
+	# First glowing jar early so the new F-hint is useful right away.
+	_spawn_breakable("cottage_jar_a", Vector2(420, FLOOR_TOP - 18), 2)
 	_spawn_breakable("cottage_jar_b", Vector2(1480, FLOOR_TOP - 18), 3)
 	_spawn_breakable("cottage_jar_c", Vector2(2400, FLOOR_TOP - 18), 2)
 	_spawn_breakable("cottage_chest", Vector2(3100, FLOOR_TOP - 16), 5, Vector2(40, 32))
