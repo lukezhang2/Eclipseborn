@@ -129,7 +129,16 @@ func _add_valve(pos: Vector2) -> void:
 	add_child(wheel)
 
 
+static func make_title_gear(radius: float = 90.0, tooth_count: int = 16, brass: bool = true) -> Node2D:
+	## Same steel/brass gear used on the title/boot menu.
+	return _build_gear(radius, tooth_count, brass)
+
+
 func _make_gear(radius: float, tooth_count: int, brass: bool) -> Node2D:
+	return _build_gear(radius, tooth_count, brass)
+
+
+static func _build_gear(radius: float, tooth_count: int, brass: bool) -> Node2D:
 	## Involute-ish: thick rim, keyed hub, rectangular teeth with bevel highlights.
 	var root := Node2D.new()
 	var steel := Color(0.45, 0.44, 0.42) if not brass else Color(0.62, 0.48, 0.24)
@@ -211,7 +220,7 @@ func _make_gear(radius: float, tooth_count: int, brass: bool) -> Node2D:
 	return root
 
 
-func _circle_poly(r: float, points: int) -> PackedVector2Array:
+static func _circle_poly(r: float, points: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for i in points:
 		var a := TAU * float(i) / float(points)
@@ -219,7 +228,7 @@ func _circle_poly(r: float, points: int) -> PackedVector2Array:
 	return out
 
 
-func _ring_poly(outer: float, inner: float, points: int) -> PackedVector2Array:
+static func _ring_poly(outer: float, inner: float, points: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for i in points:
 		var a := TAU * float(i) / float(points)

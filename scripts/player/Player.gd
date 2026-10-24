@@ -63,16 +63,13 @@ func _ready() -> void:
 	sprite.sprite_frames = SpiritSprites.build_frames()
 	sprite.play("idle")
 	sprite.centered = true
-	# Sprite is 64px tall; feet drawn near y=52 → center sits 20px above origin so soles touch the floor.
-	sprite.position = Vector2(0, -20)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if body_shape:
-		# Capsule bottom flush with origin (floor contact).
-		body_shape.position.y = -28.0
+	# Godot 4 capsule height includes hemispheres. Plant feet on the floor, not in it.
+	_apply_standing_collision()
 	if hurtbox:
 		var hcs := hurtbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
 		if hcs:
-			hcs.position.y = -22.0
+			hcs.position.y = -24.0
 	if GameState.checkpoint_position == Vector2.ZERO:
 		GameState.set_checkpoint(global_position)
 	add_to_group("player")
@@ -182,18 +179,28 @@ func _update_aim_and_crouch() -> void:
 		aim_dir = Vector2.RIGHT if facing > 0.0 else Vector2.LEFT
 
 
-func _update_crouch_collision() -> void:
-	# Keep sprite feet on the floor; shrink collider while crouching.
-	sprite.position.y = -14.0 if crouching else -20.0
+func _apply_standing_collision() -> void:
+	## Sprite feet at image y≈52 / center 32 → offset −20 puts soles at origin.
+	## Lift 2px so art sits on the floor plate instead of clipping into it.
+	sprite.position.y = -22.0
 	if body_shape and body_shape.shape is CapsuleShape2D:
 		var cap := body_shape.shape as CapsuleShape2D
-		if crouching:
-			cap.height = 18.0
-			# bottom = pos.y + height/2 + radius = 0
-			body_shape.position.y = -(cap.height * 0.5 + cap.radius)
-		else:
-			cap.height = 34.0
-			body_shape.position.y = -(cap.height * 0.5 + cap.radius)
+		cap.height = 36.0
+		cap.radius = 10.0
+		# Bottom of capsule at y = -2 (slightly above origin).
+		body_shape.position.y = -cap.height * 0.5 - 2.0
+
+
+func _update_crouch_collision() -> void:
+	if crouching:
+		sprite.position.y = -16.0
+		if body_shape and body_shape.shape is CapsuleShape2D:
+			var cap := body_shape.shape as CapsuleShape2D
+			cap.height = 22.0
+			cap.radius = 10.0
+			body_shape.position.y = -cap.height * 0.5 - 2.0
+	else:
+		_apply_standing_collision()
 
 
 func _try_jump() -> void:

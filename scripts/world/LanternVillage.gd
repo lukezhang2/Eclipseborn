@@ -108,6 +108,7 @@ func _build_houses_and_npcs() -> void:
 	h1.house_name = "Lantern Keep"
 	h1.width = 130.0
 	h1.height = 100.0
+	h1.interior_blurb = "Shelves of snuffed lanterns line the walls. A keeper's ledger ticks softly."
 	add_child(h1)
 
 	var h2 := House.new()
@@ -115,6 +116,7 @@ func _build_houses_and_npcs() -> void:
 	h2.house_name = "Gearwright"
 	h2.width = 110.0
 	h2.height = 88.0
+	h2.interior_blurb = "Brass filings glitter on the workbench. Half-built walkway gears hang from hooks."
 	add_child(h2)
 
 	var h3 := House.new()
@@ -122,6 +124,7 @@ func _build_houses_and_npcs() -> void:
 	h3.house_name = "Shade Inn"
 	h3.width = 140.0
 	h3.height = 110.0
+	h3.interior_blurb = "Low tables, cool dark, and a hearth banked so it barely burns."
 	add_child(h3)
 
 	var n1 := NPC.new()

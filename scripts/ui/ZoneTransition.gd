@@ -1,14 +1,22 @@
 extends CanvasLayer
 class_name ZoneTransition
-## Gear-swirl fade. Lives on the tree root so the coroutine survives scene changes.
+## Title-menu gear fades behind the label while the next zone loads.
 
 
 const FX_NAME := "ZoneTransitionFX"
+
+var _spin_gear: Node2D
+var _spinning: bool = false
 
 
 func _ready() -> void:
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+func _process(delta: float) -> void:
+	if _spinning and _spin_gear and is_instance_valid(_spin_gear):
+		_spin_gear.rotation_degrees += 48.0 * delta
 
 
 ## Owned by this node (root child) so awaits survive change_scene_to_file.
@@ -19,7 +27,6 @@ func begin_scene_change(scene_path: String) -> void:
 	if tree == null:
 		return
 	tree.change_scene_to_file(scene_path)
-	# Wait until the new scene is in the tree before fading in.
 	await tree.process_frame
 	await tree.process_frame
 	await play_in()
@@ -33,40 +40,46 @@ func play_out() -> void:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
+
+	# Gear BEHIND the words — title-menu brass gear, translucent, keeps spinning.
+	_spin_gear = GearBackdrop.make_title_gear(110.0, 18, true)
+	_spin_gear.name = "SpinGear"
+	_spin_gear.position = Vector2(640, 360)
+	_spin_gear.modulate = Color(1, 1, 1, 0)
+	_spin_gear.z_index = 0
+	add_child(_spin_gear)
+
 	var label := Label.new()
+	label.name = "Caption"
 	label.text = "Into Lantern Village…"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_CENTER)
-	label.offset_left = -220
-	label.offset_right = 220
-	label.offset_top = -24
-	label.offset_bottom = 24
-	label.add_theme_font_size_override("font_size", 22)
-	label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7, 1))
+	label.offset_left = -260
+	label.offset_right = 260
+	label.offset_top = -28
+	label.offset_bottom = 28
+	label.add_theme_font_size_override("font_size", 26)
+	label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.75, 1))
+	label.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.06, 0.95))
+	label.add_theme_constant_override("outline_size", 6)
 	label.modulate.a = 0.0
+	label.z_index = 2
 	add_child(label)
-	var gear := Node2D.new()
-	gear.position = Vector2(640, 360)
-	add_child(gear)
-	var ring := Polygon2D.new()
-	ring.color = Color(0.55, 0.45, 0.25, 1)
-	ring.modulate.a = 0.0
-	var pts := PackedVector2Array()
-	for i in 16:
-		var a := TAU * float(i) / 16.0
-		pts.append(Vector2(cos(a), sin(a)) * (40.0 + (i % 2) * 12.0))
-	ring.polygon = pts
-	gear.add_child(ring)
+
+	_spinning = true
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(dim, "color:a", 1.0, 0.7)
+	tw.tween_property(dim, "color:a", 1.0, 0.75)
+	tw.tween_property(_spin_gear, "modulate:a", 0.28, 0.5)
 	tw.tween_property(label, "modulate:a", 1.0, 0.45)
-	tw.tween_property(ring, "modulate:a", 1.0, 0.4)
-	tw.tween_property(gear, "rotation_degrees", 360.0, 0.75)
 	await tw.finished
+	# Hold a beat so the spinning gear reads while the zone loads.
+	await get_tree().create_timer(0.35).timeout
 
 
 func play_in() -> void:
+	_spinning = false
 	var dim := get_node_or_null("Dim") as ColorRect
 	if dim == null:
 		dim = ColorRect.new()
@@ -77,7 +90,6 @@ func play_in() -> void:
 		add_child(dim)
 	else:
 		dim.color.a = 1.0
-	# Hide chrome so only the black fades out over the new scene.
 	for c in get_children():
 		if c != dim and c is CanvasItem:
 			(c as CanvasItem).visible = false
@@ -88,6 +100,8 @@ func play_in() -> void:
 
 
 func _clear_children() -> void:
+	_spinning = false
+	_spin_gear = null
 	for c in get_children():
 		c.queue_free()
 
