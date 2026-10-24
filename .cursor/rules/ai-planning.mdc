@@ -1,0 +1,14 @@
+---
+description: Read AI planning.md before every change; claim work under Cursor to avoid overlapping Claude
+alwaysApply: true
+---
+
+# AI planning board (Cursor ↔ Claude)
+
+Before any planning, recon, or code change for a user prompt:
+
+1. **Read** [`AI planning.md`](../../AI%20planning.md) at the repo root.
+2. If the user’s request is already **Active / claimed** (or clearly the same plan) under **Claude** or already claimed under **Cursor** by another run, **stop**. Tell the user the other AI is already on it. Do not duplicate the work.
+3. Otherwise, **update the Cursor section** with what you are about to do (short bullets) **before** you edit game code.
+4. Put Cursor work only under `## Cursor`. Leave `## Claude` for Claude (you may add a one-line handoff if blocked).
+5. When the change ships, move items to **Done recently** or clear **Active**.
