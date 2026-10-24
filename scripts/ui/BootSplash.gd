@@ -53,6 +53,7 @@ func _build_scene() -> void:
 	add_child(_shards)
 
 	var skip := Label.new()
+	skip.name = "SkipHint"
 	skip.text = "Space / Esc to skip"
 	skip.position = Vector2(40, 680)
 	skip.add_theme_color_override("font_color", Color(0.6, 0.55, 0.5, 0.7))
@@ -200,6 +201,9 @@ func _finish() -> void:
 		_shards.visible = false
 	if _cracks:
 		_cracks.visible = false
+	var skip := get_node_or_null("SkipHint")
+	if skip:
+		skip.queue_free()
 	_show_title_ui()
 
 

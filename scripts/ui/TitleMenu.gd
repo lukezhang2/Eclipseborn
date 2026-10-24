@@ -17,11 +17,29 @@ func _ready() -> void:
 	GameState.set_paused(false)
 	_ensure_gear_bg()
 	_hide_tagline()
+	_add_version_label()
 	_show_main()
 	_build_slots()
 	_build_controls()
 	_add_editor_hotspot()
 	InputMapManager.bindings_changed.connect(_build_controls)
+
+
+func _add_version_label() -> void:
+	if get_node_or_null("VersionLabel") != null:
+		return
+	var ver := Label.new()
+	ver.name = "VersionLabel"
+	ver.text = "v%s" % str(ProjectSettings.get_setting("application/config/version", "0.1.0"))
+	ver.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	ver.offset_left = 16
+	ver.offset_top = -36
+	ver.offset_right = 160
+	ver.offset_bottom = -12
+	ver.add_theme_font_size_override("font_size", 14)
+	ver.add_theme_color_override("font_color", Color(0.7, 0.65, 0.58, 0.75))
+	ver.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(ver)
 
 
 func _ensure_gear_bg() -> void:
