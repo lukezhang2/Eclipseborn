@@ -83,8 +83,9 @@ func _build() -> void:
 	add_child(sense)
 
 	_prompt = Label.new()
-	_prompt.text = "F — Ascend the Clockwork Tower"
-	_prompt.position = Vector2(-110, -tower_height - 70)
+	_prompt.text = "F — Ascend"
+	# Sit just above the door niche, not above the whole tower.
+	_prompt.position = Vector2(-48, -56)
 	_prompt.add_theme_font_size_override("font_size", 14)
 	_prompt.add_theme_color_override("font_color", Color(0.92, 0.85, 0.65))
 	_prompt.visible = false
@@ -111,4 +112,4 @@ func _ascend() -> void:
 	await get_tree().create_timer(2.2).timeout
 	# Placeholder for the next zone — keep player here for now.
 	_used = false
-	_prompt.text = "F — Ascend the Clockwork Tower"
+	_prompt.text = "F — Ascend"

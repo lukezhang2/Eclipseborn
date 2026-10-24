@@ -342,6 +342,45 @@ static func add_lamp_post(parent: Node2D, pos: Vector2) -> void:
 	parent.add_child(head)
 
 
+static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float = 70.0) -> void:
+	## Lantern suspended from the overhead pipe/wire at wire_pos.
+	var chain := Line2D.new()
+	chain.width = 2.0
+	chain.default_color = Color(0.35, 0.32, 0.28)
+	chain.add_point(wire_pos)
+	chain.add_point(wire_pos + Vector2(0, drop))
+	chain.z_index = -1
+	parent.add_child(chain)
+	var hook := Polygon2D.new()
+	hook.position = wire_pos
+	hook.color = Color(0.4, 0.36, 0.3)
+	hook.polygon = PackedVector2Array([
+		Vector2(-4, -3), Vector2(4, -3), Vector2(4, 3), Vector2(-4, 3)
+	])
+	parent.add_child(hook)
+	var cage := Polygon2D.new()
+	cage.position = wire_pos + Vector2(0, drop)
+	cage.color = Color(0.45, 0.35, 0.18)
+	cage.polygon = PackedVector2Array([
+		Vector2(-11, -4), Vector2(11, -4), Vector2(9, 18), Vector2(-9, 18)
+	])
+	parent.add_child(cage)
+	var glow := Polygon2D.new()
+	glow.position = wire_pos + Vector2(0, drop + 6)
+	glow.color = Color(1.0, 0.75, 0.35, 0.55)
+	glow.polygon = PackedVector2Array([
+		Vector2(-6, -6), Vector2(6, -6), Vector2(5, 8), Vector2(-5, 8)
+	])
+	parent.add_child(glow)
+	var lamp := LightSource.new()
+	lamp.position = wire_pos + Vector2(0, drop + 4)
+	lamp.light_kind = GameState.LightKind.CANDLE
+	lamp.radius = 120.0
+	lamp.shadow_length = 140.0
+	lamp.pushable = false
+	parent.add_child(lamp)
+
+
 static func add_steam_vent(parent: Node2D, pos: Vector2) -> void:
 	var grate := Polygon2D.new()
 	grate.position = pos
@@ -413,6 +452,11 @@ static func spawn_ui(parent: Node) -> void:
 	if parent.get_node_or_null("GameUI") != null:
 		return
 	parent.add_child(UI_SCENE.instantiate())
+	if GameState.editor_playtesting and parent.get_node_or_null("EditorPlaytestHud") == null:
+		var hud := CanvasLayer.new()
+		hud.name = "EditorPlaytestHud"
+		hud.set_script(preload("res://scripts/ui/EditorPlaytestHud.gd"))
+		parent.add_child(hud)
 
 
 static func make_room_trigger(parent: Node2D, pos: Vector2, size: Vector2, zone: String, room: String, hint: String = "", action: String = "") -> void:

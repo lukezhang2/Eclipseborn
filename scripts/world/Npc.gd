@@ -40,13 +40,13 @@ func _build() -> void:
 	add_child(cs)
 	_prompt = Label.new()
 	_prompt.text = "F — Talk"
-	_prompt.position = Vector2(-28, -70)
+	_prompt.position = Vector2(-28, -58)
 	_prompt.add_theme_font_size_override("font_size", 12)
 	_prompt.add_theme_color_override("font_color", Color(0.85, 0.8, 0.65))
 	_prompt.visible = false
 	add_child(_prompt)
 	_bubble = Label.new()
-	_bubble.position = Vector2(-80, -100)
+	_bubble.position = Vector2(-80, -92)
 	_bubble.custom_minimum_size = Vector2(160, 40)
 	_bubble.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_bubble.add_theme_font_size_override("font_size", 13)

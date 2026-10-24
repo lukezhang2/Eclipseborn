@@ -136,6 +136,10 @@ func load_game(slot: int) -> bool:
 
 
 func capture_player_position() -> void:
+	## Don't clobber an intentional transition spawn (hatch → next zone).
+	if GameState.pending_spawn != Vector2.ZERO:
+		GameState.last_position = GameState.pending_spawn
+		return
 	if GameState.player and is_instance_valid(GameState.player):
 		GameState.last_position = (GameState.player as Node2D).global_position
 	elif GameState.checkpoint_position != Vector2.ZERO:
@@ -144,6 +148,8 @@ func capture_player_position() -> void:
 
 func autosave() -> void:
 	if current_slot < 0:
+		return
+	if GameState.editor_playtesting:
 		return
 	capture_player_position()
 	save_game(current_slot)
@@ -156,7 +162,9 @@ func save_game(slot: int = -1) -> void:
 		return
 	capture_player_position()
 	var pos := GameState.last_position
-	if pos == Vector2.ZERO:
+	if GameState.pending_spawn != Vector2.ZERO:
+		pos = GameState.pending_spawn
+	elif pos == Vector2.ZERO:
 		pos = GameState.checkpoint_position
 	var cfg := ConfigFile.new()
 	cfg.set_value("meta", "zone", GameState.current_zone_id)

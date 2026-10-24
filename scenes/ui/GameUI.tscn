@@ -9,8 +9,7 @@
 
 [node name="GameUI" type="Node"]
 
-[node name="HitboxDebug" type="CanvasLayer" parent="."]
-layer = 20
+[node name="HitboxDebug" type="Node" parent="."]
 script = ExtResource("6")
 
 [node name="ScreenVFX" type="CanvasLayer" parent="."]

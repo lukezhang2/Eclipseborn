@@ -55,15 +55,21 @@ func _ready() -> void:
 	LevelData.apply(self, "cursed_cottage")
 
 	var spawn := Vector2(120, FLOOR_TOP - 40)
-	if not GameState.needs_intro_cutscene and GameState.current_zone_id == "cursed_cottage":
-		if GameState.last_position != Vector2.ZERO:
-			spawn = GameState.last_position
+	if GameState.pending_spawn != Vector2.ZERO:
+		spawn = Vector2(GameState.pending_spawn.x, FLOOR_TOP - 40)
+		GameState.pending_spawn = Vector2.ZERO
+	elif GameState.editor_playtesting:
+		spawn = Vector2(120, FLOOR_TOP - 40)
+	elif not GameState.needs_intro_cutscene and GameState.current_zone_id == "cursed_cottage":
+		if GameState.last_position != Vector2.ZERO and GameState.last_position.x < MAP_W:
+			spawn = Vector2(GameState.last_position.x, FLOOR_TOP - 40)
 		elif GameState.checkpoint_position != Vector2.ZERO:
-			spawn = GameState.checkpoint_position
+			spawn = Vector2(GameState.checkpoint_position.x, FLOOR_TOP - 40)
 	var player := LevelCommon.spawn_player(self, spawn)
 	LevelCommon.configure_camera(player, ROOF_CENTER - ROOF_H * 0.5, FLOOR_CENTER + FLOOR_H * 0.5 + 40.0, GameState.map_min_x, GameState.map_max_x)
 	GameState.enter_room("cursed_cottage", "hall")
-	SaveManager.autosave()
+	if not GameState.editor_playtesting:
+		SaveManager.autosave()
 
 
 func _box_y(size_y: float = 48.0) -> float:

@@ -1,12 +1,12 @@
 extends Node2D
-## Draws combat volumes when parent HitboxDebug is active.
+## Draws the live CollisionShape2D volumes in world space (not a separate fake overlay).
+
+
+var _debug_on: bool = false
 
 
 func _draw() -> void:
-	var parent_dbg := get_parent()
-	if parent_dbg == null or not parent_dbg.get("_on"):
-		return
-	if not parent_dbg._on:
+	if not _debug_on:
 		return
 	var tree := get_tree()
 	if tree == null:
@@ -23,9 +23,14 @@ func _draw() -> void:
 		if cs and cs.shape is CapsuleShape2D:
 			var cap := cs.shape as CapsuleShape2D
 			var o := cs.global_position
-			draw_circle(o + Vector2(0, -cap.height * 0.25), cap.radius, Color(0.3, 0.6, 1.0, 0.25))
-			draw_circle(o + Vector2(0, cap.height * 0.25), cap.radius, Color(0.3, 0.6, 1.0, 0.25))
-			draw_rect(Rect2(o - Vector2(cap.radius, cap.height * 0.25), Vector2(cap.radius * 2.0, cap.height * 0.5)), Color(0.3, 0.6, 1.0, 0.2), true)
+			var half_cyl := cap.height * 0.5
+			draw_circle(o + Vector2(0, -half_cyl), cap.radius, Color(0.3, 0.6, 1.0, 0.3))
+			draw_circle(o + Vector2(0, half_cyl), cap.radius, Color(0.3, 0.6, 1.0, 0.3))
+			draw_rect(
+				Rect2(o - Vector2(cap.radius, half_cyl), Vector2(cap.radius * 2.0, cap.height)),
+				Color(0.3, 0.6, 1.0, 0.22),
+				true
+			)
 
 
 func _draw_area(area: Area2D, fill: Color, edge: Color) -> void:
@@ -35,13 +40,27 @@ func _draw_area(area: Area2D, fill: Color, edge: Color) -> void:
 		var cs := child as CollisionShape2D
 		if cs.disabled or cs.shape == null:
 			continue
-		var origin := cs.global_position
+		# Use the shape's global transform so rotation/scale match gameplay.
+		var xf := cs.global_transform
 		if cs.shape is RectangleShape2D:
 			var r := (cs.shape as RectangleShape2D).size
-			var rect := Rect2(origin - r * 0.5, r)
-			draw_rect(rect, fill, true)
-			draw_rect(rect, edge, false, 2.0)
+			var half := r * 0.5
+			var pts := PackedVector2Array([
+				xf * Vector2(-half.x, -half.y),
+				xf * Vector2(half.x, -half.y),
+				xf * Vector2(half.x, half.y),
+				xf * Vector2(-half.x, half.y),
+			])
+			draw_colored_polygon(pts, fill)
+			for i in 4:
+				draw_line(pts[i], pts[(i + 1) % 4], edge, 2.0)
 		elif cs.shape is CircleShape2D:
 			var rad := (cs.shape as CircleShape2D).radius
+			var origin := xf.origin
 			draw_circle(origin, rad, fill)
 			draw_arc(origin, rad, 0, TAU, 24, edge, 2.0)
+		elif cs.shape is CapsuleShape2D:
+			var cap := cs.shape as CapsuleShape2D
+			var o := xf.origin
+			draw_circle(o + Vector2(0, -cap.height * 0.5), cap.radius, fill)
+			draw_circle(o + Vector2(0, cap.height * 0.5), cap.radius, fill)

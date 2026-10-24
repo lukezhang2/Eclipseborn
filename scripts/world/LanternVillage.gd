@@ -27,10 +27,12 @@ func _ready() -> void:
 	LevelCommon.add_brick_wall_face(self, 1500, 280, 900, 360)
 	LevelCommon.add_brick_wall_face(self, 2500, 280, 800, 360)
 
-	LevelCommon.add_pipe(self, Vector2(40, 90), Vector2(MAP_W - 80, 90), 12.0)
-	LevelCommon.add_lamp_post(self, Vector2(280, FLOOR_TOP))
-	LevelCommon.add_lamp_post(self, Vector2(720, FLOOR_TOP))
-	LevelCommon.add_lamp_post(self, Vector2(1600, FLOOR_TOP))
+	var wire_y := 90.0
+	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)
+	# Lanterns hang from the overhead wire.
+	LevelCommon.add_hanging_lantern(self, Vector2(280, wire_y))
+	LevelCommon.add_hanging_lantern(self, Vector2(720, wire_y))
+	LevelCommon.add_hanging_lantern(self, Vector2(1600, wire_y))
 	LevelCommon.add_window(self, 360, 220, 44, 60, false)
 	LevelCommon.add_bench(self, Vector2(450, FLOOR_TOP))
 	LevelCommon.add_steam_vent(self, Vector2(1050, FLOOR_TOP))
@@ -74,21 +76,29 @@ func _ready() -> void:
 	var player := LevelCommon.spawn_player(self, spawn)
 	LevelCommon.configure_camera(player, ROOF_TOP, FLOOR_CENTER + FLOOR_H * 0.5 + 40.0, GameState.map_min_x, GameState.map_max_x)
 	GameState.enter_room("lantern_village", "gate")
-	SaveManager.autosave()
+	if not GameState.editor_playtesting:
+		SaveManager.autosave()
 	# Hatch transition owns fade-in on the root FX. Direct loads need no overlay.
 
 
 func _resolve_spawn() -> Vector2:
-	## Always plant feet on this village's floor — cottage Y must not carry over.
-	var spawn := HATCH_SPAWN
-	if GameState.last_position != Vector2.ZERO and GameState.current_zone_id == "lantern_village":
-		spawn.x = GameState.last_position.x
+	## Gate is on the left. Cottage hatch X (~3500) must never bleed into this map.
+	var spawn := Vector2(HATCH_SPAWN.x, FLOOR_TOP - 40.0)
+	if GameState.pending_spawn != Vector2.ZERO:
+		spawn.x = GameState.pending_spawn.x
+		GameState.pending_spawn = Vector2.ZERO
+	elif GameState.editor_playtesting:
+		spawn.x = HATCH_SPAWN.x
 	elif GameState.checkpoint_position != Vector2.ZERO:
-		spawn.x = GameState.checkpoint_position.x
-	spawn.x = clampf(spawn.x, GameState.map_min_x + 40.0, GameState.map_max_x - 40.0)
+		var cx := GameState.checkpoint_position.x
+		# Valid in-village checkpoint only (reject cottage coordinates).
+		if cx >= 40.0 and cx <= MAP_W - 80.0:
+			spawn.x = cx
+	spawn.x = clampf(spawn.x, GameState.map_min_x + 40.0, MAP_W - 80.0)
 	spawn.y = FLOOR_TOP - 40.0
 	GameState.last_position = spawn
-	GameState.checkpoint_position = spawn
+	if GameState.checkpoint_position == Vector2.ZERO or GameState.editor_playtesting:
+		GameState.checkpoint_position = spawn
 	return spawn
 
 

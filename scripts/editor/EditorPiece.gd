@@ -63,6 +63,8 @@ func to_dict() -> Dictionary:
 		d["pushable"] = pushable
 	elif kind == Kind.BACKGROUND:
 		d["kind"] = "background"
+	elif has_meta("piece_kind"):
+		d["kind"] = str(get_meta("piece_kind"))
 	return d
 
 
@@ -80,6 +82,8 @@ func apply_dict(d: Dictionary) -> void:
 			pushable = bool(d.get("pushable", true))
 		_:
 			kind = Kind.BLOCK
+			if k not in ["block", "floor"]:
+				set_meta("piece_kind", k)
 	_rebuild()
 
 

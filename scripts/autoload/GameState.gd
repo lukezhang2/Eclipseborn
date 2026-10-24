@@ -33,6 +33,11 @@ var checkpoint_path: String = ""
 var checkpoint_position: Vector2 = Vector2.ZERO
 ## Live position written on exit / autosave (may differ from checkpoint).
 var last_position: Vector2 = Vector2.ZERO
+## One-shot spawn used by zone transitions (hatch → village). Survives autosave capture.
+var pending_spawn: Vector2 = Vector2.ZERO
+## Editor playtest: return here with Exit Playtest instead of treating as a real run.
+var editor_playtesting: bool = false
+var editor_playtest_zone: String = ""
 var current_zone_id: String = "cursed_cottage"
 var current_room_id: String = "hall"
 ## zone_id -> Array of room_id strings discovered

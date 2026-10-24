@@ -56,11 +56,23 @@ func _ready() -> void:
 		probe_shape.position = Vector2(0, -18)
 	if body_shape and body_shape.shape:
 		body_shape.shape = body_shape.shape.duplicate()
+	if hitbox:
+		var hshape := hitbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if hshape and hshape.shape:
+			hshape.shape = hshape.shape.duplicate()
 	sprite.sprite_frames = SpiritSprites.build_frames()
 	sprite.play("idle")
 	sprite.centered = true
-	sprite.position = Vector2(0, -28)
+	# Sprite is 64px tall; feet drawn near y=52 → center sits 20px above origin so soles touch the floor.
+	sprite.position = Vector2(0, -20)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if body_shape:
+		# Capsule bottom flush with origin (floor contact).
+		body_shape.position.y = -28.0
+	if hurtbox:
+		var hcs := hurtbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if hcs:
+			hcs.position.y = -22.0
 	if GameState.checkpoint_position == Vector2.ZERO:
 		GameState.set_checkpoint(global_position)
 	add_to_group("player")
@@ -171,16 +183,17 @@ func _update_aim_and_crouch() -> void:
 
 
 func _update_crouch_collision() -> void:
-	# Keep sprite feet planted; only shrink collider while crouching.
-	sprite.position.y = -28.0
+	# Keep sprite feet on the floor; shrink collider while crouching.
+	sprite.position.y = -14.0 if crouching else -20.0
 	if body_shape and body_shape.shape is CapsuleShape2D:
 		var cap := body_shape.shape as CapsuleShape2D
 		if crouching:
-			cap.height = 22.0
-			body_shape.position.y = -12.0
+			cap.height = 18.0
+			# bottom = pos.y + height/2 + radius = 0
+			body_shape.position.y = -(cap.height * 0.5 + cap.radius)
 		else:
 			cap.height = 34.0
-			body_shape.position.y = -18.0
+			body_shape.position.y = -(cap.height * 0.5 + cap.radius)
 
 
 func _try_jump() -> void:
@@ -197,30 +210,35 @@ func _try_jump() -> void:
 
 func _try_move_boxes(dir: float, delta: float) -> void:
 	var pulling := Input.is_action_pressed("pull")
-	# Prefer slide contacts, then nearest nearby box.
-	var handled := false
+	# Push ONLY when physically walking into a side face (not standing on top / nearby).
 	for i in get_slide_collision_count():
 		var col := get_slide_collision(i)
 		var collider := col.get_collider()
 		if collider is PushableBox:
 			var box := collider as PushableBox
+			var n := col.get_normal()
 			if pulling:
 				if box.try_pull(global_position, dir, delta) == "pull":
 					_pulling = true
 					_attach_pull_pose(box, dir, delta)
-					handled = true
 			else:
+				# Side hit: mostly horizontal normal, and we're moving into the box.
+				if absf(n.x) < 0.55:
+					continue
+				if dir == 0.0 or signf(dir) == signf(n.x):
+					# Normal points from box toward player; push means walking against it.
+					continue
 				if box.try_push(global_position, dir, delta) == "push":
 					_pushing = true
-					handled = true
-		elif collider is Node:
+		elif collider is Node and not pulling:
 			var lamp := _find_lamp_owner(collider)
-			if lamp and lamp.has_method("try_push") and not pulling:
+			var n2 := col.get_normal()
+			if lamp and lamp.has_method("try_push") and absf(n2.x) >= 0.55 and dir != 0.0 and signf(dir) != signf(n2.x):
 				lamp.try_push(dir, delta)
 				_pushing = true
-				handled = true
-	if handled:
+	if not pulling:
 		return
+	# Pull can use proximity (V while beside the crate).
 	var nearest: PushableBox = null
 	var best := 9999.0
 	for node in get_tree().get_nodes_in_group("boxes"):
@@ -229,20 +247,14 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 		var box := node as PushableBox
 		var d := absf(box.global_position.x - global_position.x)
 		var dy := absf(box.global_position.y - global_position.y)
-		if dy > box.box_size.y and dy > 40.0:
+		if dy > box.box_size.y * 0.65:
 			continue
-		if d < best and d < box.box_size.x * 0.5 + 52.0:
+		if d < best and d < box.box_size.x * 0.5 + 56.0:
 			best = d
 			nearest = box
-	if nearest == null:
-		return
-	if pulling:
-		if nearest.try_pull(global_position, dir, delta) == "pull":
-			_pulling = true
-			_attach_pull_pose(nearest, dir, delta)
-	else:
-		if nearest.try_push(global_position, dir, delta) == "push":
-			_pushing = true
+	if nearest and nearest.try_pull(global_position, dir, delta) == "pull":
+		_pulling = true
+		_attach_pull_pose(nearest, dir, delta)
 
 
 func _try_enter_hatch() -> void:
@@ -314,16 +326,28 @@ func _update_attack(delta: float) -> void:
 
 
 func _sync_hitbox() -> void:
-	## Cardinal volumes sit slightly ahead of the spirit so F connects cleanly.
-	if aim_dir == Vector2.UP:
-		hitbox.position = Vector2(0, -46)
-		hitbox.rotation = 0
-	elif aim_dir == Vector2.DOWN:
-		hitbox.position = Vector2(0, 12)
-		hitbox.rotation = 0
+	## Volume covers from beside the body through the reach so close pots still get hit.
+	var shape := hitbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape and shape.shape is RectangleShape2D:
+		var rect := shape.shape as RectangleShape2D
+		if aim_dir == Vector2.UP:
+			rect.size = Vector2(28, 44)
+			hitbox.position = Vector2(0, -40)
+		elif aim_dir == Vector2.DOWN:
+			rect.size = Vector2(30, 36)
+			hitbox.position = Vector2(0, 6)
+		else:
+			rect.size = Vector2(44, 36)
+			# Center sits just ahead of the torso so overlapping props register.
+			hitbox.position = Vector2(22.0 * facing, -18)
 	else:
-		hitbox.position = Vector2(34.0 * facing, -16)
-		hitbox.rotation = 0
+		if aim_dir == Vector2.UP:
+			hitbox.position = Vector2(0, -40)
+		elif aim_dir == Vector2.DOWN:
+			hitbox.position = Vector2(0, 6)
+		else:
+			hitbox.position = Vector2(22.0 * facing, -18)
+	hitbox.rotation = 0
 	hitbox.scale = Vector2.ONE
 
 

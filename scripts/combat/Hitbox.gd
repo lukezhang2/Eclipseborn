@@ -1,6 +1,6 @@
 extends Area2D
 class_name Hitbox
-## Active attack volume. Exists only during active frames; hits each target once per swing.
+## Active attack volume. Hits each target once per swing (including already-overlapping).
 
 @export var team: String = "player"
 @export var damage: int = 10
@@ -23,6 +23,15 @@ func activate() -> void:
 	_hit_ids.clear()
 	_active = true
 	monitoring = true
+	# area_entered only fires on enter — catch pots already overlapping when the swing starts.
+	call_deferred("_scan_overlaps")
+
+
+func _scan_overlaps() -> void:
+	if not _active or not monitoring:
+		return
+	for area in get_overlapping_areas():
+		_on_area_entered(area)
 
 
 func deactivate() -> void:

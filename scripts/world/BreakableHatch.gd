@@ -66,7 +66,7 @@ func _build() -> void:
 
 	_prompt = Label.new()
 	_prompt.text = ""
-	_prompt.position = Vector2(-70, -48)
+	_prompt.position = Vector2(-70, -36)
 	_prompt.add_theme_font_size_override("font_size", 14)
 	_prompt.add_theme_color_override("font_color", Color(0.92, 0.88, 0.7))
 	_prompt.visible = false
@@ -120,10 +120,15 @@ func _begin_transition() -> void:
 	## Transition node lives on the root so its await survives this scene unloading.
 	GameState.set_paused(false)
 	GameState.current_zone_id = "lantern_village"
+	GameState.pending_spawn = spawn_in_next
 	GameState.last_position = spawn_in_next
 	GameState.checkpoint_position = spawn_in_next
 	GameState.needs_intro_cutscene = false
 	SaveManager.autosave()
+	# Re-assert after autosave — capture must not keep the cottage X.
+	GameState.last_position = spawn_in_next
+	GameState.checkpoint_position = spawn_in_next
+	GameState.pending_spawn = spawn_in_next
 	var tree := get_tree()
 	ZoneTransition.clear_stale(tree)
 	var fx := ZoneTransition.new()

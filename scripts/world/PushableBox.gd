@@ -102,13 +102,18 @@ func _can_move(dx: float) -> bool:
 
 func try_push(from_global: Vector2, direction: float, delta: float) -> String:
 	var my_center := global_position
-	if absf(from_global.y - my_center.y) > box_size.y * 1.1:
+	# Reject standing on top — player feet should be beside the crate, not above the lid.
+	var player_feet_y := from_global.y
+	var lid_y := my_center.y - box_size.y * 0.35
+	if player_feet_y < lid_y:
+		return ""
+	if absf(from_global.y - my_center.y) > box_size.y * 0.85:
 		return ""
 	var dx_to := my_center.x - from_global.x
-	# Must be approaching the box from the correct side (or already overlapping).
-	if absf(dx_to) > 6.0 and signf(direction) != 0.0 and signf(dx_to) != signf(direction):
+	if direction == 0.0 or signf(dx_to) != signf(direction):
 		return ""
-	if absf(from_global.x - my_center.x) > box_size.x * 0.5 + 48.0:
+	# Must be close to the contacted face (no remote / on-top shove).
+	if absf(dx_to) > box_size.x * 0.5 + 20.0:
 		return ""
 	var dx := direction * push_speed * delta
 	if not _can_move(dx):

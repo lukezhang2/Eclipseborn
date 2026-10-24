@@ -73,8 +73,10 @@ func _build() -> void:
 	_hurtbox.owner_body = self
 	var hcs := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = prop_size
+	# Slightly larger than the jar so close swings still connect.
+	rect.size = prop_size + Vector2(14, 10)
 	hcs.shape = rect
+	hcs.position = Vector2(0, -2)
 	_hurtbox.add_child(hcs)
 	_hurtbox.hurt.connect(_on_hurt)
 	add_child(_hurtbox)
