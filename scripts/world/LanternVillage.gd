@@ -1,46 +1,37 @@
 extends Node2D
-## Early hub: cobbled street, lamp posts, brick faces, shadow gap puzzle.
+## Early hub. Floors are the shadow world; lamps cast burning light. Boxes block light.
 
 
 func _ready() -> void:
 	GameState.current_zone_id = "lantern_village"
+	GameState.map_min_x = 40.0
+	GameState.map_max_x = 2680.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
 	LevelCommon.add_backdrop(self, 2800, 720)
 
-	LevelCommon.add_cobble_floor(self, 600, 520, 1200, 40)
-	LevelCommon.add_cobble_floor(self, 1900, 520, 1400, 40)
+	# Continuous cobble — the map itself is walkable shadow ground.
+	LevelCommon.add_cobble_floor(self, 1400, 520, 2800, 40)
 	LevelCommon.add_wall(self, -20, 300, 40, 480)
-	LevelCommon.add_wall(self, 2700, 300, 40, 480)
+	LevelCommon.add_wall(self, 2780, 300, 40, 480)
 
 	LevelCommon.add_brick_wall_face(self, 400, 260, 900, 380)
 	LevelCommon.add_brick_wall_face(self, 1500, 260, 900, 380)
 	LevelCommon.add_brick_wall_face(self, 2300, 260, 700, 380)
 
 	LevelCommon.add_pipe(self, Vector2(40, 70), Vector2(2650, 70), 12.0)
-	LevelCommon.add_pipe(self, Vector2(500, 70), Vector2(500, 180), 8.0)
-	LevelCommon.add_valve(self, Vector2(500, 180))
-
-	# Street dressing
 	LevelCommon.add_lamp_post(self, Vector2(280, 500))
 	LevelCommon.add_lamp_post(self, Vector2(720, 500))
 	LevelCommon.add_lamp_post(self, Vector2(1600, 500))
-	LevelCommon.add_lamp_post(self, Vector2(2200, 500))
 	LevelCommon.add_window(self, 360, 200, 44, 60, false)
-	LevelCommon.add_window(self, 620, 200, 44, 60, true)
-	LevelCommon.add_window(self, 1100, 190, 50, 68, false)
-	LevelCommon.add_window(self, 1800, 190, 50, 68, true)
 	LevelCommon.add_bench(self, Vector2(450, 500))
-	LevelCommon.add_crate_prop(self, Vector2(900, 492))
-	LevelCommon.add_crate_prop(self, Vector2(940, 492), Vector2(24, 20))
 	LevelCommon.add_steam_vent(self, Vector2(1050, 500))
-	LevelCommon.add_steam_vent(self, Vector2(1950, 500))
 
-	_build_gap_puzzle()
+	_build_light_puzzle()
 
 	LevelCommon.make_room_trigger(self, Vector2(300, 360), Vector2(500, 400), "lantern_village", "gate", "Lantern Village", "")
 	LevelCommon.make_room_trigger(self, Vector2(900, 360), Vector2(500, 400), "lantern_village", "street_a")
-	LevelCommon.make_room_trigger(self, Vector2(1500, 360), Vector2(500, 400), "lantern_village", "street_b", "Push the crate — its shadow is the bridge", "")
+	LevelCommon.make_room_trigger(self, Vector2(1500, 360), Vector2(500, 400), "lantern_village", "street_b", "Push a crate to block the lamp", "")
 	LevelCommon.make_room_trigger(self, Vector2(2100, 360), Vector2(500, 400), "lantern_village", "square")
 
 	var enemy_scene := preload("res://scenes/enemies/BasicEnemy.tscn")
@@ -90,7 +81,8 @@ func _ready() -> void:
 	SaveManager.save_game(0)
 
 
-func _build_gap_puzzle() -> void:
+func _build_light_puzzle() -> void:
+	## Bright lamp across the street — pull/push a crate to stand in its umbra.
 	var lamp := LightSource.new()
 	lamp.position = Vector2(1300, 220)
 	lamp.light_kind = GameState.LightKind.HEARTH
@@ -100,25 +92,9 @@ func _build_gap_puzzle() -> void:
 	add_child(lamp)
 
 	var crate := PushableBox.new()
-	crate.moveable = true
 	crate.position = Vector2(1250, 476)
 	crate.box_size = Vector2(56, 56)
 	add_child(crate)
-
-	var fixed := PushableBox.new()
-	fixed.moveable = false
-	fixed.position = Vector2(1000, 460)
-	fixed.box_size = Vector2(64, 64)
-	add_child(fixed)
-
-	# Broken bridge beams over the gap (visual only).
-	var beam := Polygon2D.new()
-	beam.position = Vector2(1400, 480)
-	beam.color = Color(0.3, 0.28, 0.25)
-	beam.polygon = PackedVector2Array([
-		Vector2(-40, -6), Vector2(80, -10), Vector2(90, 0), Vector2(-50, 4)
-	])
-	add_child(beam)
 
 
 func _make_shade_heart(pos: Vector2) -> Area2D:

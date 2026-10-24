@@ -40,6 +40,10 @@ var player: Node2D = null
 ## True until the first-spawn cutscene finishes on a new save.
 var needs_intro_cutscene: bool = true
 var intro_cutscene_playing: bool = false
+## Pushable crate horizontal limits (set by each level).
+var map_min_x: float = 40.0
+var map_max_x: float = 3900.0
+var _regen_accum: float = 0.0
 
 enum LightKind { HEARTH, CANDLE, MOON, CRIMSON, SUNSHAFT }
 
@@ -49,6 +53,20 @@ func _ready() -> void:
 		"cursed_cottage": [],
 		"lantern_village": [],
 	}
+
+
+func _process(delta: float) -> void:
+	if is_paused or intro_cutscene_playing:
+		return
+	# Natural regen: 1 HP / second while below max (paused while burning in light after shade empty).
+	if health <= 0 or health >= max_health:
+		return
+	if player and is_instance_valid(player) and player._in_vulnerable_light and shade <= 0.0:
+		return
+	_regen_accum += delta
+	if _regen_accum >= 1.0:
+		_regen_accum = 0.0
+		heal(1)
 
 
 func reset_run() -> void:

@@ -17,6 +17,12 @@ func has_save(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
 
 
+func delete_save(slot: int) -> void:
+	var path := slot_path(slot)
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+
+
 func slot_summary(slot: int) -> String:
 	if not has_save(slot):
 		return "Empty"

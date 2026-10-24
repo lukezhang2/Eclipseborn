@@ -48,13 +48,6 @@ theme_override_colors/font_color = Color(0.92, 0.88, 0.8, 1)
 text = "ECLIPSEBORN"
 horizontal_alignment = 1
 
-[node name="Tag" type="Label" parent="Center/Main"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.65, 0.55, 0.4, 1)
-text = "You aren't moving platforms. You're changing what counts as a platform."
-horizontal_alignment = 1
-
 [node name="PlayButton" type="Button" parent="Center/Main"]
 layout_mode = 2
 text = "Play"

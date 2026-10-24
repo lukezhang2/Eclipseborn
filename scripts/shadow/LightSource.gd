@@ -159,4 +159,5 @@ func try_push(direction: float, delta: float) -> void:
 	if not pushable:
 		return
 	position.x += direction * push_speed * delta
+	position.x = clampf(position.x, GameState.map_min_x + 20.0, GameState.map_max_x - 20.0)
 	ShadowWorld.mark_dirty()

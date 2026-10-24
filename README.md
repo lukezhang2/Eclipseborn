@@ -72,7 +72,7 @@ The core idea: the crate blocks the lamp's light, and its shadow becomes a bridg
 | **Shadow** | Solid ground. You can stand on it, walk on it, and jump off it. |
 | **Vulnerable light** | Hearth, candle, and sunshaft. Standing in it drains the shade bar, then health. See [Shade and health](#shade-and-health). |
 | **Safe light** | Moon and crimson. They do not drain shade or health. |
-| **Boxes** | Two kinds. **Moveable** boxes slide when the spirit walks into them. **Immoveable** boxes do not. Both block light, so a box that moves takes its shadow with it. |
+| **Boxes** | Moveable crates that block light. Push by walking into them, or hold **V** to pull. They cannot be shoved off the map. |
 | **Other objects** | Statues, gears, and machines also block light. The spirit does not shove these the way he shoves a box. Lamps and gears use their own controls, below. |
 
 ### How the shadows are made
@@ -250,7 +250,7 @@ The Cursed Cottage is the tutorial. It does not use text puzzles. Each room bloc
 | **1. The hall** | A clear stretch of boiler-house floor. | Walk, then run. |
 | **2. The crate** | A moveable box sits in the only doorway. Walking into it plays push, and the box slides out of the way. | Push a box. |
 | **3. The pull alcove** | A crate wedged in a recess that cannot be pushed forward. Hold **V** and walk to pull it free. | Pull a box. |
-| **4. The riveted chest** | An immoveable box fills the path. Walking into it plays bump, and the box does not move. The top of it is one jump high. | Jump. If it will not move, go over it. |
+| **4. The ledge** | A short steel ledge. | Jump. |
 | **5. The hatch** | A shut iron door, the exit. One press of F breaks it. The opening leads straight into Lantern Village. | Attack, then leave the cottage. |
 
 There is no enemy in the cottage. The hatch is the only thing the lash is for. Once it breaks, he is in Lantern Village, and the cottage stays open behind him.
