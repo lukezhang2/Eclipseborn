@@ -1,0 +1,198 @@
+extends Node
+## Global run state: health, shade, abilities, pause, zone discovery.
+
+signal health_changed(current: int, maximum: int)
+signal shade_changed(ratio: float)
+signal died
+signal respawned
+signal ability_unlocked(ability_id: String)
+signal room_entered(zone_id: String, room_id: String)
+signal pause_changed(paused: bool)
+
+const SHADE_DRAIN_HEARTH := 1.0 / 1.5
+const SHADE_DRAIN_SUNSHAFT := 1.0 / 0.75
+const SHADE_REFILL_PER_SEC := 1.0
+const HEALTH_BURN_HEARTH := 100.0
+const HEALTH_BURN_SUNSHAFT := 200.0
+const SHADE_HEART_BONUS := 25
+
+var health: int = 100
+var max_health: int = 100
+var shade: float = 1.0
+var umbra: float = 0.0
+var has_double_jump: bool = false
+var has_shadow_grip: bool = false
+var has_shade_dash: bool = false
+var has_gear_sense: bool = false
+var has_reflect: bool = false
+var has_snuff: bool = false
+
+var checkpoint_path: String = ""
+var checkpoint_position: Vector2 = Vector2.ZERO
+var current_zone_id: String = "cursed_cottage"
+var current_room_id: String = "hall"
+## zone_id -> Array of room_id strings discovered
+var discovered_rooms: Dictionary = {}
+
+var is_paused: bool = false
+var single_player: bool = true
+var player: Node2D = null
+
+enum LightKind { HEARTH, CANDLE, MOON, CRIMSON, SUNSHAFT }
+
+
+func _ready() -> void:
+	discovered_rooms = {
+		"cursed_cottage": [],
+		"lantern_village": [],
+	}
+
+
+func reset_run() -> void:
+	health = 100
+	max_health = 100
+	shade = 1.0
+	umbra = 0.0
+	has_double_jump = false
+	has_shadow_grip = false
+	has_shade_dash = false
+	has_gear_sense = false
+	has_reflect = false
+	has_snuff = false
+	checkpoint_path = ""
+	checkpoint_position = Vector2.ZERO
+	current_zone_id = "cursed_cottage"
+	current_room_id = "hall"
+	discovered_rooms = {
+		"cursed_cottage": [],
+		"lantern_village": [],
+	}
+	health_changed.emit(health, max_health)
+	shade_changed.emit(shade)
+
+
+func set_paused(value: bool) -> void:
+	if not single_player and value:
+		# Co-op: menus do not freeze the world.
+		is_paused = false
+		get_tree().paused = false
+		pause_changed.emit(false)
+		return
+	is_paused = value
+	get_tree().paused = value
+	pause_changed.emit(value)
+
+
+func unlock_ability(ability_id: String) -> void:
+	match ability_id:
+		"double_jump":
+			has_double_jump = true
+		"shadow_grip":
+			has_shadow_grip = true
+		"shade_dash":
+			has_shade_dash = true
+		"gear_sense":
+			has_gear_sense = true
+		"reflect":
+			has_reflect = true
+		"snuff":
+			has_snuff = true
+	ability_unlocked.emit(ability_id)
+
+
+func enter_room(zone_id: String, room_id: String) -> void:
+	current_zone_id = zone_id
+	current_room_id = room_id
+	if not discovered_rooms.has(zone_id):
+		discovered_rooms[zone_id] = []
+	var rooms: Array = discovered_rooms[zone_id]
+	if not rooms.has(room_id):
+		rooms.append(room_id)
+		discovered_rooms[zone_id] = rooms
+	room_entered.emit(zone_id, room_id)
+
+
+func set_checkpoint(pos: Vector2, path: String = "") -> void:
+	checkpoint_position = pos
+	checkpoint_path = path
+	health = max_health
+	shade = 1.0
+	health_changed.emit(health, max_health)
+	shade_changed.emit(shade)
+
+
+func apply_light_exposure(dt: float, kind: LightKind) -> void:
+	if is_paused:
+		return
+	match kind:
+		LightKind.MOON, LightKind.CRIMSON:
+			_refill_shade(dt)
+			return
+		_:
+			pass
+
+	var drain := SHADE_DRAIN_HEARTH
+	var burn := HEALTH_BURN_HEARTH
+	if kind == LightKind.SUNSHAFT:
+		drain = SHADE_DRAIN_SUNSHAFT
+		burn = HEALTH_BURN_SUNSHAFT
+
+	if shade > 0.0:
+		shade = maxf(0.0, shade - drain * dt)
+		shade_changed.emit(shade)
+		return
+
+	# Shade empty: health burns fast.
+	var next := float(health) - burn * dt
+	health = maxi(0, int(floor(next)))
+	health_changed.emit(health, max_health)
+	if health <= 0:
+		_die()
+
+
+func refill_shade_safe(dt: float) -> void:
+	_refill_shade(dt)
+
+
+func _refill_shade(dt: float) -> void:
+	if shade >= 1.0:
+		return
+	shade = minf(1.0, shade + SHADE_REFILL_PER_SEC * dt)
+	shade_changed.emit(shade)
+
+
+func take_damage(amount: int) -> void:
+	# Enemy hits skip the shade bar.
+	if amount <= 0:
+		return
+	health = maxi(0, health - amount)
+	health_changed.emit(health, max_health)
+	if health <= 0:
+		_die()
+
+
+func heal(amount: int) -> void:
+	health = mini(max_health, health + amount)
+	health_changed.emit(health, max_health)
+
+
+func add_shade_heart() -> void:
+	max_health += SHADE_HEART_BONUS
+	health = max_health
+	health_changed.emit(health, max_health)
+
+
+func _die() -> void:
+	died.emit()
+	# Soft respawn at checkpoint.
+	get_tree().create_timer(0.6).timeout.connect(_respawn, CONNECT_ONE_SHOT)
+
+
+func _respawn() -> void:
+	health = max_health
+	shade = 1.0
+	health_changed.emit(health, max_health)
+	shade_changed.emit(shade)
+	if player and is_instance_valid(player):
+		player.global_position = checkpoint_position
+	respawned.emit()

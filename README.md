@@ -4,6 +4,16 @@
 
 **Game design plan, draft 6.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
 
+## How to run
+
+Godot **4.3** project. From this folder:
+
+```bash
+godot --path .
+```
+
+Or open the folder in the Godot editor and press Play. The main scene is the title menu (**Play** / **Controls**). New Game starts in the Cursed Cottage tutorial. A Phase 0 sandbox lives at `scenes/rooms/PrototypeRoom.tscn`. Feature status vs this plan: `docs/FEATURE_CHECKLIST.md`.
+
 ## Contents
 
 - [The pitch](#the-pitch)

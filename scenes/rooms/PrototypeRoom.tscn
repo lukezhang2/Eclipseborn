@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://prototype_room"]
+
+[ext_resource type="Script" path="res://scripts/world/PrototypeRoom.gd" id="1"]
+
+[node name="PrototypeRoom" type="Node2D"]
+script = ExtResource("1")

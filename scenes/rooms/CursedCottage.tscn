@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cursed_cottage"]
+
+[ext_resource type="Script" path="res://scripts/world/CursedCottage.gd" id="1"]
+
+[node name="CursedCottage" type="Node2D"]
+script = ExtResource("1")

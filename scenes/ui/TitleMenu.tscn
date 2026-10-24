@@ -1,0 +1,108 @@
+[gd_scene load_steps=2 format=3 uid="uid://title_menu"]
+
+[ext_resource type="Script" path="res://scripts/ui/TitleMenu.gd" id="1"]
+
+[node name="TitleMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.045, 0.06, 1)
+
+[node name="Steam" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.15, 0.12, 0.1, 0.25)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Main" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Center/Main"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+theme_override_colors/font_color = Color(0.92, 0.88, 0.8, 1)
+text = "UNBOUND"
+horizontal_alignment = 1
+
+[node name="Tag" type="Label" parent="Center/Main"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.65, 0.55, 0.4, 1)
+text = "You aren't moving platforms. You're changing what counts as a platform."
+horizontal_alignment = 1
+
+[node name="PlayButton" type="Button" parent="Center/Main"]
+layout_mode = 2
+text = "Play"
+
+[node name="ControlsButton" type="Button" parent="Center/Main"]
+layout_mode = 2
+text = "Controls"
+
+[node name="PlaySlots" type="VBoxContainer" parent="Center"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="Label" parent="Center/PlaySlots"]
+layout_mode = 2
+text = "Save Slots"
+horizontal_alignment = 1
+
+[node name="Slots" type="VBoxContainer" parent="Center/PlaySlots"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="Center/PlaySlots"]
+layout_mode = 2
+text = "Back"
+
+[node name="Controls" type="VBoxContainer" parent="Center"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="Center/Controls"]
+layout_mode = 2
+text = "Controls — click a key to rebind"
+horizontal_alignment = 1
+
+[node name="List" type="VBoxContainer" parent="Center/Controls"]
+layout_mode = 2
+
+[node name="ResetButton" type="Button" parent="Center/Controls"]
+layout_mode = 2
+text = "Reset Defaults"
+
+[node name="BackButton" type="Button" parent="Center/Controls"]
+layout_mode = 2
+text = "Back"
+
+[connection signal="pressed" from="Center/Main/PlayButton" to="." method="_on_play_pressed"]
+[connection signal="pressed" from="Center/Main/ControlsButton" to="." method="_on_controls_pressed"]
+[connection signal="pressed" from="Center/PlaySlots/BackButton" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="Center/Controls/ResetButton" to="." method="_on_reset_controls"]
+[connection signal="pressed" from="Center/Controls/BackButton" to="." method="_on_back_pressed"]
