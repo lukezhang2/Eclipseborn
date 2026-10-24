@@ -1,5 +1,7 @@
 extends Control
 
+const EDITOR_PASSWORD := "supers3cretadm1n"
+
 @onready var main_panel: VBoxContainer = $Center/Main
 @onready var play_panel: VBoxContainer = $Center/PlaySlots
 @onready var controls_panel: VBoxContainer = $Center/Controls
@@ -7,16 +9,107 @@ extends Control
 @onready var controls_list: VBoxContainer = $Center/Controls/List
 
 var _confirm_layer: Control = null
+var _pw_layer: Control = null
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	GameState.set_paused(false)
+	_ensure_gear_bg()
 	_hide_tagline()
 	_show_main()
 	_build_slots()
 	_build_controls()
+	_add_editor_hotspot()
 	InputMapManager.bindings_changed.connect(_build_controls)
+
+
+func _ensure_gear_bg() -> void:
+	if has_meta("embedded_boot") and get_meta("embedded_boot"):
+		var bg := get_node_or_null("BG")
+		if bg:
+			bg.visible = false
+		return
+	if get_node_or_null("GearBackdrop") != null:
+		return
+	var gears := GearBackdrop.new()
+	gears.name = "GearBackdrop"
+	gears.z_index = -5
+	add_child(gears)
+	move_child(gears, 0)
+	gears.build()
+	var bg := get_node_or_null("BG")
+	if bg:
+		bg.color = Color(0.05, 0.045, 0.06, 0.35)
+
+
+func _add_editor_hotspot() -> void:
+	var hot := Button.new()
+	hot.flat = true
+	hot.focus_mode = Control.FOCUS_NONE
+	hot.modulate.a = 0.01
+	hot.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	hot.offset_left = -48
+	hot.offset_top = -48
+	hot.offset_right = 0
+	hot.offset_bottom = 0
+	hot.tooltip_text = ""
+	hot.pressed.connect(_prompt_editor_password)
+	add_child(hot)
+
+
+func _prompt_editor_password() -> void:
+	if _pw_layer:
+		_pw_layer.queue_free()
+	_pw_layer = Control.new()
+	_pw_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.7)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pw_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pw_layer.add_child(center)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	center.add_child(box)
+	var label := Label.new()
+	label.text = "Editor access"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(label)
+	var edit := LineEdit.new()
+	edit.secret = true
+	edit.custom_minimum_size.x = 280
+	edit.placeholder_text = "Password"
+	box.add_child(edit)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(row)
+	var ok := Button.new()
+	ok.text = "Enter"
+	ok.add_theme_color_override("font_color", Color(0.15, 0.85, 0.35))
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.add_theme_color_override("font_color", Color(0.95, 0.25, 0.25))
+	row.add_child(ok)
+	row.add_child(cancel)
+	ok.pressed.connect(func() -> void:
+		if edit.text == EDITOR_PASSWORD:
+			_pw_layer.queue_free()
+			_pw_layer = null
+			get_tree().change_scene_to_file("res://scenes/editor/LevelEditor.tscn")
+		else:
+			label.text = "Wrong password"
+	)
+	cancel.pressed.connect(func() -> void:
+		_pw_layer.queue_free()
+		_pw_layer = null
+	)
+	edit.text_submitted.connect(func(_t: String) -> void:
+		ok.pressed.emit()
+	)
+	add_child(_pw_layer)
+	edit.grab_focus()
 
 
 func _hide_tagline() -> void:
@@ -125,7 +218,6 @@ func _show_confirm(message: String, yes_first: bool, on_yes: Callable) -> void:
 	no.add_theme_color_override("font_color", Color(0.95, 0.25, 0.25))
 	no.add_theme_color_override("font_hover_color", Color(1.0, 0.4, 0.4))
 
-	# First dialog: Yes then No. Second ("really sure"): buttons reversed.
 	if yes_first:
 		row.add_child(yes)
 		row.add_child(no)
@@ -154,18 +246,20 @@ func _build_controls() -> void:
 		name_l.text = InputMapManager.get_action_display(action)
 		name_l.custom_minimum_size.x = 160
 		row.add_child(name_l)
-		var key_btn := Button.new()
-		key_btn.text = InputMapManager.get_binding_text(action)
-		key_btn.pressed.connect(_on_rebind.bind(action, key_btn))
-		row.add_child(key_btn)
+		for slot in InputMapManager.MAX_SLOTS:
+			var key_btn := Button.new()
+			key_btn.custom_minimum_size.x = 88
+			key_btn.text = InputMapManager.get_slot_text(action, slot)
+			key_btn.pressed.connect(_on_rebind_slot.bind(action, slot, key_btn))
+			row.add_child(key_btn)
 		controls_list.add_child(row)
 
 
-func _on_rebind(action: String, btn: Button) -> void:
-	btn.text = "Press a key…"
-	InputMapManager.begin_rebind(action)
+func _on_rebind_slot(action: String, slot: int, btn: Button) -> void:
+	btn.text = "…"
+	InputMapManager.begin_rebind(action, slot)
 	await InputMapManager.bindings_changed
-	btn.text = InputMapManager.get_binding_text(action)
+	_build_controls()
 
 
 func _on_play_pressed() -> void:

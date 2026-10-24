@@ -86,6 +86,15 @@ func set_control_locked(locked: bool) -> void:
 		velocity = Vector2.ZERO
 
 
+## Clamped axis: opposing left/right cancel; never stacks above 1.
+func _get_move_axis() -> float:
+	var left := Input.get_action_strength("move_left")
+	var right := Input.get_action_strength("move_right")
+	if left > 0.0 and right > 0.0:
+		return 0.0
+	return clampf(right - left, -1.0, 1.0)
+
+
 func _physics_process(delta: float) -> void:
 	if GameState.is_paused or GameState.intro_cutscene_playing:
 		return
@@ -107,26 +116,21 @@ func _physics_process(delta: float) -> void:
 		_update_visual(0.0)
 		return
 
-	var attacking := _attack_phase != "none"
-	var dir := 0.0
-	if not attacking:
-		dir = Input.get_axis("move_left", "move_right")
-		if dir != 0.0:
-			facing = signf(dir)
-			if not Input.is_action_pressed("look_up") and not Input.is_action_pressed("look_down") and not crouching:
-				aim_dir = Vector2.RIGHT if facing > 0.0 else Vector2.LEFT
+	var dir := _get_move_axis()
+	if dir != 0.0:
+		facing = signf(dir)
+		if not Input.is_action_pressed("look_up") and not _wants_down_aim() and not crouching:
+			aim_dir = Vector2.RIGHT if facing > 0.0 else Vector2.LEFT
 
 	_pushing = false
 	_pulling = false
-	if dir != 0.0 and not attacking:
+	if dir != 0.0:
 		_try_move_boxes(dir, delta)
 
 	var speed := RUN_SPEED if Input.is_action_pressed("run") and not crouching else WALK_SPEED
 	if crouching:
 		speed *= CROUCH_MULT
-	if attacking:
-		velocity.x = move_toward(velocity.x, 0.0, speed * 4.0 * delta)
-	elif _bump_timer > 0.0:
+	if _bump_timer > 0.0:
 		_bump_timer -= delta
 		velocity.x = 0.0
 	else:
@@ -134,7 +138,7 @@ func _physics_process(delta: float) -> void:
 		if is_on_floor() and absf(dir) > 0.1:
 			AudioManager.play_walk()
 
-	if Input.is_action_just_pressed("jump") and not attacking and not crouching:
+	if Input.is_action_just_pressed("jump") and _attack_phase == "none" and not crouching:
 		_try_jump()
 	if Input.is_action_just_pressed("attack") and _attack_phase == "none":
 		_start_attack()
@@ -145,30 +149,36 @@ func _physics_process(delta: float) -> void:
 	_update_crouch_collision()
 
 
+func _wants_down_aim() -> bool:
+	if is_on_floor():
+		return crouching
+	return Input.is_action_pressed("look_down") or Input.is_action_pressed("crouch")
+
+
 func _update_aim_and_crouch() -> void:
-	crouching = Input.is_action_pressed("crouch") and is_on_floor() and _attack_phase == "none"
+	crouching = Input.is_action_pressed("crouch") and is_on_floor()
 	if _attack_phase != "none":
 		return
 	# Strict cardinal aim only — never diagonal.
 	if Input.is_action_pressed("look_up"):
 		aim_dir = Vector2.UP
-	elif Input.is_action_pressed("look_down") or crouching:
+	elif _wants_down_aim():
 		aim_dir = Vector2.DOWN
 	else:
 		aim_dir = Vector2.RIGHT if facing > 0.0 else Vector2.LEFT
 
 
 func _update_crouch_collision() -> void:
+	# Keep sprite feet planted; only shrink collider while crouching.
+	sprite.position.y = -28.0
 	if body_shape and body_shape.shape is CapsuleShape2D:
 		var cap := body_shape.shape as CapsuleShape2D
 		if crouching:
 			cap.height = 22.0
 			body_shape.position.y = -12.0
-			sprite.position.y = -18.0
 		else:
 			cap.height = 34.0
 			body_shape.position.y = -18.0
-			sprite.position.y = -28.0
 
 
 func _try_jump() -> void:
@@ -176,13 +186,11 @@ func _try_jump() -> void:
 		velocity.y = JUMP_VELOCITY
 		_jumps_remaining = 1 if GameState.has_double_jump else 0
 		AudioManager.play_jump()
-		_play_anim("jump")
 		return
 	if GameState.has_double_jump and _jumps_remaining > 0:
 		velocity.y = DOUBLE_JUMP_VELOCITY
 		_jumps_remaining -= 1
 		AudioManager.play_jump()
-		_play_anim("jump")
 
 
 func _try_move_boxes(dir: float, delta: float) -> void:
@@ -222,9 +230,11 @@ func _find_lamp_owner(node: Node) -> Node:
 
 
 func _start_attack() -> void:
+	# Ground down-slash requires crouch; air down-slash allowed without crouch.
+	if aim_dir == Vector2.DOWN and is_on_floor() and not crouching:
+		return
 	_attack_phase = "startup"
 	_attack_timer = ATTACK_STARTUP
-	# Face the slash direction for E/W; N/S keep facing.
 	if aim_dir == Vector2.RIGHT:
 		facing = 1.0
 		_play_anim("attack_east")
@@ -262,7 +272,6 @@ func _update_attack(delta: float) -> void:
 
 
 func _sync_hitbox() -> void:
-	# Pure cardinal offsets — never diagonal.
 	if aim_dir == Vector2.UP:
 		hitbox.position = Vector2(0, -40)
 		hitbox.rotation = 0
@@ -276,7 +285,6 @@ func _sync_hitbox() -> void:
 
 
 func _update_light_exposure(delta: float) -> void:
-	# Occlusion-aware: safe if any occluder blocks the light to our center.
 	_recompute_light_state()
 	if _in_vulnerable_light:
 		GameState.apply_light_exposure(delta, _active_light_kind as GameState.LightKind)
@@ -326,26 +334,36 @@ func _on_hurt(amount: int, _from: Node) -> void:
 	GameState.take_damage(amount)
 
 
+func _damage_suffix() -> String:
+	if not _in_vulnerable_light:
+		return ""
+	if GameState.shade <= 0.0:
+		return "_burn"
+	return "_shade"
+
+
 func _update_visual(dir: float) -> void:
 	visual.scale.x = facing
 	if _attack_phase != "none":
 		return
-	if GameState.shade <= 0.0 and _in_vulnerable_light:
-		_play_anim("light_burn")
-	elif _in_vulnerable_light and GameState.shade > 0.0:
-		_play_anim("shade_drain")
-	elif _pulling:
-		_play_anim("pull")
+	var base := "idle"
+	if _pulling:
+		base = "pull"
 	elif _pushing:
-		_play_anim("push")
+		base = "push"
 	elif crouching:
-		_play_anim("crouch_walk" if absf(dir) > 0.01 else "crouch")
+		base = "crouch_walk" if absf(dir) > 0.01 else "crouch"
 	elif not is_on_floor():
-		_play_anim("fall" if velocity.y > 40.0 else "jump")
+		base = "fall" if velocity.y > 40.0 else "jump"
 	elif absf(dir) > 0.01:
-		_play_anim("run" if Input.is_action_pressed("run") else "walk")
+		base = "run" if Input.is_action_pressed("run") else "walk"
 	else:
-		_play_anim("idle")
+		base = "idle"
+	var suffix := _damage_suffix()
+	var anim := base + suffix
+	if suffix != "" and sprite.sprite_frames and not sprite.sprite_frames.has_animation(anim):
+		anim = base
+	_play_anim(anim)
 
 
 func _play_anim(anim: String) -> void:

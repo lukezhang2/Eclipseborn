@@ -1,20 +1,32 @@
 extends RefCounted
 class_name SpiritSprites
-## Small shadow spirit: soft ovals, fill #11011c, outline #000000. Weapon for attacks.
+## Small shadow spirit: soft ovals, fill #11011c, outline #000000.
+## Run = walk frames faster. Damage adds head-dissipate wisps without canceling locomotion.
 
 
 const FILL := Color("11011c")
 const OUTLINE := Color("000000")
 const EYE := Color(0.95, 0.95, 0.93, 1.0)
 const WEAPON := Color(0.75, 0.78, 0.85, 1.0)
+const SHADE_WISP := Color(0.55, 0.35, 0.85, 0.85)
+const BURN_WISP := Color(0.95, 0.45, 0.2, 0.9)
 
 
 static func build_frames() -> SpriteFrames:
 	var frames := SpriteFrames.new()
-	var anims := {
-		"idle": [_draw(0, 0, 0, false, 0, 0), _draw(0, -1, 0, false, 0, 0), _draw(0, 0, 1, false, 0, 0), _draw(0, 1, 0, false, 0, 0)],
-		"walk": [_draw(0, 0, 0, false, 0, 1), _draw(0, 0, 0, false, 0, 2), _draw(0, 0, 0, false, 0, 3), _draw(0, 0, 0, false, 0, 4)],
-		"run": [_draw(1, 0, 0, false, 0, 1, true), _draw(1, 0, 0, false, 0, 2, true), _draw(1, 0, 0, false, 0, 3, true), _draw(1, 0, 0, false, 0, 4, true)],
+	var bases := {
+		"idle": [
+			_draw(0, 0, 0, false, 0, 0),
+			_draw(0, -1, 0, false, 0, 0),
+			_draw(0, 0, 1, false, 0, 0),
+			_draw(0, 1, 0, false, 0, 0),
+		],
+		"walk": [
+			_draw(0, 0, 0, false, 0, 1),
+			_draw(0, 0, 0, false, 0, 2),
+			_draw(0, 0, 0, false, 0, 3),
+			_draw(0, 0, 0, false, 0, 4),
+		],
 		"jump": [_draw(0, -2, 0, true, 0, 0)],
 		"fall": [_draw(0, 2, 0, true, 0, 0)],
 		"push": [_draw(2, 0, 0, false, 0, 0, false, true)],
@@ -23,29 +35,58 @@ static func build_frames() -> SpriteFrames:
 		"crouch": [_draw_crouch(0)],
 		"crouch_walk": [_draw_crouch(1), _draw_crouch(2)],
 		"attack_east": _attack(0),
-		"attack_west": _attack(0),  # flipped by sprite scale
+		"attack_west": _attack(0),
 		"attack_north": _attack(1),
 		"attack_south": _attack(-1),
-		"attack_forward": _attack(0),
-		"attack_up": _attack(1),
-		"attack_down": _attack(-1),
-		"shade_drain": [_draw(0, 0, 0, false, 0, 0, false, false, Color(0.55, 0.45, 0.7))],
-		"light_burn": [_draw(0, 0, 0, false, 0, 0, false, false, Color(0.7, 0.35, 0.25))],
 	}
-	for anim_name in anims.keys():
-		if frames.has_animation(anim_name):
-			frames.clear(anim_name)
-		else:
-			frames.add_animation(anim_name)
-		var loop: bool = anim_name in ["idle", "walk", "run", "crouch", "crouch_walk", "shade_drain", "light_burn"]
-		frames.set_animation_loop(anim_name, loop)
-		frames.set_animation_speed(anim_name, 10.0 if anim_name in ["walk", "run"] else 7.0)
-		if anim_name.begins_with("attack"):
-			frames.set_animation_speed(anim_name, 16.0)
-			frames.set_animation_loop(anim_name, false)
-		for img in anims[anim_name]:
-			frames.add_frame(anim_name, ImageTexture.create_from_image(img))
+	# Run shares walk frames (registered separately for speed).
+	bases["run"] = bases["walk"].duplicate()
+
+	for anim_name in bases.keys():
+		_add_anim(frames, anim_name, bases[anim_name], _speed_for(anim_name), anim_name in ["idle", "walk", "run", "crouch", "crouch_walk"])
+
+	# Layered shade/burn variants for locomotion bases.
+	var loco := ["idle", "walk", "run", "jump", "fall", "crouch", "crouch_walk", "push", "pull"]
+	for base_name in loco:
+		var src: Array = bases[base_name]
+		var shade_imgs: Array = []
+		var burn_imgs: Array = []
+		for i in src.size():
+			var phase := i % 4
+			shade_imgs.append(_with_dissipate(src[i], "shade", phase))
+			burn_imgs.append(_with_dissipate(src[i], "burn", phase))
+		_add_anim(frames, base_name + "_shade", shade_imgs, _speed_for(base_name), true)
+		_add_anim(frames, base_name + "_burn", burn_imgs, _speed_for(base_name), true)
+
+	# Legacy names kept for any leftover references.
+	_add_anim(frames, "shade_drain", [_with_dissipate(bases["idle"][0], "shade", 0)], 7.0, true)
+	_add_anim(frames, "light_burn", [_with_dissipate(bases["idle"][0], "burn", 0)], 7.0, true)
 	return frames
+
+
+static func _speed_for(anim_name: String) -> float:
+	match anim_name:
+		"idle":
+			return 4.2  # ~40% slower than prior 7.0
+		"walk", "crouch_walk":
+			return 10.0
+		"run":
+			return 18.0  # same frames, faster
+		_:
+			if anim_name.begins_with("attack"):
+				return 16.0
+			return 7.0
+
+
+static func _add_anim(frames: SpriteFrames, anim_name: String, imgs: Array, speed: float, loop: bool) -> void:
+	if frames.has_animation(anim_name):
+		frames.clear(anim_name)
+	else:
+		frames.add_animation(anim_name)
+	frames.set_animation_loop(anim_name, loop)
+	frames.set_animation_speed(anim_name, speed)
+	for img in imgs:
+		frames.add_frame(anim_name, ImageTexture.create_from_image(img))
 
 
 static func _attack(aim: int) -> Array:
@@ -70,12 +111,10 @@ static func _draw(
 	var cx := 24 + lean
 	var base := 52 + bob
 
-	# Soft cloak / body (tall oval) — Hollow Knight–ish small silhouette, no mask
 	var body_top := base - 28
 	_oval(img, cx, body_top + 10, 9, 14, fill, true)
 	_oval(img, cx, body_top + 10, 9, 14, OUTLINE, false)
 
-	# Head (rounder, slightly separate)
 	var hy := body_top - 2
 	if look > 0:
 		hy -= 1
@@ -83,63 +122,60 @@ static func _draw(
 		hy += 2
 	_oval(img, cx, hy, 8, 8, fill, true)
 	_oval(img, cx, hy, 8, 8, OUTLINE, false)
-	# Horn-like flame wisps (not a mask) — tiny twin tufts
 	_oval(img, cx - 4, hy - 7, 2, 3, fill, true)
 	_oval(img, cx + 4, hy - 7, 2, 3, fill, true)
 	_oval(img, cx - 4, hy - 7, 2, 3, OUTLINE, false)
 	_oval(img, cx + 4, hy - 7, 2, 3, OUTLINE, false)
-	# Eyes
 	var ey := hy - 1 + (1 if look < 0 else (-1 if look > 0 else 0))
 	_oval(img, cx - 3, ey, 2, 2, EYE, true)
 	_oval(img, cx + 3, ey, 2, 2, EYE, true)
 
-	# Legs — tapered ovals, not squares
-	var llx := cx - 4
-	var lrx := cx + 4
+	# Tight scuttle — legs stay under the cloak (1px lateral, small hop).
+	var llx := cx - 3
+	var lrx := cx + 3
 	var lly := base - 2
 	var lry := base - 2
 	match leg:
 		1:
-			llx -= 2
-			lry -= 3
+			llx -= 1
+			lly -= 1
+			lry += 0
 		2:
-			lrx += 2
-			lly -= 3
+			lrx += 1
+			lry -= 1
 		3:
 			llx -= 1
-			lry -= 2
+			lly -= 1
 		4:
 			lrx += 1
-			lly -= 2
+			lry -= 1
 	if air:
 		llx -= 1
-		lrx += 2
-		lly -= 2
-		lry -= 4
+		lrx += 1
+		lly -= 1
+		lry -= 2
 	if running:
-		llx -= 2
-		lrx += 3
-	_oval(img, llx, lly - 5, 3, 6, fill, true)
-	_oval(img, lrx, lry - 5, 3, 6, fill, true)
-	_oval(img, llx, lly - 5, 3, 6, OUTLINE, false)
-	_oval(img, lrx, lry - 5, 3, 6, OUTLINE, false)
+		# unused — run reuses walk frames
+		pass
+	_oval(img, llx, lly - 5, 2, 5, fill, true)
+	_oval(img, lrx, lry - 5, 2, 5, fill, true)
+	_oval(img, llx, lly - 5, 2, 5, OUTLINE, false)
+	_oval(img, lrx, lry - 5, 2, 5, OUTLINE, false)
 
-	# Arms / weapon
 	var arm_x := cx + (8 if shove else 6)
 	var arm_y := body_top + 8
 	if slash > 0:
 		_draw_weapon(img, cx, hy, look, slash)
 	else:
 		_oval(img, cx - 8, arm_y, 3, 5, fill, true)
-		_oval(img, arm_x, arm_y + ( -3 if look > 0 else (3 if look < 0 else 0)), 3, 5, fill, true)
+		_oval(img, arm_x, arm_y + (-3 if look > 0 else (3 if look < 0 else 0)), 3, 5, fill, true)
 		_oval(img, cx - 8, arm_y, 3, 5, OUTLINE, false)
-		_oval(img, arm_x, arm_y + ( -3 if look > 0 else (3 if look < 0 else 0)), 3, 5, OUTLINE, false)
+		_oval(img, arm_x, arm_y + (-3 if look > 0 else (3 if look < 0 else 0)), 3, 5, OUTLINE, false)
 
 	return img
 
 
 static func _draw_weapon(img: Image, cx: int, hy: int, look: int, phase: int) -> void:
-	## Short needle/blade — faces cardinal aim.
 	var tip := Vector2(cx + 6 + phase * 4, hy + 4)
 	var butt := Vector2(cx + 2, hy + 6)
 	if look > 0:
@@ -153,21 +189,41 @@ static func _draw_weapon(img: Image, cx: int, hy: int, look: int, phase: int) ->
 
 
 static func _draw_crouch(leg: int) -> Image:
+	## Squash in place — feet stay at same baseline as standing (base 52).
 	var img := Image.create(48, 64, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var cx := 24
-	var base := 54
-	_oval(img, cx, base - 14, 10, 10, FILL, true)
-	_oval(img, cx, base - 14, 10, 10, OUTLINE, false)
-	_oval(img, cx, base - 24, 7, 7, FILL, true)
-	_oval(img, cx, base - 24, 7, 7, OUTLINE, false)
-	_oval(img, cx - 3, base - 25, 2, 2, EYE, true)
-	_oval(img, cx + 3, base - 25, 2, 2, EYE, true)
+	var base := 52
+	# Wider, shorter body (squish), feet at base.
+	_oval(img, cx, base - 12, 12, 9, FILL, true)
+	_oval(img, cx, base - 12, 12, 9, OUTLINE, false)
+	_oval(img, cx, base - 22, 8, 6, FILL, true)
+	_oval(img, cx, base - 22, 8, 6, OUTLINE, false)
+	_oval(img, cx - 3, base - 23, 2, 2, EYE, true)
+	_oval(img, cx + 3, base - 23, 2, 2, EYE, true)
 	var ox := 1 if leg == 1 else (-1 if leg == 2 else 0)
-	_oval(img, cx - 5 + ox, base - 4, 3, 4, FILL, true)
-	_oval(img, cx + 5 - ox, base - 4, 3, 4, FILL, true)
-	_oval(img, cx - 5 + ox, base - 4, 3, 4, OUTLINE, false)
-	_oval(img, cx + 5 - ox, base - 4, 3, 4, OUTLINE, false)
+	_oval(img, cx - 4 + ox, base - 3, 3, 3, FILL, true)
+	_oval(img, cx + 4 - ox, base - 3, 3, 3, FILL, true)
+	_oval(img, cx - 4 + ox, base - 3, 3, 3, OUTLINE, false)
+	_oval(img, cx + 4 - ox, base - 3, 3, 3, OUTLINE, false)
+	return img
+
+
+static func _with_dissipate(src: Image, mode: String, phase: int) -> Image:
+	var img := Image.create(src.get_width(), src.get_height(), false, Image.FORMAT_RGBA8)
+	img.blit_rect(src, Rect2i(0, 0, src.get_width(), src.get_height()), Vector2i.ZERO)
+	var col := SHADE_WISP if mode == "shade" else BURN_WISP
+	# Head top ~ y 20–24 in 48x64 canvas; wisps rise and fade by phase.
+	var hx := 24
+	var hy := 20
+	for i in 3:
+		var rise := 3 + phase * 2 + i * 3
+		var spread := (i - 1) * (1 + phase % 2)
+		var rx := 2 + (2 - i)
+		var ry := 3 + i
+		var alpha := clampf(0.85 - float(phase) * 0.18 - float(i) * 0.2, 0.15, 0.9)
+		var c := Color(col.r, col.g, col.b, alpha)
+		_oval(img, hx + spread, hy - rise, rx, ry, c, true)
 	return img
 
 
@@ -198,4 +254,14 @@ static func _line_thick(img: Image, a: Vector2, b: Vector2, col: Color, thick: i
 static func _plot(img: Image, x: int, y: int, c: Color) -> void:
 	if x < 0 or y < 0 or x >= img.get_width() or y >= img.get_height():
 		return
-	img.set_pixel(x, y, c)
+	if c.a < 1.0:
+		var prev := img.get_pixel(x, y)
+		var a := c.a
+		img.set_pixel(x, y, Color(
+			c.r * a + prev.r * (1.0 - a),
+			c.g * a + prev.g * (1.0 - a),
+			c.b * a + prev.b * (1.0 - a),
+			minf(1.0, a + prev.a)
+		))
+	else:
+		img.set_pixel(x, y, c)
