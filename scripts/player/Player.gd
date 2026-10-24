@@ -145,7 +145,7 @@ func _physics_process(delta: float) -> void:
 		if is_on_floor() and absf(dir) > 0.1:
 			AudioManager.play_walk()
 
-	if Input.is_action_just_pressed("jump") and _attack_phase == "none" and not crouching:
+	if Input.is_action_just_pressed("jump") and not crouching:
 		_try_jump()
 	if Input.is_action_just_pressed("attack") and _attack_phase == "none":
 		_start_attack()
