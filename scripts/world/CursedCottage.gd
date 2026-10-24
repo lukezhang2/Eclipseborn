@@ -99,7 +99,7 @@ func _build_crate_room() -> void:
 	add_child(lamp)
 	var box := PushableBox.new()
 	box.position = Vector2(980, _box_y())
-	box.box_size = Vector2(48, 48)
+	box.box_size = Vector2(58, 58)  # ~1.2× of 48
 	add_child(box)
 
 
@@ -115,7 +115,7 @@ func _build_pull_room() -> void:
 
 	var box := PushableBox.new()
 	box.position = Vector2(backstop_x + 12 + 24, _box_y())
-	box.box_size = Vector2(48, 48)
+	box.box_size = Vector2(58, 58)
 	box.name = "PullCrate"
 	add_child(box)
 	LevelCommon.add_pipe(self, Vector2(1840, ROOF_BOTTOM + 80), Vector2(2140, ROOF_BOTTOM + 80), 8.0)

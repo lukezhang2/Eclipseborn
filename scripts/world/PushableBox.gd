@@ -2,8 +2,8 @@ extends StaticBody2D
 class_name PushableBox
 ## Moveable crate. Blocks light. Push by walking into it; pull with V nearby.
 
-@export var box_size: Vector2 = Vector2(48, 48)
-@export var push_speed: float = 140.0
+@export var box_size: Vector2 = Vector2(58, 58)
+@export var push_speed: float = 120.0
 
 var _visual: Sprite2D
 var _shake_time: float = 0.0

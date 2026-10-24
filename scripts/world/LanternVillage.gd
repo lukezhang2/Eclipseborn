@@ -1,5 +1,5 @@
 extends Node2D
-## Early hub. Floors are the shadow world; lamps cast burning light. Boxes block light.
+## Early hub. Floors are the shadow world; lamps cast burning light.
 
 
 const FLOOR_CENTER := 520.0
@@ -7,7 +7,6 @@ const FLOOR_H := 40.0
 const FLOOR_TOP := FLOOR_CENTER - FLOOR_H * 0.5  # 500
 const ROOF_TOP := 160.0
 const MAP_W := 3200.0
-## Canonical entry from the cottage hatch (Y always snapped to floor).
 const HATCH_SPAWN := Vector2(160, 460)
 
 
@@ -29,7 +28,6 @@ func _ready() -> void:
 
 	var wire_y := 90.0
 	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)
-	# Lanterns hang from the overhead wire.
 	LevelCommon.add_hanging_lantern(self, Vector2(280, wire_y))
 	LevelCommon.add_hanging_lantern(self, Vector2(720, wire_y))
 	LevelCommon.add_hanging_lantern(self, Vector2(1600, wire_y))
@@ -37,7 +35,7 @@ func _ready() -> void:
 	LevelCommon.add_bench(self, Vector2(450, FLOOR_TOP))
 	LevelCommon.add_steam_vent(self, Vector2(1050, FLOOR_TOP))
 
-	_build_houses_and_npcs()
+	_build_houses()
 	_build_light_puzzle()
 	_build_bg_gears_and_platforms()
 	_build_wander_enemies()
@@ -81,11 +79,9 @@ func _ready() -> void:
 	GameState.enter_room("lantern_village", "gate")
 	if not GameState.editor_playtesting:
 		SaveManager.autosave()
-	# Hatch transition owns fade-in on the root FX. Direct loads need no overlay.
 
 
 func _resolve_spawn() -> Vector2:
-	## Gate is on the left. Cottage hatch X (~3500) must never bleed into this map.
 	var spawn := Vector2(HATCH_SPAWN.x, FLOOR_TOP - 40.0)
 	if GameState.pending_spawn != Vector2.ZERO:
 		spawn.x = GameState.pending_spawn.x
@@ -94,7 +90,6 @@ func _resolve_spawn() -> Vector2:
 		spawn.x = HATCH_SPAWN.x
 	elif GameState.checkpoint_position != Vector2.ZERO:
 		var cx := GameState.checkpoint_position.x
-		# Valid in-village checkpoint only (reject cottage coordinates).
 		if cx >= 40.0 and cx <= MAP_W - 80.0:
 			spawn.x = cx
 	spawn.x = clampf(spawn.x, GameState.map_min_x + 40.0, MAP_W - 80.0)
@@ -105,14 +100,15 @@ func _resolve_spawn() -> Vector2:
 	return spawn
 
 
-func _build_houses_and_npcs() -> void:
+func _build_houses() -> void:
+	## Shopkeepers live inside — street only shows doors.
 	if not LevelData.is_removed("lantern_village", "house_keep"):
 		var h1 := House.new()
 		h1.position = Vector2(520, FLOOR_TOP)
 		h1.house_name = "Lantern Keep"
+		h1.house_id = "house_keep"
 		h1.width = 130.0
 		h1.height = 100.0
-		h1.interior_blurb = "Shelves of snuffed lanterns line the walls. A keeper's ledger ticks softly."
 		LevelData.tag(h1, "house_keep")
 		add_child(h1)
 
@@ -120,9 +116,9 @@ func _build_houses_and_npcs() -> void:
 		var h2 := House.new()
 		h2.position = Vector2(980, FLOOR_TOP)
 		h2.house_name = "Gearwright"
+		h2.house_id = "house_gear"
 		h2.width = 110.0
 		h2.height = 88.0
-		h2.interior_blurb = "Brass filings glitter on the workbench. Half-built walkway gears hang from hooks."
 		LevelData.tag(h2, "house_gear")
 		add_child(h2)
 
@@ -130,47 +126,11 @@ func _build_houses_and_npcs() -> void:
 		var h3 := House.new()
 		h3.position = Vector2(1780, FLOOR_TOP)
 		h3.house_name = "Shade Inn"
+		h3.house_id = "house_inn"
 		h3.width = 140.0
 		h3.height = 110.0
-		h3.interior_blurb = "Low tables, cool dark, and a hearth banked so it barely burns."
 		LevelData.tag(h3, "house_inn")
 		add_child(h3)
-
-	if not LevelData.is_removed("lantern_village", "npc_keeper"):
-		var n1 := NPC.new()
-		n1.position = Vector2(600, FLOOR_TOP)
-		n1.npc_name = "Keeper"
-		n1.lines = PackedStringArray([
-			"Stay in the umbra, traveler.",
-			"The lamps burn shade — duck under platforms.",
-			"The Clockwork Tower wakes at the far end.",
-		])
-		LevelData.tag(n1, "npc_keeper")
-		add_child(n1)
-
-	if not LevelData.is_removed("lantern_village", "npc_gear"):
-		var n2 := NPC.new()
-		n2.position = Vector2(1100, FLOOR_TOP)
-		n2.npc_name = "Gearwright"
-		n2.lines = PackedStringArray([
-			"Those background gears spin the walkways.",
-			"Push crates — wood drinks the light.",
-			"Silver gears buy favors… someday.",
-		])
-		LevelData.tag(n2, "npc_gear")
-		add_child(n2)
-
-	if not LevelData.is_removed("lantern_village", "npc_inn"):
-		var n3 := NPC.new()
-		n3.position = Vector2(1900, FLOOR_TOP)
-		n3.npc_name = "Innkeep"
-		n3.lines = PackedStringArray([
-			"Rest under the eaves if the hearth bites.",
-			"Wanderers stalk the square — careful.",
-			"Climb the tower when you're ready.",
-		])
-		LevelData.tag(n3, "npc_inn")
-		add_child(n3)
 
 
 func _build_light_puzzle() -> void:
@@ -183,13 +143,12 @@ func _build_light_puzzle() -> void:
 	add_child(lamp)
 
 	var crate := PushableBox.new()
-	crate.position = Vector2(1250, FLOOR_TOP - 28)
-	crate.box_size = Vector2(56, 56)
+	crate.position = Vector2(1250, FLOOR_TOP - 34)
+	crate.box_size = Vector2(67, 67)  # ~1.2× of 56
 	add_child(crate)
 
 
 func _build_bg_gears_and_platforms() -> void:
-	## Decorative BG gears (no collision) visually drive moving walkways.
 	var bg1 := LevelCommon.add_bg_gear(self, Vector2(1450, 300), 55.0, 18.0)
 	var plat1 := LevelCommon.add_steel_floor(self, 1550, FLOOR_TOP - 90, 140, 20)
 	var d1 := PlatformDriver.new()

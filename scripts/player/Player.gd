@@ -225,15 +225,16 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 			var box := collider as PushableBox
 			var n := col.get_normal()
 			if pulling:
-				if box.try_pull(global_position, dir, delta) == "pull":
-					_pulling = true
-					_attach_pull_pose(box, dir, delta)
+				# Only pull when walking away from the crate (no teleport snap).
+				var away := signf(global_position.x - box.global_position.x)
+				if dir != 0.0 and signf(dir) == away:
+					if box.try_pull(global_position, dir, delta) == "pull":
+						_pulling = true
+						facing = away
 			else:
-				# Side hit: mostly horizontal normal, and we're moving into the box.
 				if absf(n.x) < 0.55:
 					continue
 				if dir == 0.0 or signf(dir) == signf(n.x):
-					# Normal points from box toward player; push means walking against it.
 					continue
 				if box.try_push(global_position, dir, delta) == "push":
 					_pushing = true
@@ -243,9 +244,9 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 			if lamp and lamp.has_method("try_push") and absf(n2.x) >= 0.55 and dir != 0.0 and signf(dir) != signf(n2.x):
 				lamp.try_push(dir, delta)
 				_pushing = true
-	if not pulling:
+	if not pulling or dir == 0.0:
 		return
-	# Pull can use proximity (V while beside the crate).
+	# Proximity pull — walk away while holding V; box follows. No player teleport.
 	var nearest: PushableBox = null
 	var best := 9999.0
 	for node in get_tree().get_nodes_in_group("boxes"):
@@ -259,9 +260,14 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 		if d < best and d < box.box_size.x * 0.5 + 56.0:
 			best = d
 			nearest = box
-	if nearest and nearest.try_pull(global_position, dir, delta) == "pull":
+	if nearest == null:
+		return
+	var away2 := signf(global_position.x - nearest.global_position.x)
+	if signf(dir) != away2:
+		return
+	if nearest.try_pull(global_position, dir, delta) == "pull":
 		_pulling = true
-		_attach_pull_pose(nearest, dir, delta)
+		facing = away2
 
 
 func _try_enter_hatch() -> void:
@@ -270,15 +276,6 @@ func _try_enter_hatch() -> void:
 	for h in get_tree().get_nodes_in_group("enterable_hatches"):
 		if h.has_method("try_enter") and h.try_enter(self):
 			return
-
-
-func _attach_pull_pose(box: PushableBox, dir: float, delta: float) -> void:
-	## Snap beside the crate, face the pull direction (away from crate contact).
-	if dir == 0.0:
-		return
-	facing = signf(dir)
-	var target_x := box.pull_stand_x(facing)
-	global_position.x = move_toward(global_position.x, target_x, 220.0 * delta)
 
 
 func _find_lamp_owner(node: Node) -> Node:

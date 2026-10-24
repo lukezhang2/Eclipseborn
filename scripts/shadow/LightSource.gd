@@ -1,17 +1,23 @@
 extends Node2D
 class_name LightSource
-## A lamp / candle / moon shaft / crimson pane / sunshaft.
+## Lantern / lamp. Always draws a visible circumference; shadow fan excludes own body.
+
 
 @export var light_kind: GameState.LightKind = GameState.LightKind.HEARTH
-@export var radius: float = 420.0
-@export var shadow_length: float = 520.0
+@export var radius: float = 280.0
+@export var shadow_length: float = 320.0
 @export var is_enabled: bool = true
 @export var pushable: bool = true
 @export var push_speed: float = 90.0
+@export var show_radius_ring: bool = true
 
 var _last_pos: Vector2 = Vector2.ZERO
 var _visual: Node2D
-var _point_light: PointLight2D
+var _glass: Polygon2D
+var _ring: Line2D
+var _burn_shape: CircleShape2D
+var _body: AnimatableBody2D
+var _exclude_rids: Array = []
 
 
 func _ready() -> void:
@@ -19,15 +25,23 @@ func _ready() -> void:
 	_build_visual()
 	ShadowWorld.register_light(self)
 	add_to_group("lights")
-	add_to_group("pushable_lamps")
+	if pushable:
+		add_to_group("pushable_lamps")
+	call_deferred("_cache_exclude_rids")
+	ShadowWorld.mark_dirty()
 
 
 func _exit_tree() -> void:
 	ShadowWorld.unregister_light(self)
 
 
-func _physics_process(_delta: float) -> void:
-	pass
+func _cache_exclude_rids() -> void:
+	_exclude_rids.clear()
+	if _body:
+		_exclude_rids.append(_body.get_rid())
+		for c in _body.get_children():
+			if c is CollisionPolygon2D or c is CollisionShape2D:
+				_exclude_rids.append(c.get_rid())
 
 
 func did_move() -> bool:
@@ -43,13 +57,29 @@ func is_on() -> bool:
 
 func set_on(value: bool) -> void:
 	is_enabled = value
-	if _point_light:
-		_point_light.enabled = value
+	if _glass:
+		_glass.modulate.a = 1.0 if value else 0.35
+	if _ring:
+		_ring.visible = value and show_radius_ring
+	ShadowWorld.mark_dirty()
+
+
+func set_radius(value: float) -> void:
+	radius = clampf(value, 40.0, 900.0)
+	shadow_length = maxf(shadow_length, radius)
+	if _burn_shape:
+		_burn_shape.radius = radius
+	_rebuild_ring()
 	ShadowWorld.mark_dirty()
 
 
 func get_light_origin() -> Vector2:
-	return global_position
+	# Cast from the glass, not the collider interior.
+	return global_position + Vector2(0, -8)
+
+
+func get_exclude_rids() -> Array:
+	return _exclude_rids
 
 
 func get_shadow_length() -> float:
@@ -98,61 +128,60 @@ func _build_visual() -> void:
 	lamp.color = Color(0.35, 0.32, 0.28)
 	_visual.add_child(lamp)
 
-	var glass := Polygon2D.new()
-	glass.polygon = PackedVector2Array([
+	_glass = Polygon2D.new()
+	_glass.polygon = PackedVector2Array([
 		Vector2(-7, -14), Vector2(7, -14), Vector2(6, 4), Vector2(-6, 4)
 	])
-	glass.color = color_for_kind()
-	_visual.add_child(glass)
+	_glass.color = color_for_kind()
+	_visual.add_child(_glass)
 
-	_point_light = PointLight2D.new()
-	_point_light.color = color_for_kind()
-	_point_light.energy = 1.2
-	_point_light.texture_scale = radius / 128.0
-	_point_light.texture = _make_light_texture()
-	_point_light.enabled = is_enabled
-	add_child(_point_light)
+	_ring = Line2D.new()
+	_ring.width = 2.0
+	_ring.default_color = Color(color_for_kind().r, color_for_kind().g, color_for_kind().b, 0.55)
+	_ring.z_index = 5
+	_visual.add_child(_ring)
+	_rebuild_ring()
 
-	# Sensor area so the player can detect exposure.
 	var area := Area2D.new()
-	area.collision_layer = 64  # light_sensor
+	area.collision_layer = 64
 	area.collision_mask = 0
 	area.monitoring = false
 	area.monitorable = true
-	var shape := CircleShape2D.new()
-	shape.radius = radius
+	_burn_shape = CircleShape2D.new()
+	_burn_shape.radius = radius
 	var cs := CollisionShape2D.new()
-	cs.shape = shape
+	cs.shape = _burn_shape
+	cs.position = Vector2(0, -8)
 	area.add_child(cs)
 	area.name = "BurnArea"
 	area.set_meta("light_kind", light_kind)
 	area.set_meta("light_source", self)
 	add_child(area)
 
-	# Physics body so the spirit can walk into the lamp and slide it.
 	if pushable:
-		var body := AnimatableBody2D.new()
-		body.collision_layer = 8
-		body.collision_mask = 1
-		body.name = "LampBody"
+		_body = AnimatableBody2D.new()
+		_body.collision_layer = 8
+		_body.collision_mask = 1
+		_body.name = "LampBody"
 		var bpoly := CollisionPolygon2D.new()
 		bpoly.polygon = PackedVector2Array([
 			Vector2(-12, -18), Vector2(12, -18), Vector2(14, 12), Vector2(-14, 12)
 		])
-		body.add_child(bpoly)
-		add_child(body)
+		_body.add_child(bpoly)
+		add_child(_body)
 
 
-func _make_light_texture() -> Texture2D:
-	var img := Image.create(128, 128, false, Image.FORMAT_RGBA8)
-	var center := Vector2(64, 64)
-	for y in 128:
-		for x in 128:
-			var d := Vector2(x, y).distance_to(center) / 64.0
-			var a := clampf(1.0 - d, 0.0, 1.0)
-			a = a * a
-			img.set_pixel(x, y, Color(1, 1, 1, a))
-	return ImageTexture.create_from_image(img)
+func _rebuild_ring() -> void:
+	if _ring == null:
+		return
+	_ring.clear_points()
+	var col := color_for_kind()
+	_ring.default_color = Color(col.r, col.g, col.b, 0.55)
+	for i in 48:
+		var a := TAU * float(i) / 48.0
+		_ring.add_point(Vector2(cos(a), sin(a)) * radius + Vector2(0, -8))
+	_ring.add_point(_ring.get_point_position(0))
+	_ring.visible = is_enabled and show_radius_ring
 
 
 func try_push(direction: float, delta: float) -> void:

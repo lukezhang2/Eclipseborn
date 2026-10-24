@@ -37,8 +37,8 @@ static func _cottage() -> Array:
 	out.append(_p("platform_crate_room", "floor", "Cover Platform", 1120, FLOOR_TOP - 100, 180, 22))
 	out.append(_p("ledge_a", "floor", "Jump Ledge A", 2700, FLOOR_TOP - 55, 140, 22))
 	out.append(_p("ledge_b", "floor", "Jump Ledge B", 2840, FLOOR_TOP - 100, 100, 22))
-	out.append(_p("lamp_crate", "light", "Hearth Lamp (crate room)", 1120, FLOOR_TOP - 170, 48, 48))
-	out.append(_p("lamp_moon", "light", "Moon Lamp", 400, 258, 48, 48))
+	out.append(_plight("lamp_crate", "Hearth Lamp (crate room)", 1120, FLOOR_TOP - 170, 240))
+	out.append(_plight("lamp_moon", "Moon Lamp", 400, 258, 140))
 	out.append(_p("jar_a", "prop_breakable", "Glowing Jar A", 420, FLOOR_TOP - 18, 28, 36))
 	out.append(_p("jar_b", "prop_breakable", "Glowing Jar B", 1480, FLOOR_TOP - 18, 28, 36))
 	out.append(_p("jar_c", "prop_breakable", "Glowing Jar C", 2400, FLOOR_TOP - 18, 28, 36))
@@ -57,9 +57,9 @@ static func _village() -> Array:
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
 	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
 	out.append(_p("pipe_wire", "prop_pipe", "Overhead Wire", MAP_W * 0.5, 90, MAP_W - 120, 12))
-	out.append(_p("lantern_a", "prop_lantern", "Hanging Lantern A", 280, 90, 24, 90))
-	out.append(_p("lantern_b", "prop_lantern", "Hanging Lantern B", 720, 90, 24, 90))
-	out.append(_p("lantern_c", "prop_lantern", "Hanging Lantern C", 1600, 90, 24, 90))
+	out.append(_plight("lantern_a", "Hanging Lantern A", 280, 160, 120))
+	out.append(_plight("lantern_b", "Hanging Lantern B", 720, 160, 120))
+	out.append(_plight("lantern_c", "Hanging Lantern C", 1600, 160, 120))
 	out.append(_p("window_a", "prop_window", "Window", 360, 220, 44, 60))
 	out.append(_p("bench_a", "prop_bench", "Bench", 450, FLOOR_TOP, 60, 20))
 	out.append(_p("vent_a", "prop_vent", "Steam Vent", 1050, FLOOR_TOP, 36, 16))
@@ -70,8 +70,8 @@ static func _village() -> Array:
 	out.append(_p("npc_gear", "prop_npc", "NPC: Gearwright", 1100, FLOOR_TOP, 28, 48))
 	out.append(_p("npc_inn", "prop_npc", "NPC: Innkeep", 1900, FLOOR_TOP, 28, 48))
 	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, FLOOR_TOP - 28, 56, 56))
-	out.append(_p("lamp_puzzle", "light", "Pushable Hearth Lamp", 1300, 240, 48, 48))
-	out.append(_p("lamp_street", "light", "Street Lamp", 700, 280, 48, 48))
+	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1300, 240, 380))
+	out.append(_plight("lamp_street", "Street Lamp", 700, 280, 280))
 	out.append(_p("switch_street", "prop_switch", "Light Switch", 800, FLOOR_TOP - 20, 24, 40))
 	out.append(_p("platform_gear_a", "floor", "Moving Platform A", 1550, FLOOR_TOP - 90, 140, 20))
 	out.append(_p("platform_gear_b", "floor", "Moving Platform B", 2300, FLOOR_TOP - 130, 120, 20))
@@ -96,4 +96,19 @@ static func _p(id: String, kind: String, name: String, x: float, y: float, w: fl
 		"w": w,
 		"h": h,
 		"builtin": true,
+	}
+
+
+static func _plight(id: String, name: String, x: float, y: float, radius: float) -> Dictionary:
+	return {
+		"id": id,
+		"kind": "light",
+		"name": name,
+		"x": x,
+		"y": y,
+		"w": 48,
+		"h": 48,
+		"radius": radius,
+		"builtin": true,
+		"pushable": false,
 	}

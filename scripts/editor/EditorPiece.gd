@@ -92,9 +92,10 @@ func apply_dict(d: Dictionary) -> void:
 			kind = Kind.BACKGROUND
 		"light":
 			kind = Kind.LIGHT
-			light_radius = float(d.get("radius", 280))
+			light_radius = float(d.get("radius", light_radius if light_radius > 0.0 else 280.0))
 			light_kind = int(d.get("light_kind", 0))
 			pushable = bool(d.get("pushable", true))
+			display_name = str(d.get("name", display_name))
 		"floor", "block", "wall", "crate":
 			kind = Kind.BLOCK
 			set_meta("piece_kind", k)

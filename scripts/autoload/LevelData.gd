@@ -103,10 +103,10 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 		"light":
 			var lamp := LightSource.new()
 			lamp.position = pos
-			lamp.radius = float(p.get("radius", 280.0))
 			lamp.light_kind = int(p.get("light_kind", GameState.LightKind.HEARTH)) as GameState.LightKind
 			lamp.pushable = bool(p.get("pushable", true))
 			parent.add_child(lamp)
+			lamp.set_radius(float(p.get("radius", 280.0)))
 		"prop_bench":
 			LevelCommon.add_bench(parent, pos)
 		"prop_vent":

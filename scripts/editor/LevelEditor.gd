@@ -1,8 +1,10 @@
 extends Control
-## Level editor: loads the real zone catalog (named props), list + delete + move.
+## Level editor with SubViewport world, named catalog pieces, and editable lantern radius.
 
 
 enum Tool { SELECT, MOVE, RESIZE, DELETE }
+
+const PANEL_W := 320.0
 
 var zone_id: String = "cursed_cottage"
 var tool: Tool = Tool.SELECT
@@ -12,8 +14,12 @@ var _removed_ids: Array = []
 var _selected: EditorPiece = null
 var _world: Node2D
 var _cam: Camera2D
+var _viewport: SubViewport
+var _vp_container: SubViewportContainer
 var _piece_list: ItemList
 var _name_edit: LineEdit
+var _radius_spin: SpinBox
+var _radius_row: HBoxContainer
 var _status: Label
 var _tool_label: Label
 var _zone_option: OptionButton
@@ -21,22 +27,62 @@ var _panning: bool = false
 var _pan_last: Vector2 = Vector2.ZERO
 var _syncing_list: bool = false
 
-const PANEL_W := 300.0
-
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	_build_world()
-	_build_ui()
+	_build_layout()
 	_load_zone()
 
 
-func _build_world() -> void:
+func _build_layout() -> void:
+	var root := HBoxContainer.new()
+	root.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	root.add_theme_constant_override("separation", 0)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(root)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(PANEL_W, 0)
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(m, 10)
+	panel.add_child(margin)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	margin.add_child(scroll)
+
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 8)
+	scroll.add_child(col)
+	_build_sidebar(col)
+
+	_vp_container = SubViewportContainer.new()
+	_vp_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vp_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_vp_container.stretch = true
+	_vp_container.mouse_filter = Control.MOUSE_FILTER_STOP
+	_vp_container.gui_input.connect(_on_vp_gui_input)
+	root.add_child(_vp_container)
+
+	_viewport = SubViewport.new()
+	_viewport.size = Vector2i(960, 720)
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.handle_input_locally = true
+	_viewport.physics_object_picking = true
+	_vp_container.add_child(_viewport)
+
 	_world = Node2D.new()
 	_world.name = "World"
-	add_child(_world)
+	_viewport.add_child(_world)
 	var bg := Polygon2D.new()
 	bg.z_index = -100
 	bg.color = Color(0.05, 0.045, 0.06)
@@ -50,32 +96,7 @@ func _build_world() -> void:
 	_cam.make_current()
 
 
-func _build_ui() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "SidePanel"
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	panel.offset_right = PANEL_W
-	panel.offset_left = 0
-	add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	margin.add_child(scroll)
-
-	var col := VBoxContainer.new()
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_theme_constant_override("separation", 8)
-	scroll.add_child(col)
-
+func _build_sidebar(col: VBoxContainer) -> void:
 	var title := Label.new()
 	title.text = "Level Editor"
 	title.add_theme_font_size_override("font_size", 22)
@@ -83,27 +104,27 @@ func _build_ui() -> void:
 
 	var zone_row := HBoxContainer.new()
 	col.add_child(zone_row)
-	var zl := Label.new()
-	zl.text = "Zone"
-	zone_row.add_child(zl)
+	zone_row.add_child(_lbl("Zone"))
 	_zone_option = OptionButton.new()
 	_zone_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_zone_option.add_item("cursed_cottage", 0)
 	_zone_option.add_item("lantern_village", 1)
-	_zone_option.item_selected.connect(_on_zone_selected)
+	_zone_option.item_selected.connect(func(i: int) -> void:
+		zone_id = _zone_option.get_item_text(i)
+		_load_zone()
+	)
 	zone_row.add_child(_zone_option)
 
-	col.add_child(_section("Pieces in zone"))
+	col.add_child(_section("Pieces"))
 	_piece_list = ItemList.new()
-	_piece_list.custom_minimum_size = Vector2(260, 220)
-	_piece_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_piece_list.custom_minimum_size = Vector2(280, 200)
 	_piece_list.item_selected.connect(_on_list_selected)
 	col.add_child(_piece_list)
 
 	var sel_row := HBoxContainer.new()
 	col.add_child(sel_row)
 	_name_edit = LineEdit.new()
-	_name_edit.placeholder_text = "Selected name"
+	_name_edit.placeholder_text = "Name"
 	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_edit.text_submitted.connect(func(t: String) -> void:
 		if _selected:
@@ -118,34 +139,55 @@ func _build_ui() -> void:
 	del.pressed.connect(_delete_selected)
 	sel_row.add_child(del)
 
+	_radius_row = HBoxContainer.new()
+	_radius_row.visible = false
+	col.add_child(_radius_row)
+	_radius_row.add_child(_lbl("Lantern radius"))
+	_radius_spin = SpinBox.new()
+	_radius_spin.min_value = 40
+	_radius_spin.max_value = 900
+	_radius_spin.step = 10
+	_radius_spin.value = 280
+	_radius_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_radius_spin.value_changed.connect(func(v: float) -> void:
+		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
+			_selected.light_radius = v
+			_selected._rebuild()
+			_selected.set_selected(true)
+	)
+	_radius_row.add_child(_radius_spin)
+
 	col.add_child(_section("Tools"))
 	var tools := HBoxContainer.new()
 	col.add_child(tools)
-	_tool_btn(tools, "Select", Tool.SELECT)
-	_tool_btn(tools, "Move", Tool.MOVE)
-	_tool_btn(tools, "Resize", Tool.RESIZE)
-	_tool_btn(tools, "Delete", Tool.DELETE)
+	for pair in [["Select", Tool.SELECT], ["Move", Tool.MOVE], ["Resize", Tool.RESIZE], ["Delete", Tool.DELETE]]:
+		var b := Button.new()
+		b.text = pair[0]
+		var t: Tool = pair[1]
+		b.pressed.connect(func() -> void:
+			tool = t
+			_tool_label.text = "Tool: %s" % pair[0]
+		)
+		tools.add_child(b)
 	_tool_label = Label.new()
-	_tool_label.text = "Tool: Select — click a piece or pick from the list"
 	_tool_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_tool_label.text = "Tool: Select — click world or list"
 	col.add_child(_tool_label)
 
-	col.add_child(_section("Add piece"))
+	col.add_child(_section("Add"))
 	var add_row := HBoxContainer.new()
 	col.add_child(add_row)
 	var add_opt := OptionButton.new()
 	add_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for item in [
-		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Pushable crate"],
-		["light", "Lamp"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"],
-		["prop_crate", "Decor crate"], ["prop_checkpoint", "Checkpoint"],
+		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Crate"],
+		["light", "Lantern"], ["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
 	]:
 		add_opt.add_item(item[1])
 		add_opt.set_item_metadata(add_opt.item_count - 1, item[0])
 	add_opt.item_selected.connect(func(i: int) -> void:
 		_palette_id = str(add_opt.get_item_metadata(i))
 	)
-	_palette_id = "floor"
 	add_row.add_child(add_opt)
 	var add_btn := Button.new()
 	add_btn.text = "Add"
@@ -170,9 +212,15 @@ func _build_ui() -> void:
 
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(260, 80)
-	_status.text = "MMB pan · wheel zoom · list shows every named prop in the zone."
+	_status.custom_minimum_size = Vector2(280, 70)
+	_status.text = "MMB pan · wheel zoom · select a lantern to edit radius."
 	col.add_child(_status)
+
+
+func _lbl(t: String) -> Label:
+	var l := Label.new()
+	l.text = t
+	return l
 
 
 func _section(t: String) -> Label:
@@ -180,21 +228,6 @@ func _section(t: String) -> Label:
 	l.text = t
 	l.add_theme_color_override("font_color", Color(0.75, 0.7, 0.55))
 	return l
-
-
-func _tool_btn(parent: HBoxContainer, text: String, t: Tool) -> void:
-	var b := Button.new()
-	b.text = text
-	b.pressed.connect(func() -> void:
-		tool = t
-		_tool_label.text = "Tool: %s" % text
-	)
-	parent.add_child(b)
-
-
-func _on_zone_selected(idx: int) -> void:
-	zone_id = _zone_option.get_item_text(idx)
-	_load_zone()
 
 
 func _clear_pieces() -> void:
@@ -209,22 +242,45 @@ func _load_zone() -> void:
 	_clear_pieces()
 	var data := LevelData.load_raw(zone_id)
 	_removed_ids = data.get("removed_ids", []).duplicate()
-	# Prefer saved piece layout; otherwise load the live zone catalog.
-	var raw_pieces: Array = data.get("pieces", [])
-	var source: Array = raw_pieces if raw_pieces.size() > 0 else ZoneCatalog.pieces_for(zone_id)
-	for raw in source:
+	var overrides := {}
+	for raw in data.get("pieces", []):
 		if typeof(raw) != TYPE_DICTIONARY:
 			continue
-		var id := str(raw.get("id", ""))
+		var oid := str(raw.get("id", ""))
+		if oid != "":
+			overrides[oid] = raw
+	# Always seed from the live catalog so the zone is never empty.
+	for cat in ZoneCatalog.pieces_for(zone_id):
+		var id := str(cat.get("id", ""))
 		if id != "" and _removed_ids.has(id):
 			continue
-		var piece := EditorPiece.new()
-		_world.add_child(piece)
-		piece.apply_dict(raw)
-		_pieces.append(piece)
+		var merged: Dictionary = cat.duplicate(true)
+		if overrides.has(id):
+			var ov: Dictionary = overrides[id]
+			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable"]:
+				if ov.has(key):
+					merged[key] = ov[key]
+			overrides.erase(id)
+		_spawn_piece_dict(merged)
+	# Extra user-added pieces (non-catalog).
+	for id in overrides.keys():
+		var raw: Dictionary = overrides[id]
+		if bool(raw.get("builtin", false)):
+			continue
+		_spawn_piece_dict(raw)
 	_cam.position = Vector2(700, 360)
 	_refresh_list()
-	_status.text = "Loaded %s — %d pieces (%d removed hidden)." % [zone_id, _pieces.size(), _removed_ids.size()]
+	_status.text = "Loaded %s — %d pieces." % [zone_id, _pieces.size()]
+
+
+func _spawn_piece_dict(d: Dictionary) -> void:
+	var piece := EditorPiece.new()
+	_world.add_child(piece)
+	piece.apply_dict(d)
+	if str(d.get("kind", "")) == "light" and d.has("radius"):
+		piece.light_radius = float(d.get("radius", 280))
+		piece._rebuild()
+	_pieces.append(piece)
 
 
 func _refresh_list() -> void:
@@ -232,12 +288,22 @@ func _refresh_list() -> void:
 	_piece_list.clear()
 	for i in _pieces.size():
 		var p := _pieces[i]
-		var label := "%s  [%s]" % [p.display_name, p.piece_id]
-		_piece_list.add_item(label)
+		var extra := ""
+		if p.kind == EditorPiece.Kind.LIGHT:
+			extra = "  r=%.0f" % p.light_radius
+		_piece_list.add_item("%s [%s]%s" % [p.display_name, p.piece_id, extra])
 		if p == _selected:
 			_piece_list.select(i)
 	_syncing_list = false
+	_update_inspector()
+
+
+func _update_inspector() -> void:
 	_name_edit.text = _selected.display_name if _selected else ""
+	var is_light := _selected != null and _selected.kind == EditorPiece.Kind.LIGHT
+	_radius_row.visible = is_light
+	if is_light:
+		_radius_spin.value = _selected.light_radius
 
 
 func _on_list_selected(index: int) -> void:
@@ -253,9 +319,6 @@ func _select(piece: EditorPiece) -> void:
 	_selected = piece
 	if _selected:
 		_selected.set_selected(true)
-		_name_edit.text = _selected.display_name
-	else:
-		_name_edit.text = ""
 	_refresh_list()
 
 
@@ -271,34 +334,29 @@ func _delete_selected() -> void:
 	if is_instance_valid(doomed):
 		doomed.queue_free()
 	_refresh_list()
-	_status.text = "Deleted '%s'. Save to keep it removed from the zone." % id
+	_status.text = "Deleted '%s'." % id
 	_save()
 
 
 func _add_piece() -> void:
-	var piece := EditorPiece.new()
-	_world.add_child(piece)
-	var pos := _cam.position + Vector2(40, 20)
 	var d := {
 		"id": "%s_%d" % [_palette_id, Time.get_ticks_msec()],
 		"name": _palette_id.replace("prop_", "").capitalize(),
 		"kind": _palette_id,
-		"x": pos.x,
-		"y": pos.y,
+		"x": _cam.position.x + 40,
+		"y": _cam.position.y + 20,
 		"w": 96 if _palette_id == "floor" else 48,
 		"h": 32 if _palette_id == "floor" else 48,
 		"builtin": false,
 	}
-	if _palette_id == "prop_checkpoint":
-		d["name"] = "Checkpoint"
-		d["w"] = 56
-		d["h"] = 24
-	piece.apply_dict(d)
-	_pieces.append(piece)
-	_select(piece)
+	if _palette_id == "light":
+		d["name"] = "Lantern"
+		d["radius"] = 280
+		d["pushable"] = true
+	_spawn_piece_dict(d)
+	_select(_pieces.back())
 	tool = Tool.MOVE
 	_tool_label.text = "Tool: Move"
-	_status.text = "Added %s — drag to place." % piece.display_name
 
 
 func _build_data() -> Dictionary:
@@ -310,9 +368,7 @@ func _build_data() -> Dictionary:
 
 func _save() -> void:
 	var err := LevelData.save_raw(zone_id, _build_data(), false)
-	_status.text = "Saved %s locally (%d pieces, %d removed). %s" % [
-		zone_id, _pieces.size(), _removed_ids.size(), "ok" if err == OK else str(err)
-	]
+	_status.text = "Saved %s (%d pieces). %s" % [zone_id, _pieces.size(), "ok" if err == OK else str(err)]
 
 
 func _playtest() -> void:
@@ -331,59 +387,61 @@ func _playtest() -> void:
 			get_tree().change_scene_to_file("res://scenes/rooms/CursedCottage.tscn")
 
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE:
-			if _selected and not _over_panel():
-				_delete_selected()
-				get_viewport().set_input_as_handled()
-				return
+func _on_vp_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if _over_panel() and mb.button_index == MOUSE_BUTTON_LEFT:
-			return
 		if mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_panning = mb.pressed
 			_pan_last = mb.position
-			get_viewport().set_input_as_handled()
+			_vp_container.accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
-			_cam.zoom = (_cam.zoom * 1.1).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
-			get_viewport().set_input_as_handled()
+			_cam.zoom = (_cam.zoom * 1.1).clamp(Vector2(0.2, 0.2), Vector2(4, 4))
+			_vp_container.accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			_cam.zoom = (_cam.zoom * 0.9).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
-			get_viewport().set_input_as_handled()
+			_cam.zoom = (_cam.zoom * 0.9).clamp(Vector2(0.2, 0.2), Vector2(4, 4))
+			_vp_container.accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_LEFT:
-			var world := _screen_to_world(mb.position)
+			var world := _vp_to_world(mb.position)
 			if mb.pressed:
 				_on_click(world)
 			elif _selected and tool != Tool.DELETE:
 				_selected.end_interact()
-			get_viewport().set_input_as_handled()
+			_vp_container.accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		if _panning:
 			_cam.position -= (mm.position - _pan_last) / _cam.zoom
 			_pan_last = mm.position
-			get_viewport().set_input_as_handled()
+			_vp_container.accept_event()
 			return
-		if _selected == null or tool == Tool.DELETE or _over_panel():
+		if _selected == null or tool == Tool.DELETE:
 			return
-		var world := _screen_to_world(mm.position)
+		var world := _vp_to_world(mm.position)
 		if tool == Tool.MOVE or _selected._dragging:
 			_selected.drag_to(world)
 		elif tool == Tool.RESIZE or _selected._resizing:
 			_selected.resize_to(world)
+		_vp_container.accept_event()
+	elif event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE:
+			if _selected:
+				_delete_selected()
+				_vp_container.accept_event()
 
 
-func _over_panel() -> bool:
-	return get_viewport().get_mouse_position().x < PANEL_W
-
-
-func _screen_to_world(screen: Vector2) -> Vector2:
-	return get_viewport().get_canvas_transform().affine_inverse() * screen
+func _vp_to_world(local_pos: Vector2) -> Vector2:
+	## Convert SubViewportContainer-local mouse into world coords.
+	var vp_size := Vector2(_viewport.size)
+	var cont_size := _vp_container.size
+	if cont_size.x < 1.0 or cont_size.y < 1.0:
+		return _cam.position
+	var scale := vp_size / cont_size
+	var vp_pixel := local_pos * scale
+	var canvas := _viewport.get_canvas_transform()
+	return canvas.affine_inverse() * vp_pixel
 
 
 func _on_click(world: Vector2) -> void:

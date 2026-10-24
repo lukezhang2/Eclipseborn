@@ -5,7 +5,7 @@ class_name CurrencyPickup
 const PICKUP_RADIUS := 52.0
 const MAGNET_RADIUS := 90.0
 const VALUE := 1
-const PICKUP_DELAY := 1.0
+const PICKUP_DELAY := 0.5
 const BODY_RADIUS := 8.0
 
 var pop_velocity: Vector2 = Vector2.ZERO
