@@ -21,6 +21,14 @@ static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, he
 	spr.scale = Vector2(width / float(spr.texture.get_width()), height / float(spr.texture.get_height()))
 	spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	body.add_child(spr)
+	# Solid floors/platforms occlude light (backgrounds do not).
+	var hx := width * 0.5
+	var hy := height * 0.5
+	var occ := ShadowOccluder.new()
+	occ.local_polygon = PackedVector2Array([
+		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
+	])
+	body.add_child(occ)
 	body.set_meta("editor_kind", "floor")
 	body.set_meta("editor_size", Vector2(width, height))
 	parent.add_child(body)
@@ -84,8 +92,25 @@ static func add_wall(parent: Node2D, x: float, y: float, width: float, height: f
 	])
 	poly.color = Color(0.17, 0.15, 0.14)
 	body.add_child(poly)
+	var occ := ShadowOccluder.new()
+	occ.local_polygon = poly.polygon
+	body.add_child(occ)
 	parent.add_child(body)
 	return body
+
+
+static func configure_camera(player: Node2D, roof_y: float, floor_bottom: float, map_min_x: float, map_max_x: float) -> void:
+	## Lock vertical framing so the roof sits at the top of the player's vision.
+	var cam := player.get_node_or_null("Camera2D") as Camera2D
+	if cam == null:
+		return
+	cam.limit_top = int(roof_y)
+	cam.limit_bottom = int(floor_bottom)
+	cam.limit_left = int(map_min_x - 20)
+	cam.limit_right = int(map_max_x + 20)
+	# Keep camera a bit high so roof hugs the top edge while standing.
+	cam.position = Vector2(0, -20)
+	cam.zoom = Vector2(1.35, 1.35)
 
 
 static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float, height: float) -> void:
@@ -259,11 +284,11 @@ static func add_steam_vent(parent: Node2D, pos: Vector2) -> void:
 	parent.add_child(puff)
 
 
-static func add_backdrop(parent: Node2D, width: float, height: float, floor_top: float = 500.0) -> void:
+static func add_backdrop(parent: Node2D, width: float, height: float, floor_top: float = 500.0, roof_top: float = 180.0) -> void:
 	## Playfield fill (below sky fire). Far silhouettes read as background, not solids.
 	var bg := Polygon2D.new()
 	bg.polygon = PackedVector2Array([
-		Vector2(0, 60), Vector2(width, 60), Vector2(width, height), Vector2(0, height)
+		Vector2(0, roof_top), Vector2(width, roof_top), Vector2(width, height), Vector2(0, height)
 	])
 	bg.color = Color(0.06, 0.05, 0.07)
 	bg.z_index = -18
@@ -294,7 +319,7 @@ static func add_backdrop(parent: Node2D, width: float, height: float, floor_top:
 			parent.add_child(win)
 		x += bw + randf_range(30, 80)
 	var sky := BlackFireSky.new()
-	sky.setup(width, floor_top)
+	sky.setup(width, floor_top, roof_top)
 	parent.add_child(sky)
 
 

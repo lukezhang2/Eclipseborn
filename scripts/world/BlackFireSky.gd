@@ -4,32 +4,34 @@ class_name BlackFireSky
 
 
 var floor_top: float = 500.0
+var roof_top: float = 180.0
 var map_width: float = 4000.0
 var _flames: Array = []
 var _t: float = 0.0
 
 
-func setup(width: float, floor_y_top: float) -> void:
+func setup(width: float, floor_y_top: float, roof_y_top: float = 180.0) -> void:
 	map_width = width
 	floor_top = floor_y_top
+	roof_top = roof_y_top
 	z_index = -25
 	_build()
 
 
 func _build() -> void:
-	# Deep void above the playfield only (y from -80 to just above ceiling strip).
+	# Void + fire only ABOVE the roof — never under the floor.
 	var void_poly := Polygon2D.new()
 	void_poly.polygon = PackedVector2Array([
 		Vector2(-200, -120), Vector2(map_width + 200, -120),
-		Vector2(map_width + 200, 70), Vector2(-200, 70)
+		Vector2(map_width + 200, roof_top), Vector2(-200, roof_top)
 	])
 	void_poly.color = Color(0.02, 0.01, 0.03, 1.0)
 	add_child(void_poly)
 
-	# Flame tongues along the top edge of the sky band (screen-top of the outside).
+	# Flame tongues along the top edge of the outside (at the roof line).
 	for i in 48:
 		var flame := Node2D.new()
-		flame.position = Vector2(i * (map_width / 40.0) - 40.0, 8.0 + randf_range(-6, 10))
+		flame.position = Vector2(i * (map_width / 40.0) - 40.0, roof_top - 4.0 + randf_range(-4, 6))
 		flame.set_meta("phase", randf() * TAU)
 		flame.set_meta("speed", randf_range(2.5, 5.0))
 		flame.set_meta("h", randf_range(28.0, 55.0))

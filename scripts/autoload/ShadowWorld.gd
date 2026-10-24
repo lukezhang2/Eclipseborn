@@ -1,8 +1,12 @@
 extends Node
-## Inverted light model: the map is shadow (solid floors). Lights cast burning light.
-## Occluders block light, creating safe pockets. No extruded shadow platforms.
+## Lights are hard-cut by solid occluders (floors, walls, platforms, boxes, props).
+## Backgrounds have no collision/occluders so they do not block light.
 
 signal shadows_rebuilt
+
+const RAY_COUNT := 64
+## World solids + boxes
+const OCCLUDER_MASK := 1 | 8
 
 var lights: Array = []
 var occluders: Array = []
@@ -62,9 +66,8 @@ func rebuild() -> void:
 	lights = lights.filter(func(n): return is_instance_valid(n))
 	occluders = occluders.filter(func(n): return is_instance_valid(n))
 
-	# Soft ambient shadow wash over the playfield (the world is dark).
 	var wash := Polygon2D.new()
-	wash.color = Color(0.08, 0.05, 0.12, 0.22)
+	wash.color = Color(0.08, 0.05, 0.12, 0.2)
 	wash.polygon = PackedVector2Array([
 		Vector2(-200, -200), Vector2(5000, -200), Vector2(5000, 900), Vector2(-200, 900)
 	])
@@ -75,77 +78,84 @@ func rebuild() -> void:
 	for light in lights:
 		if not light.is_on():
 			continue
-		_draw_light_disc(light)
-		for occ in occluders:
-			_draw_safe_umbra(light, occ)
+		_draw_occluded_light(light)
 
 	shadows_rebuilt.emit()
 
 
-func _draw_light_disc(light: Node) -> void:
-	## Clear danger volume — bright core + warm ring so players see where they cannot stand.
+func _draw_occluded_light(light: Node) -> void:
+	## Raycast a fan from the light; each ray stops at the first solid hit (sketch: gap under platform).
 	var origin: Vector2 = light.get_light_origin()
 	var radius: float = light.get_radius()
 	var kind: int = light.get_light_kind()
 	var burns := kind in [GameState.LightKind.HEARTH, GameState.LightKind.CANDLE, GameState.LightKind.SUNSHAFT]
-	var core := Color(1.0, 0.72, 0.28, 0.28 if burns else 0.1)
-	var rim := Color(1.0, 0.45, 0.12, 0.42 if burns else 0.12)
+	var core := Color(1.0, 0.72, 0.28, 0.32 if burns else 0.12)
 	match kind:
 		GameState.LightKind.MOON:
-			core = Color(0.65, 0.85, 1.0, 0.12)
-			rim = Color(0.5, 0.7, 1.0, 0.18)
+			core = Color(0.65, 0.85, 1.0, 0.14)
 		GameState.LightKind.CRIMSON:
-			core = Color(0.95, 0.2, 0.25, 0.22)
-			rim = Color(0.8, 0.1, 0.15, 0.35)
+			core = Color(0.95, 0.2, 0.25, 0.26)
 		GameState.LightKind.SUNSHAFT:
-			core = Color(1.0, 1.0, 0.85, 0.32)
-			rim = Color(1.0, 0.9, 0.5, 0.45)
-	# Soft fill
+			core = Color(1.0, 1.0, 0.85, 0.36)
+
+	var space := _root.get_world_2d().direct_space_state
+	var pts := PackedVector2Array()
+	pts.append(origin)
+	for i in RAY_COUNT:
+		var a := TAU * float(i) / float(RAY_COUNT)
+		var dir := Vector2(cos(a), sin(a))
+		var to := origin + dir * radius
+		var q := PhysicsRayQueryParameters2D.create(origin, to)
+		q.collision_mask = OCCLUDER_MASK
+		q.hit_from_inside = true
+		var hit := space.intersect_ray(q)
+		if hit.is_empty():
+			pts.append(to)
+		else:
+			# Stop just before the surface so the occluder itself stays dark underneath.
+			var hit_pos: Vector2 = hit.position
+			pts.append(hit_pos - dir * 0.5)
+
 	var fill := Polygon2D.new()
 	fill.color = core
 	fill.z_index = -12
-	fill.polygon = _circle_pts(origin, radius, 28)
+	fill.polygon = pts
 	_root.add_child(fill)
 	_visuals.append(fill)
-	# Danger ring (outer edge)
+
+	# Outline of the cut light shape
 	var ring := Line2D.new()
-	ring.width = 3.0
-	ring.default_color = rim
+	ring.width = 2.0
+	ring.default_color = Color(core.r, core.g, core.b, mini(0.7, core.a + 0.25))
 	ring.z_index = -11
-	for p in _circle_pts(origin, radius, 36):
-		ring.add_point(p)
-	ring.add_point(ring.get_point_position(0))
+	for i in range(1, pts.size()):
+		ring.add_point(pts[i])
+	if pts.size() > 1:
+		ring.add_point(pts[1])
 	_root.add_child(ring)
 	_visuals.append(ring)
-	if burns:
-		var warn := Label.new()
-		warn.text = "!"
-		warn.position = origin + Vector2(-6, -radius * 0.15)
-		warn.z_index = -10
-		warn.add_theme_font_size_override("font_size", 18)
-		warn.add_theme_color_override("font_color", Color(1.0, 0.55, 0.2, 0.65))
-		_root.add_child(warn)
-		_visuals.append(warn)
+
+	# Soft umbra wedges behind occluders (extra dark safe pocket under platforms)
+	for occ in occluders:
+		_draw_umbra_wedge(light, occ, origin, radius)
 
 
-func _circle_pts(origin: Vector2, radius: float, n: int) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for i in n:
-		var a := TAU * float(i) / float(n)
-		pts.append(origin + Vector2(cos(a), sin(a)) * radius)
-	return pts
-
-
-func _draw_safe_umbra(light: Node, occ: Node) -> void:
-	## Soft safe pocket only — no hard extruded box-shadow wedges.
-	## Skip box occluders entirely (boxes still block light via physics ray).
-	if occ.get_parent() != null and occ.get_parent().is_in_group("boxes"):
+func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float) -> void:
+	if not occ.has_method("get_world_polygon"):
 		return
 	var poly: PackedVector2Array = occ.get_world_polygon()
 	if poly.size() < 3:
 		return
-	var light_pos: Vector2 = light.get_light_origin()
-	var max_len: float = light.get_shadow_length() * 0.55
+	# Only if occluder is within light radius
+	var near := false
+	for p in poly:
+		if p.distance_to(light_pos) <= radius * 1.15:
+			near = true
+			break
+	if not near:
+		return
+	var max_len: float = light.get_shadow_length() if light.has_method("get_shadow_length") else radius
+	max_len = mini(max_len, radius * 1.2)
 	var n := poly.size()
 	for i in n:
 		var a := poly[i]
@@ -153,16 +163,31 @@ func _draw_safe_umbra(light: Node, occ: Node) -> void:
 		var mid := (a + b) * 0.5
 		var edge_dir := (b - a).normalized()
 		var normal := Vector2(-edge_dir.y, edge_dir.x)
-		if normal.dot((mid - light_pos).normalized()) <= 0.0:
+		# Face away from light = back face → casts umbra
+		if normal.dot((mid - light_pos).normalized()) <= 0.05:
 			continue
 		var da := (a - light_pos).normalized() * max_len
 		var db := (b - light_pos).normalized() * max_len
 		var ink := Polygon2D.new()
-		ink.color = Color(0.05, 0.03, 0.08, 0.28)
+		ink.color = Color(0.04, 0.02, 0.07, 0.55)
 		ink.z_index = -11
 		ink.polygon = PackedVector2Array([a, b, b + db, a + da])
 		_root.add_child(ink)
 		_visuals.append(ink)
+
+
+func is_point_in_light(origin: Vector2, radius: float, point: Vector2, exclude: Array = []) -> bool:
+	## Shared occlusion test: blocked if a solid sits between light and point.
+	if point.distance_to(origin) > radius:
+		return false
+	var space := _root.get_world_2d().direct_space_state if _root else null
+	if space == null:
+		return true
+	var q := PhysicsRayQueryParameters2D.create(origin, point)
+	q.collision_mask = OCCLUDER_MASK
+	q.exclude = exclude
+	var hit := space.intersect_ray(q)
+	return hit.is_empty()
 
 
 func _clear_visuals() -> void:

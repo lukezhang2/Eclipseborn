@@ -325,9 +325,10 @@ func _recompute_light_state() -> void:
 
 
 func _occluded(from: Vector2, to: Vector2) -> bool:
+	## Any solid (world platforms/walls OR crates) between light and body = safe cover.
 	var space := get_world_2d().direct_space_state
 	var q := PhysicsRayQueryParameters2D.create(from, to)
-	q.collision_mask = 8  # boxes
+	q.collision_mask = 1 | 8
 	q.exclude = [self]
 	var hit := space.intersect_ray(q)
 	return not hit.is_empty()

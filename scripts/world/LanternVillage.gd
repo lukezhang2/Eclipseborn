@@ -83,7 +83,8 @@ func _ready() -> void:
 		spawn = GameState.last_position
 	elif GameState.checkpoint_position != Vector2.ZERO and GameState.current_zone_id == "lantern_village":
 		spawn = GameState.checkpoint_position
-	LevelCommon.spawn_player(self, spawn)
+	var player := LevelCommon.spawn_player(self, spawn)
+	LevelCommon.configure_camera(player, 180.0, 560.0, GameState.map_min_x, GameState.map_max_x)
 	GameState.enter_room("lantern_village", "gate")
 	SaveManager.autosave()
 

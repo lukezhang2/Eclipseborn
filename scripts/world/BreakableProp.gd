@@ -64,6 +64,10 @@ func _build() -> void:
 	_glow.scale = Vector2(prop_size.x / 32.0 * 2.2, prop_size.y / 32.0 * 2.2)
 	add_child(_glow)
 
+	var occ := ShadowOccluder.new()
+	occ.local_polygon = poly
+	add_child(occ)
+
 	_hurtbox = Hurtbox.new()
 	_hurtbox.team = "enemy"
 	_hurtbox.owner_body = self

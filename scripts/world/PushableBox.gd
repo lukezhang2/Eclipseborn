@@ -48,6 +48,10 @@ func _build() -> void:
 		edge.add_point(p)
 	edge.add_point(poly[0])
 	add_child(edge)
+	# Crates block light rays (gameplay + visuals).
+	var occ := ShadowOccluder.new()
+	occ.local_polygon = poly
+	add_child(occ)
 
 
 func rebuild_visual_for_size(size: Vector2) -> void:
