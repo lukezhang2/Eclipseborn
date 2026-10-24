@@ -40,7 +40,8 @@ var _control_locked: bool = false
 func _ready() -> void:
 	GameState.player = self
 	collision_layer = 2
-	collision_mask = 1 | 4 | 8
+	## 1=world, 4=?, 8=crates (light occluders), 16=pushable lamp bodies (not light-occluding)
+	collision_mask = 1 | 4 | 8 | 16
 	hurtbox.team = "player"
 	hurtbox.owner_body = self
 	hurtbox.hurt.connect(_on_hurt)

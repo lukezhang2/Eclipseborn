@@ -242,6 +242,9 @@ func _make_block_tex(w: int, h: int, k: String) -> ImageTexture:
 
 
 func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
+	## Pipes stay thin in tex space then scale to world w/h.
+	if k == "prop_pipe":
+		return _make_pipe_tex(w, h)
 	w = clampi(w, 16, 512)
 	h = clampi(h, 16, 512)
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
@@ -262,6 +265,8 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.55, 0.45, 0.25)
 		"prop_bg_gear":
 			col = Color(0.4, 0.38, 0.36)
+		"prop_valve":
+			col = Color(0.55, 0.2, 0.15)
 		_:
 			col = Color(0.4, 0.42, 0.48)
 	for y in h:
@@ -279,6 +284,28 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 						var py := cy + oy
 						if px >= 0 and py >= 0 and px < w and py < h:
 							img.set_pixel(px, py, Color(0.65, 0.75, 0.95))
+	return ImageTexture.create_from_image(img)
+
+
+func _make_pipe_tex(w: int, h: int) -> ImageTexture:
+	## Distinct copper pipe so ceiling lines are obvious in the editor.
+	var tw := clampi(maxi(w, 8), 8, 512)
+	var th := clampi(maxi(h, 8), 8, 64)
+	var img := Image.create(tw, th, false, Image.FORMAT_RGBA8)
+	var base := Color(0.42, 0.38, 0.32)
+	var shine := Color(0.62, 0.55, 0.42)
+	var rim := Color(0.22, 0.18, 0.14)
+	for y in th:
+		for x in tw:
+			var c := base
+			if y < 2 or y >= th - 2 or x < 2 or x >= tw - 2:
+				c = rim
+			elif y < th * 0.35:
+				c = shine
+			## Flange marks every ~48px of source tex.
+			if x % 48 < 3:
+				c = Color(0.5, 0.4, 0.25)
+			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
 
@@ -306,6 +333,21 @@ func _make_light_tex(w: int, h: int) -> ImageTexture:
 
 func _to_body_local(local_pt: Vector2) -> Vector2:
 	return local_pt - _local_origin_offset()
+
+
+func get_aabb() -> Rect2:
+	## World-space axis-aligned bounds (respects center vs bottom anchor).
+	if anchor_mode == "bottom":
+		return Rect2(position.x - size.x * 0.5, position.y - size.y, size.x, size.y)
+	return Rect2(position.x - size.x * 0.5, position.y - size.y * 0.5, size.x, size.y)
+
+
+func set_aabb_position(aabb: Rect2) -> void:
+	## Move so our AABB matches (keeps size).
+	if anchor_mode == "bottom":
+		position = Vector2(aabb.position.x + size.x * 0.5, aabb.position.y + size.y)
+	else:
+		position = aabb.get_center()
 
 
 func contains_point(local_pt: Vector2) -> bool:

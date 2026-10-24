@@ -50,18 +50,19 @@ func _build_sprite() -> void:
 	_sprite.position = Vector2(0, -18)
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_sprite.texture = _tex_a
-	_sprite.modulate = Color(1, 1, 1, 0.55)
+	## Opaque body; only the texture's unused pixels stay transparent (no box bg).
+	_sprite.modulate = Color.WHITE
 	add_child(_sprite)
 
 
 func _make_grub_tex(frame: int) -> ImageTexture:
 	var img := Image.create(40, 36, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	var body := Color(0.16, 0.12, 0.2, 0.55)
-	var shell := Color(0.28, 0.18, 0.32, 0.5)
-	var belly := Color(0.35, 0.22, 0.28, 0.45)
-	var eye := Color(0.95, 0.55, 0.2, 0.7)
-	var outline := Color(0.05, 0.03, 0.08, 0.4)
+	var body := Color(0.16, 0.12, 0.2, 1.0)
+	var shell := Color(0.28, 0.18, 0.32, 1.0)
+	var belly := Color(0.35, 0.22, 0.28, 1.0)
+	var eye := Color(0.95, 0.55, 0.2, 1.0)
+	var outline := Color(0.05, 0.03, 0.08, 1.0)
 	# Segmented body
 	var bob := (frame % 2) * 1
 	_fill_oval(img, 20, 18 + bob, 14, 10, body)

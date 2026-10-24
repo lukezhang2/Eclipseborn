@@ -9,10 +9,12 @@ const BOTTOM_H := 44.0
 const OVERSCROLL := 960.0 ## How far past the rightmost piece you can pan to keep building.
 const MIN_WORLD_RIGHT := 1600.0
 const CAM_Y := 360.0
+const SNAP_DIST := 12.0
 
 
 var zone_id: String = "cursed_cottage"
 var tool: Tool = Tool.SELECT
+var snap_enabled: bool = true
 var _palette_id: String = "floor"
 var _pieces: Array[EditorPiece] = []
 var _removed_ids: Array = []
@@ -237,6 +239,16 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_tool_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_tool_label.text = "Tool: Select — click world or list"
 	col.add_child(_tool_label)
+
+	var snap_btn := CheckButton.new()
+	snap_btn.text = "Snap to edges"
+	snap_btn.button_pressed = snap_enabled
+	snap_btn.tooltip_text = "While moving, snap this piece's edges to nearby pieces"
+	snap_btn.toggled.connect(func(on: bool) -> void:
+		snap_enabled = on
+		_status.text = "Snap %s." % ("ON" if on else "OFF")
+	)
+	col.add_child(snap_btn)
 
 	col.add_child(_section("Add"))
 	var add_row := HBoxContainer.new()
@@ -725,9 +737,13 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 		var world := _vp_to_world(mm.position)
 		if tool == Tool.MOVE or _selected._dragging:
 			_selected.drag_to(world)
+			if snap_enabled:
+				_snap_selected_to_edges()
 			_refresh_world_extent()
 		elif tool == Tool.RESIZE or _selected._resizing:
 			_selected.resize_to(world)
+			if snap_enabled:
+				_snap_selected_to_edges()
 			_refresh_world_extent()
 		_vp_container.accept_event()
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -735,6 +751,58 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			if _selected:
 				_delete_selected()
 				_vp_container.accept_event()
+
+
+func _snap_selected_to_edges() -> void:
+	## Align selected AABB edges to nearby piece edges (and floor top).
+	if _selected == null or not is_instance_valid(_selected):
+		return
+	var mine := _selected.get_aabb()
+	var best_dx := 0.0
+	var best_dy := 0.0
+	var abs_dx := SNAP_DIST + 1.0
+	var abs_dy := SNAP_DIST + 1.0
+
+	var my_edges_x := [mine.position.x, mine.position.x + mine.size.x, mine.get_center().x]
+	var my_edges_y := [mine.position.y, mine.position.y + mine.size.y, mine.get_center().y]
+
+	## Floor top is a common snap line.
+	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
+	for my_y in [mine.position.y, mine.position.y + mine.size.y]:
+		var d_floor: float = floor_top - float(my_y)
+		if absf(d_floor) < abs_dy:
+			abs_dy = absf(d_floor)
+			best_dy = d_floor
+
+	for other in _pieces:
+		if other == _selected or not is_instance_valid(other):
+			continue
+		## Skip absurdly huge floors/walls for X spam; still allow Y from them.
+		var o := other.get_aabb()
+		var ox := [o.position.x, o.position.x + o.size.x, o.get_center().x]
+		var oy := [o.position.y, o.position.y + o.size.y, o.get_center().y]
+		if o.size.x < 800.0:
+			for a in my_edges_x:
+				for b in ox:
+					var dx: float = float(b) - float(a)
+					if absf(dx) < abs_dx:
+						abs_dx = absf(dx)
+						best_dx = dx
+		if o.size.y < 400.0:
+			for a in my_edges_y:
+				for b in oy:
+					var dy: float = float(b) - float(a)
+					if absf(dy) < abs_dy:
+						abs_dy = absf(dy)
+						best_dy = dy
+
+	if abs_dx <= SNAP_DIST or abs_dy <= SNAP_DIST:
+		var moved := mine
+		if abs_dx <= SNAP_DIST:
+			moved.position.x += best_dx
+		if abs_dy <= SNAP_DIST:
+			moved.position.y += best_dy
+		_selected.set_aabb_position(moved)
 
 
 func _notification(what: int) -> void:

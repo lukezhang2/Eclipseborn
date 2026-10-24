@@ -135,12 +135,17 @@ func _build_visual() -> void:
 	_glass.color = color_for_kind()
 	_visual.add_child(_glass)
 
+	## Debug/editor ring only — gameplay wash outline comes from ShadowWorld (behind props).
 	_ring = Line2D.new()
-	_ring.width = 2.0
-	_ring.default_color = Color(color_for_kind().r, color_for_kind().g, color_for_kind().b, 0.55)
-	_ring.z_index = 5
+	_ring.width = 1.5
+	_ring.default_color = Color(color_for_kind().r, color_for_kind().g, color_for_kind().b, 0.35)
+	_ring.z_index = -13
 	_visual.add_child(_ring)
 	_rebuild_ring()
+	## Hide the un-occluded full circle in normal play so it doesn't paint over houses.
+	if not Engine.is_editor_hint():
+		_ring.visible = false
+		show_radius_ring = false
 
 	var area := Area2D.new()
 	area.collision_layer = 64
@@ -159,8 +164,10 @@ func _build_visual() -> void:
 	add_child(area)
 
 	if pushable:
+		## Layer 16 = pushable lamps only. NOT in ShadowWorld occluder mask (1|8),
+		## so invisible lamp bodies stop casting "ghost" light cutouts.
 		_body = AnimatableBody2D.new()
-		_body.collision_layer = 8
+		_body.collision_layer = 16
 		_body.collision_mask = 1
 		_body.name = "LampBody"
 		var bpoly := CollisionPolygon2D.new()
@@ -181,6 +188,7 @@ func _rebuild_ring() -> void:
 		var a := TAU * float(i) / 48.0
 		_ring.add_point(Vector2(cos(a), sin(a)) * radius + Vector2(0, -8))
 	_ring.add_point(_ring.get_point_position(0))
+	## Gameplay uses ShadowWorld's occluded outline; this ring is opt-in debug only.
 	_ring.visible = is_enabled and show_radius_ring
 
 

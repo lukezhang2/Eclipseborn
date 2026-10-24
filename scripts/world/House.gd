@@ -51,7 +51,24 @@ func _build() -> void:
 		Vector2(-hx + 36, -height + 40), Vector2(-hx + 16, -height + 40)
 	])
 	add_child(win)
-	# No solid occluder — houses are backdrop so lanterns near them still cast.
+
+	## Block light (layer 8) but not the player — street stays walkable in front.
+	var body := StaticBody2D.new()
+	body.collision_layer = 8
+	body.collision_mask = 0
+	var cs := CollisionPolygon2D.new()
+	cs.polygon = PackedVector2Array([
+		Vector2(-hx, 0), Vector2(hx, 0), Vector2(hx, -height), Vector2(-hx, -height)
+	])
+	body.add_child(cs)
+	add_child(body)
+	var occ := ShadowOccluder.new()
+	## Wall + roof silhouette for umbra wedges.
+	occ.local_polygon = PackedVector2Array([
+		Vector2(-hx - 8, 0), Vector2(hx + 8, 0), Vector2(hx + 8, -height),
+		Vector2(0, -height - 36), Vector2(-hx - 8, -height)
+	])
+	add_child(occ)
 
 	_prompt = Label.new()
 	_prompt.text = "F — Enter %s" % house_name

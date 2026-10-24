@@ -25,6 +25,8 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 
 Browser **Save** only writes `user://` (local to that browser). It does **not** update the git repo. Use **Copy Save Code** for that.
 
+**Snap to edges** (sidebar toggle): while moving/resizing, piece edges snap to nearby pieces and the zone floor top.
+
 ## JSON schema (`schema`: 1)
 
 ```json
