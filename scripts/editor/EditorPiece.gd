@@ -1,6 +1,7 @@
 extends Node2D
 class_name EditorPiece
 ## Selectable / movable / resizable editor proxy with a visible name tag.
+## (x,y) uses PieceSpecs.anchor: center for crates/floors/lights, bottom for houses/etc.
 
 
 signal selected(piece: EditorPiece)
@@ -16,10 +17,13 @@ var light_kind: int = 0
 var pushable: bool = true
 var builtin: bool = false
 var catalog_kind: String = "floor"
+## "center" or "bottom" — must match PieceSpecs.anchor(catalog_kind).
+var anchor_mode: String = "center"
 
 var _visual: Sprite2D
 var _outline: Line2D
 var _name_label: Label
+var _body: Node2D ## Offset for bottom-anchored pieces so position = feet.
 var _dragging: bool = false
 var _resizing: bool = false
 var _resize_corner: int = -1
@@ -65,6 +69,7 @@ func to_dict() -> Dictionary:
 		"y": position.y,
 		"w": size.x,
 		"h": size.y,
+		"anchor": anchor_mode,
 		"builtin": builtin,
 	}
 	if kind == Kind.LIGHT:
@@ -87,6 +92,7 @@ func apply_dict(d: Dictionary) -> void:
 	size = Vector2(float(d.get("w", 64)), float(d.get("h", 48)))
 	var k: String = str(d.get("kind", "block"))
 	catalog_kind = k
+	anchor_mode = str(d.get("anchor", PieceSpecs.anchor(k)))
 	match k:
 		"background":
 			kind = Kind.BACKGROUND
@@ -95,10 +101,15 @@ func apply_dict(d: Dictionary) -> void:
 			light_radius = float(d.get("radius", light_radius if light_radius > 0.0 else 280.0))
 			light_kind = int(d.get("light_kind", 0))
 			pushable = bool(d.get("pushable", true))
-			display_name = str(d.get("name", display_name))
+			size = Vector2(28, 36)
+			anchor_mode = "center"
 		"floor", "block", "wall", "crate":
 			kind = Kind.BLOCK
 			set_meta("piece_kind", k)
+			if k == "crate":
+				## Force gameplay size if an old 48×48 catalog entry slipped through.
+				if size.x < 50.0 or size.y < 50.0:
+					size = PieceSpecs.CRATE_COTTAGE
 		_:
 			kind = Kind.PROP
 			set_meta("piece_kind", k)
@@ -120,9 +131,20 @@ func set_selected(on: bool) -> void:
 		)
 
 
+func _local_origin_offset() -> Vector2:
+	## Body is drawn in center-local space; bottom-anchored pieces shift up by half height.
+	if anchor_mode == "bottom":
+		return Vector2(0, -size.y * 0.5)
+	return Vector2.ZERO
+
+
 func _rebuild() -> void:
 	for c in get_children():
 		c.queue_free()
+	_body = Node2D.new()
+	_body.position = _local_origin_offset()
+	add_child(_body)
+
 	_visual = Sprite2D.new()
 	_visual.centered = true
 	_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -131,16 +153,20 @@ func _rebuild() -> void:
 			_visual.texture = _make_bg_tex(int(size.x), int(size.y))
 			_visual.modulate = Color(1, 1, 1, 0.85)
 		Kind.LIGHT:
-			_visual.texture = _make_light_tex(48, 48)
-			size = Vector2(maxi(48, int(size.x)), maxi(48, int(size.y)))
+			_visual.texture = _make_light_tex(28, 36)
+			size = Vector2(28, 36)
 		Kind.PROP:
 			_visual.texture = _make_prop_tex(int(size.x), int(size.y), catalog_kind)
 		_:
-			_visual.texture = _make_block_tex(int(size.x), int(size.y), catalog_kind)
+			if catalog_kind == "crate":
+				_visual.texture = _make_crate_tex(int(size.x), int(size.y))
+			else:
+				_visual.texture = _make_block_tex(int(size.x), int(size.y), catalog_kind)
+	## Texture pixels == world size (same contract as PushableBox / steel floors).
 	var tw := maxi(_visual.texture.get_width(), 1)
 	var th := maxi(_visual.texture.get_height(), 1)
 	_visual.scale = Vector2(size.x / float(tw), size.y / float(th))
-	add_child(_visual)
+	_body.add_child(_visual)
 
 	_outline = Line2D.new()
 	_outline.width = 2.0
@@ -152,7 +178,7 @@ func _rebuild() -> void:
 	_outline.add_point(Vector2(hx, hy))
 	_outline.add_point(Vector2(-hx, hy))
 	_outline.add_point(Vector2(-hx, -hy))
-	add_child(_outline)
+	_body.add_child(_outline)
 
 	_name_label = Label.new()
 	_name_label.text = display_name
@@ -161,7 +187,7 @@ func _rebuild() -> void:
 	_name_label.add_theme_color_override("font_color", Color(0.9, 0.88, 0.75))
 	_name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_name_label.add_theme_constant_override("outline_size", 4)
-	add_child(_name_label)
+	_body.add_child(_name_label)
 
 	if kind == Kind.LIGHT:
 		var ring := Line2D.new()
@@ -169,11 +195,34 @@ func _rebuild() -> void:
 		ring.default_color = Color(1.0, 0.85, 0.4, 0.45)
 		for i in 24:
 			var a := TAU * float(i) / 24.0
-			ring.add_point(Vector2(cos(a), sin(a)) * light_radius)
+			## Match LightSource ring offset (burn center slightly above body).
+			ring.add_point(Vector2(cos(a), sin(a)) * light_radius + Vector2(0, -8))
 		ring.add_point(ring.get_point_position(0))
-		add_child(ring)
+		_body.add_child(ring)
 
 	set_selected(is_selected)
+
+
+func _make_crate_tex(w: int, h: int) -> ImageTexture:
+	## Mirrors PushableBox._make_wood_texture so editor size == gameplay size.
+	w = maxi(w, 8)
+	h = maxi(h, 8)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		for x in w:
+			var grain := sin(float(x) * 0.35 + float(y) * 0.02) * 0.04
+			var noise := fmod(float(x * 17 + y * 31), 7.0) * 0.008
+			var base := Color(0.42 + grain, 0.30 + grain * 0.5, 0.18 + noise, 1.0)
+			if x < 2 or y < 2 or x >= w - 2 or y >= h - 2:
+				base = Color(0.18, 0.1, 0.05, 1.0)
+			elif y % 10 == 0:
+				base = base.darkened(0.12)
+			img.set_pixel(x, y, base)
+	for p in [Vector2i(5, 5), Vector2i(w - 6, 5), Vector2i(5, h - 6), Vector2i(w - 6, h - 6)]:
+		for oy in range(-1, 2):
+			for ox in range(-1, 2):
+				img.set_pixel(clampi(p.x + ox, 0, w - 1), clampi(p.y + oy, 0, h - 1), Color(0.55, 0.45, 0.28))
+	return ImageTexture.create_from_image(img)
 
 
 func _make_block_tex(w: int, h: int, k: String) -> ImageTexture:
@@ -183,8 +232,6 @@ func _make_block_tex(w: int, h: int, k: String) -> ImageTexture:
 	var base := Color(0.28, 0.29, 0.32)
 	if k == "wall":
 		base = Color(0.22, 0.18, 0.16)
-	elif k == "crate":
-		base = Color(0.42, 0.3, 0.18)
 	for y in h:
 		for x in w:
 			var c := base
@@ -202,7 +249,7 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 	var col := Color(0.45, 0.4, 0.35)
 	match k:
 		"prop_checkpoint":
-			col = Color(0.35, 0.32, 0.4)  # hearth — was the cryptic … prop
+			col = Color(0.35, 0.32, 0.4)
 		"prop_house":
 			col = Color(0.4, 0.28, 0.2)
 		"prop_npc":
@@ -221,7 +268,6 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 		for x in w:
 			var edge := x < 2 or y < 2 or x >= w - 2 or y >= h - 2
 			img.set_pixel(x, y, col.darkened(0.25) if edge else col)
-	# Checkpoint marker: three clear dots so it matches what you saw in-game.
 	if k == "prop_checkpoint":
 		for i in 3:
 			var cx := int(w * (0.25 + i * 0.25))
@@ -258,20 +304,26 @@ func _make_light_tex(w: int, h: int) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+func _to_body_local(local_pt: Vector2) -> Vector2:
+	return local_pt - _local_origin_offset()
+
+
 func contains_point(local_pt: Vector2) -> bool:
+	var p := _to_body_local(local_pt)
 	var hx := size.x * 0.5
 	var hy := size.y * 0.5
-	return absf(local_pt.x) <= hx and absf(local_pt.y) <= hy
+	return absf(p.x) <= hx and absf(p.y) <= hy
 
 
 func handle_at(local_pt: Vector2) -> int:
 	if kind == Kind.LIGHT:
 		return -1
+	var p := _to_body_local(local_pt)
 	var hx := size.x * 0.5
 	var hy := size.y * 0.5
 	var corners := [Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)]
 	for i in 4:
-		if local_pt.distance_to(corners[i]) < 14.0:
+		if p.distance_to(corners[i]) < 14.0:
 			return i
 	return -1
 
@@ -300,7 +352,8 @@ func drag_to(world: Vector2) -> void:
 func resize_to(world: Vector2) -> void:
 	if not _resizing:
 		return
-	var local := to_local(world)
+	## Work in body-local (center) space.
+	var local := _to_body_local(to_local(world))
 	var hx := size.x * 0.5
 	var hy := size.y * 0.5
 	var min_x := -hx
@@ -322,8 +375,14 @@ func resize_to(world: Vector2) -> void:
 			max_y = local.y
 	var new_w := maxf(24.0, max_x - min_x)
 	var new_h := maxf(16.0, max_y - min_y)
-	var center_local := Vector2((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
-	position = to_global(center_local)
-	size = Vector2(new_w, new_h)
+	var center_body := Vector2((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
+	var new_size := Vector2(new_w, new_h)
+	## Convert body-center back to piece position (respecting anchor).
+	var world_center := to_global(_local_origin_offset() + center_body)
+	if anchor_mode == "bottom":
+		position = world_center + Vector2(0, new_size.y * 0.5)
+	else:
+		position = world_center
+	size = new_size
 	_rebuild()
 	set_selected(true)

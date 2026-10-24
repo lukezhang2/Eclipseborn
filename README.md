@@ -18,6 +18,8 @@ godot --path .
 
 Or open the folder in the Godot editor and press Play. The main scene is the title menu (**Play** / **Controls**). New Game starts in the Cursed Cottage tutorial. A Phase 0 sandbox lives at `scenes/rooms/PrototypeRoom.tscn`. Feature status: `docs/FEATURE_CHECKLIST.md`.
 
+**Level editor:** password hotspot on the title menu (bottom-right). Use **Copy Save Code** to export JSON you can paste into chat or `data/levels/`. Format guide for humans and AIs: [`docs/LEVEL_EDITOR.md`](docs/LEVEL_EDITOR.md).
+
 ## Contents
 
 - [The pitch](#the-pitch)

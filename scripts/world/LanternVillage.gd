@@ -143,8 +143,9 @@ func _build_light_puzzle() -> void:
 	add_child(lamp)
 
 	var crate := PushableBox.new()
-	crate.position = Vector2(1250, FLOOR_TOP - 34)
-	crate.box_size = Vector2(67, 67)  # ~1.2× of 56
+	crate.box_size = Vector2(67, 67)  # ~1.2× of 56 — matches PieceSpecs.CRATE_VILLAGE
+	crate.position = Vector2(1250, FLOOR_TOP - crate.box_size.y * 0.5)
+	LevelData.tag(crate, "crate_puzzle")
 	add_child(crate)
 
 

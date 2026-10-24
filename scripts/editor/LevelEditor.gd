@@ -262,6 +262,19 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	save_btn.text = "Save (this browser)"
 	save_btn.pressed.connect(_save)
 	col.add_child(save_btn)
+
+	var export_btn := Button.new()
+	export_btn.text = "Copy Save Code"
+	export_btn.tooltip_text = "Opens JSON you can paste to an AI or commit into data/levels/"
+	export_btn.pressed.connect(_show_export_dialog)
+	col.add_child(export_btn)
+
+	var import_btn := Button.new()
+	import_btn.text = "Import Save Code"
+	import_btn.tooltip_text = "Paste level JSON to load it into this editor"
+	import_btn.pressed.connect(_show_import_dialog)
+	col.add_child(import_btn)
+
 	var play_btn := Button.new()
 	play_btn.text = "Playtest Zone"
 	play_btn.pressed.connect(_playtest)
@@ -276,8 +289,8 @@ func _build_sidebar(col: VBoxContainer) -> void:
 
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(280, 70)
-	_status.text = "Left panel is fixed. Bottom bar scrolls the level. Build past the end to grow it."
+	_status.custom_minimum_size = Vector2(280, 90)
+	_status.text = "Use Copy Save Code to share levels. Docs: docs/LEVEL_EDITOR.md"
 	col.add_child(_status)
 
 
@@ -482,14 +495,21 @@ func _delete_selected() -> void:
 
 
 func _add_piece() -> void:
+	var sz := PieceSpecs.default_size(_palette_id)
+	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
+	var y := _cam.position.y + 20.0
+	## Snap floor-sitting kinds onto the zone floor so crates aren't buried.
+	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc"]:
+		y = PieceSpecs.sit_on_floor_y(_palette_id, floor_top, sz)
 	var d := {
 		"id": "%s_%d" % [_palette_id, Time.get_ticks_msec()],
 		"name": _palette_id.replace("prop_", "").capitalize(),
 		"kind": _palette_id,
-		"x": _cam.position.x + 40,
-		"y": _cam.position.y + 20,
-		"w": 96 if _palette_id == "floor" else 48,
-		"h": 32 if _palette_id == "floor" else 48,
+		"x": _cam.position.x + 40.0,
+		"y": y,
+		"w": sz.x,
+		"h": sz.y,
+		"anchor": PieceSpecs.anchor(_palette_id),
 		"builtin": false,
 	}
 	if _palette_id == "light":
@@ -507,7 +527,142 @@ func _build_data() -> Dictionary:
 	var pieces: Array = []
 	for p in _pieces:
 		pieces.append(p.to_dict())
-	return {"zone": zone_id, "pieces": pieces, "removed_ids": _removed_ids}
+	return {
+		"schema": PieceSpecs.SCHEMA_VERSION,
+		"zone": zone_id,
+		"pieces": pieces,
+		"removed_ids": _removed_ids,
+	}
+
+
+func _export_text() -> String:
+	return JSON.stringify(_build_data(), "\t")
+
+
+func _show_export_dialog() -> void:
+	_save()
+	var text := _export_text()
+	DisplayServer.clipboard_set(text)
+	_show_code_dialog(
+		"Save Code — copied to clipboard",
+		text,
+		false,
+		func(_t: String) -> void: pass
+	)
+	_status.text = "Save code copied. Paste it to an AI or into data/levels/%s.json" % zone_id
+
+
+func _show_import_dialog() -> void:
+	_show_code_dialog(
+		"Import Save Code — paste JSON, then Apply",
+		"",
+		true,
+		func(t: String) -> void:
+			_import_text(t)
+	)
+
+
+func _show_code_dialog(title: String, initial: String, editable: bool, on_apply: Callable) -> void:
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.z_index = 40
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.72)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(dim)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.offset_left = -420
+	panel.offset_right = 420
+	panel.offset_top = -260
+	panel.offset_bottom = 260
+	layer.add_child(panel)
+	var margin := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(m, 12)
+	panel.add_child(margin)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	margin.add_child(col)
+
+	var title_l := Label.new()
+	title_l.text = title
+	title_l.add_theme_font_size_override("font_size", 16)
+	col.add_child(title_l)
+
+	var edit := TextEdit.new()
+	edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	edit.custom_minimum_size = Vector2(780, 360)
+	edit.text = initial
+	edit.editable = editable
+	edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	col.add_child(edit)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 10)
+	col.add_child(row)
+
+	if not editable:
+		var copy := Button.new()
+		copy.text = "Copy again"
+		copy.pressed.connect(func() -> void:
+			DisplayServer.clipboard_set(edit.text)
+			_status.text = "Copied again."
+		)
+		row.add_child(copy)
+
+	if editable:
+		var apply := Button.new()
+		apply.text = "Apply"
+		apply.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4))
+		apply.pressed.connect(func() -> void:
+			on_apply.call(edit.text)
+			layer.queue_free()
+		)
+		row.add_child(apply)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func() -> void:
+		layer.queue_free()
+	)
+	row.add_child(close)
+	add_child(layer)
+
+
+func _import_text(raw: String) -> void:
+	var parsed: Variant = JSON.parse_string(raw.strip_edges())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		_status.text = "Import failed: not a JSON object."
+		return
+	var data: Dictionary = parsed
+	var z := str(data.get("zone", zone_id))
+	if z != "":
+		zone_id = z
+		for i in _zone_option.item_count:
+			if _zone_option.get_item_text(i) == zone_id:
+				_zone_option.select(i)
+				break
+	_clear_pieces()
+	_removed_ids = data.get("removed_ids", []).duplicate()
+	var pieces: Array = data.get("pieces", [])
+	if pieces.is_empty():
+		## Empty overlay — fall back to catalog seed so the zone isn't blank.
+		for cat in ZoneCatalog.pieces_for(zone_id):
+			var id := str(cat.get("id", ""))
+			if id != "" and _removed_ids.has(id):
+				continue
+			_spawn_piece_dict(cat)
+	else:
+		for raw_p in pieces:
+			if typeof(raw_p) == TYPE_DICTIONARY:
+				_spawn_piece_dict(raw_p)
+	_refresh_list()
+	_refresh_world_extent()
+	_save()
+	_status.text = "Imported %s — %d pieces." % [zone_id, _pieces.size()]
 
 
 func _save() -> void:

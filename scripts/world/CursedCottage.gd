@@ -73,7 +73,7 @@ func _ready() -> void:
 		SaveManager.autosave()
 
 
-func _box_y(size_y: float = 48.0) -> float:
+func _box_y(size_y: float = 58.0) -> float:
 	return FLOOR_TOP - size_y * 0.5
 
 
@@ -98,8 +98,9 @@ func _build_crate_room() -> void:
 	lamp.pushable = false
 	add_child(lamp)
 	var box := PushableBox.new()
-	box.position = Vector2(980, _box_y())
-	box.box_size = Vector2(58, 58)  # ~1.2× of 48
+	box.box_size = Vector2(58, 58)  # ~1.2× of 48 — matches PieceSpecs.CRATE_COTTAGE
+	box.position = Vector2(980, _box_y(box.box_size.y))
+	LevelData.tag(box, "box_push_a")
 	add_child(box)
 
 
@@ -114,9 +115,10 @@ func _build_pull_room() -> void:
 	LevelCommon.add_wall(self, backstop_x, FLOOR_TOP - backstop_h * 0.5, 24, backstop_h)
 
 	var box := PushableBox.new()
-	box.position = Vector2(backstop_x + 12 + 24, _box_y())
 	box.box_size = Vector2(58, 58)
+	box.position = Vector2(backstop_x + 12 + 24, _box_y(box.box_size.y))
 	box.name = "PullCrate"
+	LevelData.tag(box, "box_pull_a")
 	add_child(box)
 	LevelCommon.add_pipe(self, Vector2(1840, ROOF_BOTTOM + 80), Vector2(2140, ROOF_BOTTOM + 80), 8.0)
 

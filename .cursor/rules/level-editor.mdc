@@ -1,0 +1,28 @@
+---
+description: Eclipseborn level editor format — read before changing levels or the editor
+globs:
+  - scripts/editor/**
+  - scripts/autoload/LevelData.gd
+  - data/levels/**
+  - scripts/world/CursedCottage.gd
+  - scripts/world/LanternVillage.gd
+---
+
+# Level editor
+
+Full schema: [docs/LEVEL_EDITOR.md](docs/LEVEL_EDITOR.md)
+
+## Find it fast
+
+- Format + AI handoff: `docs/LEVEL_EDITOR.md`
+- Sizes/anchors: `scripts/editor/PieceSpecs.gd`
+- Builtin seeds: `scripts/editor/ZoneCatalog.gd`
+- Overlays: `data/levels/<zone>.json` (repo) / `user://editor/` (browser only)
+- Editor UI: `scripts/editor/LevelEditor.gd` — **Copy Save Code** / **Import Save Code**
+
+## Hard rules
+
+- Pushable crates: cottage **58×58**, village **67×67**. Sit on floor with `y = floor_top - h/2` (`anchor: center`).
+- Houses/checkpoints/benches/towers use `anchor: bottom` (origin at feet).
+- Browser Save does not update git — players/devs must **Copy Save Code** and paste JSON into chat or `data/levels/`.
+- Changing builtins requires updating **ZoneCatalog + the room script**, not only JSON.

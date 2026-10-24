@@ -1,5 +1,15 @@
 extends Node
-## Loads JSON level overlays from user://editor/ or res://data/levels/.
+## Level overlay I/O + spawning.
+##
+## AI / human entry point for the level format:
+##   docs/LEVEL_EDITOR.md
+##   scripts/editor/PieceSpecs.gd   (sizes + anchors)
+##   scripts/editor/ZoneCatalog.gd  (builtin seeds)
+##   data/levels/<zone>.json        (repo overlays)
+##
+## Runtime load order: room script builds builtins → apply() adds non-builtins
+## → prune_removed() deletes catalog ids listed in removed_ids.
+## Editor "Copy Save Code" exports the full JSON schema (schema: 1).
 
 
 const USER_DIR := "user://editor/"
@@ -23,17 +33,19 @@ static func path_for(zone_id: String, prefer_user: bool = true) -> String:
 static func load_raw(zone_id: String) -> Dictionary:
 	var path := path_for(zone_id)
 	if not FileAccess.file_exists(path):
-		return {"zone": zone_id, "pieces": [], "removed_ids": []}
+		return {"schema": PieceSpecs.SCHEMA_VERSION, "zone": zone_id, "pieces": [], "removed_ids": []}
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
-		return {"zone": zone_id, "pieces": [], "removed_ids": []}
+		return {"schema": PieceSpecs.SCHEMA_VERSION, "zone": zone_id, "pieces": [], "removed_ids": []}
 	var parsed: Variant = JSON.parse_string(f.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
-		return {"zone": zone_id, "pieces": [], "removed_ids": []}
+		return {"schema": PieceSpecs.SCHEMA_VERSION, "zone": zone_id, "pieces": [], "removed_ids": []}
 	return parsed
 
 
 static func save_raw(zone_id: String, data: Dictionary, to_res: bool = false) -> Error:
+	if not data.has("schema"):
+		data["schema"] = PieceSpecs.SCHEMA_VERSION
 	var path := (RES_DIR if to_res else USER_DIR) + zone_id + ".json"
 	if to_res:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(RES_DIR))
@@ -97,9 +109,13 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			LevelCommon.add_wall(parent, pos.x, pos.y, size.x, size.y)
 		"crate":
 			var box := PushableBox.new()
-			box.position = pos
+			## Set size before enter tree so _ready/_build uses the editor size.
+			if size.x < 50.0 or size.y < 50.0:
+				size = PieceSpecs.CRATE_COTTAGE
 			box.box_size = size
+			box.position = pos
 			parent.add_child(box)
+			LevelData.tag(box, str(p.get("id", "")))
 		"light":
 			var lamp := LightSource.new()
 			lamp.position = pos
