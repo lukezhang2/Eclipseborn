@@ -2,7 +2,7 @@
 
 > *You aren't moving platforms. You're changing what counts as a platform.*
 
-**Game design plan, draft 5.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
+**Game design plan, draft 6.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
 
 ## Contents
 
@@ -219,13 +219,26 @@ Production time for this game is short, so each of our zones is about **half** t
 
 | Area | Rooms | Hollow Knight stand-in | Description |
 |---|---|---|---|
-| **The Cursed Cottage** | **4** | Howling Cliffs, 6 rooms | Where you start. A boiler-house home: pipes in the walls, a cold furnace, the tutorial. |
+| **The Cursed Cottage** | **4** | Howling Cliffs, 6 rooms | Where you start. A boiler-house home and the tutorial. One new control per room, then the door into Lantern Village. |
 | **Lantern Village** | **20** | Forgotten Crossroads, 40 rooms | An abandoned town. Iron lamp posts, steam leaking from street grates. The early hub. |
 | **The Clockworks** | **15** | Fungal Wastes, 30 rooms | Giant gears, pistons, and moving machines. |
 | **Moth Hollow** | **16** | Greenpath, 31 rooms | A collapsed boiler tunnel. Moths and wet fungus on the iron. |
 | **Glass Spire** | **13** | Crystal Peak, 26 rooms | A brass-and-glass tower of mirrors, gauges, and light beams. |
 | **Cathedral of Candles** | **13** | Kingdom's Edge, 26 rooms | A furnace nave. Gas-fed flames. Very bright and very dangerous. |
 | **The Witch's Wood** | **9** | Queen's Gardens, 18 rooms | The final area. Trees grown through a dead foundry, roots wrapped around gears. |
+
+### The cottage tutorial
+
+The Cursed Cottage is the tutorial. It does not use text puzzles. Each room blocks the way until he uses one control. The first time that control is needed, a short hint shows the key. After that, the room is the teacher. Double jump is still locked. Nothing in these four rooms asks for it.
+
+| Room | What is in the way | What he learns |
+|---|---|---|
+| **1. The hall** | A clear stretch of boiler-house floor. | Walk, then run. |
+| **2. The crate** | A moveable box sits in the only doorway. Walking into it plays push, and the box slides out of the way. | Push a box. |
+| **3. The riveted chest** | An immoveable box fills the path. Walking into it plays bump, and the box does not move. The top of it is one jump high. | Jump. If it will not move, go over it. |
+| **4. The hatch** | A shut iron door, the exit. One press of F breaks it. The opening leads straight into Lantern Village. | Attack, then leave the cottage. |
+
+There is no enemy in the cottage. The hatch is the only thing the lash is for. Once it breaks, he is in Lantern Village, and the cottage stays open behind him.
 
 - Shortcuts open up as you explore. There are optional secret rooms and side bosses.
 - You save at checkpoints. One idea is that save points are dark spots, like an unlit fireplace. **(open)**
@@ -378,7 +391,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 
 ### Phase 2: First real slice
 
-1. Build the Cursed Cottage, all 4 rooms, and the first stretch of Lantern Village. The full village is 20 rooms, so this slice does not have to finish it.
+1. Build the Cursed Cottage as the four-room tutorial: run down the hall, push a box, jump an immoveable box, break the iron door with F, and come out in Lantern Village. Then build the first stretch of the village. The full village is 20 rooms, so this slice does not have to finish it.
 2. Add the Lamplighter boss. Beating him unlocks double jump.
 3. Add the first sounds and music.
 4. Add the Tab map for the current zone, with a player icon. Build the cottage and village rooms in steel and steam.
