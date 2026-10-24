@@ -3,6 +3,8 @@ extends Node
 
 signal health_changed(current: int, maximum: int)
 signal shade_changed(ratio: float)
+signal currency_changed(amount: int)
+signal currency_hud_reveal
 signal died
 signal respawned
 signal ability_unlocked(ability_id: String)
@@ -29,10 +31,17 @@ var has_snuff: bool = false
 
 var checkpoint_path: String = ""
 var checkpoint_position: Vector2 = Vector2.ZERO
+## Live position written on exit / autosave (may differ from checkpoint).
+var last_position: Vector2 = Vector2.ZERO
 var current_zone_id: String = "cursed_cottage"
 var current_room_id: String = "hall"
 ## zone_id -> Array of room_id strings discovered
 var discovered_rooms: Dictionary = {}
+## Breakable ids already destroyed (persist across load).
+var broken_ids: Array = []
+
+var currency: int = 0
+var currency_hud_unlocked: bool = false
 
 var is_paused: bool = false
 var single_player: bool = true
@@ -74,6 +83,8 @@ func reset_run() -> void:
 	max_health = 100
 	shade = 1.0
 	umbra = 0.0
+	currency = 0
+	currency_hud_unlocked = false
 	has_double_jump = false
 	has_shadow_grip = false
 	has_shade_dash = false
@@ -82,8 +93,10 @@ func reset_run() -> void:
 	has_snuff = false
 	checkpoint_path = ""
 	checkpoint_position = Vector2.ZERO
+	last_position = Vector2.ZERO
 	current_zone_id = "cursed_cottage"
 	current_room_id = "hall"
+	broken_ids = []
 	discovered_rooms = {
 		"cursed_cottage": [],
 		"lantern_village": [],
@@ -92,6 +105,28 @@ func reset_run() -> void:
 	intro_cutscene_playing = false
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
+	currency_changed.emit(currency)
+
+
+func add_currency(amount: int) -> void:
+	if amount <= 0:
+		return
+	var first := not currency_hud_unlocked
+	currency += amount
+	if first:
+		currency_hud_unlocked = true
+		currency_hud_reveal.emit()
+	currency_changed.emit(currency)
+
+
+func mark_broken(id: String) -> void:
+	if id == "" or broken_ids.has(id):
+		return
+	broken_ids.append(id)
+
+
+func is_broken(id: String) -> bool:
+	return id != "" and broken_ids.has(id)
 
 
 func set_paused(value: bool) -> void:
@@ -137,6 +172,7 @@ func enter_room(zone_id: String, room_id: String) -> void:
 
 func set_checkpoint(pos: Vector2, path: String = "") -> void:
 	checkpoint_position = pos
+	last_position = pos
 	checkpoint_path = path
 	health = max_health
 	shade = 1.0

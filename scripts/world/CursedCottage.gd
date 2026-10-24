@@ -53,10 +53,16 @@ func _ready() -> void:
 	LevelData.apply(self, "cursed_cottage")
 
 	var spawn := Vector2(120, FLOOR_Y - 40)
-	if GameState.checkpoint_position != Vector2.ZERO and GameState.current_zone_id == "cursed_cottage" and not GameState.needs_intro_cutscene:
-		spawn = GameState.checkpoint_position
+	if not GameState.needs_intro_cutscene and GameState.current_zone_id == "cursed_cottage":
+		if GameState.last_position != Vector2.ZERO:
+			spawn = GameState.last_position
+		elif GameState.checkpoint_position != Vector2.ZERO:
+			spawn = GameState.checkpoint_position
 	LevelCommon.spawn_player(self, spawn)
 	GameState.enter_room("cursed_cottage", "hall")
+	SaveManager.autosave()
+
+	_build_currency_breakables()
 
 
 func _build_room_triggers() -> void:
@@ -119,3 +125,22 @@ func _build_ambient_lamps() -> void:
 	moon.shadow_length = 200.0
 	moon.pushable = false
 	add_child(moon)
+
+
+func _build_currency_breakables() -> void:
+	## Glowing jars/locks that shatter into silver gears.
+	_spawn_breakable("cottage_jar_a", Vector2(640, FLOOR_Y - 28), 2)
+	_spawn_breakable("cottage_jar_b", Vector2(1480, FLOOR_Y - 28), 3)
+	_spawn_breakable("cottage_jar_c", Vector2(2400, FLOOR_Y - 28), 2)
+	_spawn_breakable("cottage_chest", Vector2(3100, FLOOR_Y - 32), 5, Vector2(40, 32))
+
+
+func _spawn_breakable(id: String, pos: Vector2, drops: int, size: Vector2 = Vector2(28, 36)) -> void:
+	if GameState.is_broken(id):
+		return
+	var prop := BreakableProp.new()
+	prop.breakable_id = id
+	prop.position = pos
+	prop.prop_size = size
+	prop.currency_drops = drops
+	add_child(prop)

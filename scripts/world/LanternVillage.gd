@@ -78,9 +78,14 @@ func _ready() -> void:
 
 	LevelData.apply(self, "lantern_village")
 
-	LevelCommon.spawn_player(self, Vector2(100, 480))
+	var spawn := Vector2(100, 480)
+	if GameState.last_position != Vector2.ZERO and GameState.current_zone_id == "lantern_village":
+		spawn = GameState.last_position
+	elif GameState.checkpoint_position != Vector2.ZERO and GameState.current_zone_id == "lantern_village":
+		spawn = GameState.checkpoint_position
+	LevelCommon.spawn_player(self, spawn)
 	GameState.enter_room("lantern_village", "gate")
-	SaveManager.save_game(0)
+	SaveManager.autosave()
 
 
 func _build_light_puzzle() -> void:

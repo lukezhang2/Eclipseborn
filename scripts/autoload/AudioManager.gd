@@ -7,6 +7,8 @@ var _jump: AudioStream
 var _land: AudioStream
 var _crack: AudioStream
 var _gears: AudioStream
+var _break: AudioStream
+var _currency: AudioStream
 
 var _walk_cooldown: float = 0.0
 var _players: Array[AudioStreamPlayer] = []
@@ -19,7 +21,9 @@ func _ready() -> void:
 	_land = _load("res://assets/sfx/land.wav")
 	_crack = _load("res://assets/sfx/boot_crack.wav")
 	_gears = _load("res://assets/sfx/boot_gears.wav")
-	for i in 6:
+	_break = _load("res://assets/sfx/break.wav")
+	_currency = _load("res://assets/sfx/currency.wav")
+	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Master"
 		add_child(p)
@@ -80,3 +84,11 @@ func play_boot_crack() -> AudioStreamPlayer:
 
 func play_boot_gears() -> AudioStreamPlayer:
 	return _play(_gears, -6.0)
+
+
+func play_break() -> void:
+	_play(_break, -3.0, randf_range(0.92, 1.08))
+
+
+func play_currency() -> void:
+	_play(_currency, -4.0, randf_range(0.96, 1.06))

@@ -274,7 +274,10 @@ static func spawn_player(parent: Node2D, pos: Vector2) -> Player:
 	var p: Player = PLAYER_SCENE.instantiate()
 	p.global_position = pos
 	parent.add_child(p)
-	GameState.set_checkpoint(pos)
+	GameState.last_position = pos
+	# Heal-reset checkpoint only on first spawn of a new run.
+	if GameState.checkpoint_position == Vector2.ZERO:
+		GameState.set_checkpoint(pos)
 	return p
 
 

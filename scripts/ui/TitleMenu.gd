@@ -163,9 +163,10 @@ func _build_slots() -> void:
 func _on_slot_pressed(slot: int) -> void:
 	if SaveManager.has_save(slot):
 		SaveManager.load_game(slot)
+		get_tree().change_scene_to_file(SaveManager.scene_for_zone(GameState.current_zone_id))
 	else:
 		SaveManager.new_game(slot)
-	get_tree().change_scene_to_file("res://scenes/rooms/CursedCottage.tscn")
+		get_tree().change_scene_to_file("res://scenes/rooms/CursedCottage.tscn")
 
 
 func _start_delete(slot: int) -> void:

@@ -71,5 +71,9 @@ func _on_hurt(_amount: int, _from: Node) -> void:
 	await get_tree().create_timer(0.15).timeout
 	if next_scene != "":
 		GameState.set_paused(false)
+		GameState.current_zone_id = "lantern_village"
+		GameState.last_position = Vector2(100, 480)
+		GameState.checkpoint_position = Vector2(100, 480)
+		SaveManager.autosave()
 		get_tree().change_scene_to_file(next_scene)
 	queue_free()

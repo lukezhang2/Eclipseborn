@@ -91,5 +91,6 @@ func _on_back() -> void:
 
 
 func _on_title() -> void:
+	SaveManager.autosave()
 	close()
 	get_tree().change_scene_to_file("res://scenes/ui/TitleMenu.tscn")
