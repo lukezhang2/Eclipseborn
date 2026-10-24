@@ -45,7 +45,7 @@ theme_override_constants/separation = 16
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
 theme_override_colors/font_color = Color(0.92, 0.88, 0.8, 1)
-text = "UNBOUND"
+text = "ECLIPSEBORN"
 horizontal_alignment = 1
 
 [node name="Tag" type="Label" parent="Center/Main"]

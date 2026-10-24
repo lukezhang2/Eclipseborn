@@ -1,18 +1,22 @@
-# Unbound
+# Eclipseborn
 
 > *You aren't moving platforms. You're changing what counts as a platform.*
 
-**Game design plan, draft 6.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
+**Game design plan, draft 6.** The game is called **Eclipseborn**. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
 
 ## How to run
 
-Godot **4.3** project. From this folder:
+**Play in the browser:** [lukezhang2.github.io/Eclipseborn](https://lukezhang2.github.io/Eclipseborn/)
+
+That page is a **web export** of the Godot game (`index.html` + `index.wasm` at the repo root). A normal GitHub repo page only shows source code — it does not run `.gd` files. GitHub Pages must serve that export (this repo’s Pages source is the `main` branch root).
+
+**Play locally** with Godot **4.3**:
 
 ```bash
 godot --path .
 ```
 
-Or open the folder in the Godot editor and press Play. The main scene is the title menu (**Play** / **Controls**). New Game starts in the Cursed Cottage tutorial. A Phase 0 sandbox lives at `scenes/rooms/PrototypeRoom.tscn`. Feature status vs this plan: `docs/FEATURE_CHECKLIST.md`.
+Or open the folder in the Godot editor and press Play. The main scene is the title menu (**Play** / **Controls**). New Game starts in the Cursed Cottage tutorial. A Phase 0 sandbox lives at `scenes/rooms/PrototypeRoom.tscn`. Feature status: `docs/FEATURE_CHECKLIST.md`.
 
 ## Contents
 
@@ -423,7 +427,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 
 ## Open questions
 
-1. What's the game called, and what's the boy's name?
+1. What's the boy's name? (The game is **Eclipseborn**.)
 2. Is Godot 4 OK as the engine?
 3. Should multiplayer be online, same computer, or both? How many players?
 4. Should the host be able to continue a group save alone?

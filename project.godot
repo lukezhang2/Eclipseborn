@@ -1,11 +1,11 @@
 ; Engine configuration file.
-; Unbound — shadow-walking metroidvania (Godot 4.3)
+; Eclipseborn — shadow-walking metroidvania (Godot 4.3)
 
 config_version=5
 
 [application]
 
-config/name="Unbound"
+config/name="Eclipseborn"
 config/description="You aren't moving platforms. You're changing what counts as a platform."
 run/main_scene="res://scenes/ui/TitleMenu.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")

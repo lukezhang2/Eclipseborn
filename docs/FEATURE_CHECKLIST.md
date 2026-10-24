@@ -1,4 +1,4 @@
-# Unbound — feature checklist vs plan (draft 6)
+# Eclipseborn — feature checklist vs plan (draft 6)
 
 Status after the first implementation pass. ✅ in game now · 🚧 stub / partial · ❌ not yet
 
