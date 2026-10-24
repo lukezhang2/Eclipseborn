@@ -1,0 +1,15 @@
+---
+description: Commit and push after every completed change
+alwaysApply: true
+---
+
+# Commit and push after every change
+
+After each completed change in this repo, commit the relevant files and push them to the current branch on origin.
+
+- Do this when the change is finished, not after every keystroke.
+- Commit only the files that belong to that change.
+- The message should say why the change was made.
+- Never commit secrets (`.env`, credentials, keys).
+- Never force-push, skip hooks, or change git config.
+- If pushing to the protected branch needs approval, ask for it and finish the push.

@@ -2,7 +2,7 @@
 
 > *You aren't moving platforms. You're changing what counts as a platform.*
 
-**Game design plan, draft 3.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
+**Game design plan, draft 4.** "Unbound" is a working title. Items marked **(open)** haven't been decided yet. Please add your opinion on them.
 
 ## Contents
 
@@ -13,6 +13,7 @@
 - [Shade and health](#shade-and-health)
 - [Bosses and abilities](#bosses-and-abilities)
 - [World](#world)
+- [Menus and the map](#menus-and-the-map)
 - [Multiplayer](#multiplayer)
 - [Sound and music](#sound-and-music)
 - [Visuals and animation](#visuals-and-animation)
@@ -24,7 +25,7 @@
 
 ## The pitch
 
-A 2D **metroidvania**. You play a cursed boy whose body is now a **shadow spirit**: black fire and two white eyes. He can **only exist in shadow**, and light burns him. You don't move platforms. You move **boxes, lamps, gears, and giant machines** to change where the shadows fall, and those shadows become the floors, walls, and bridges you walk on. From the start he can **run** and **double jump**.
+A 2D **metroidvania** set in a world of **steel and steam**. You play a cursed boy whose body is now a **shadow spirit**: black fire and two white eyes. He can **only exist in shadow**, and light burns him. You don't move platforms. You move **boxes, lamps, gears, and giant machines** to change where the shadows fall, and those shadows become the floors, walls, and bridges you walk on. From the start he can **run** and **attack**. **Double jump** is the reward for beating the first boss.
 
 > **What "metroidvania" means:** a game set in one big connected map instead of separate levels. At first you can't reach many areas. You beat bosses to get new abilities, and those abilities let you go back and open earlier areas you couldn't get into before. The name comes from Metroid and Castlevania.
 
@@ -109,16 +110,16 @@ There's a gap you can't jump across. A lamp sits on a rail below it, and a broke
 
 ## Movement
 
-Run and double jump are part of the spirit from the first room. They are not boss rewards.
+Walk, run, and a single jump are his from the first room. Double jump is not.
 
-| Move | What it looks like | What it's for |
-|---|---|---|
-| **Walk** | Short steps in the base of the flame. The eyes stay level. | Careful pushes and narrow shadow bridges. |
-| **Run** | The flame stretches backward, the eyes lead, and a few embers trail. | Crossing a shadow before it moves, and general travel. |
-| **Jump** | The flame compresses, then bursts upward. | One box-height, plus a little. |
-| **Double jump** | A second burst in the air. The flame flares brighter and the eyes lift. | Gaps and ledges a single jump cannot clear. It should not skip a whole room. |
+| Move | What it looks like | What it's for | When he has it |
+|---|---|---|---|
+| **Walk** | Short steps in the base of the flame. The eyes stay level. | Careful pushes and narrow shadow bridges. | Start |
+| **Run** | The flame stretches backward, the eyes lead, and a few embers trail. | Crossing a shadow before it moves, and general travel. | Start |
+| **Jump** | The flame compresses, then bursts upward. | One box-height, plus a little. | Start |
+| **Double jump** | A second burst in the air. The flame flares brighter and the eyes lift. | Gaps and ledges a single jump cannot clear. It should not skip a whole room. | After **The Lamplighter**, the first boss |
 
-How tall the jumps are, and whether run is a held button or full tilt on the stick, is **(open)**. The feel we want: run is fast enough that a sliding shadow is a choice, and the second jump is readable as a flare, not a second copy of the first jump.
+How tall the jumps are, and whether run is a held button or full tilt on the stick, is **(open)**. The feel we want: run is fast enough that a sliding shadow is a choice, and the second jump is readable as a flare, not a second copy of the first jump. Before the Lamplighter, a second jump press in the air does nothing.
 
 ## Shade and health
 
@@ -160,38 +161,104 @@ The maximum starts at 100 and goes up as the game goes on. Current health never 
 
 | Boss | Ability | Unlocks |
 |---|---|---|
-| **The Lamplighter** (tutorial boss) | **Shadow Grip:** pull or push lamps from far away | Rooms where lamps are out of reach |
+| **The Lamplighter** (first boss) | **Double Jump:** a second jump in the air | Ledges and gaps one jump cannot clear |
 | **The Clockwork Warden** | **Gear Sense:** turn gears without touching them, and see gears hidden in walls | Machine areas |
 | **The Hollow Moth** | **Shade Dash:** dash through a short strip of vulnerable light without the shade bar dropping. If the dash ends still in that light, shade starts draining as usual | Rooms with thin light beams |
 | **The Mirror Queen** | **Reflect:** place a mirror shard that bends light | Light-aiming puzzles |
-| **The Eclipse Beast** | **Ash Glide:** after a double jump, the flame thins and carries you sideways | The widest pits and the tallest shafts |
+| **The Eclipse Beast** | **Shadow Grip:** pull or push lamps from far away | Rooms where lamps are out of reach |
 | **The Candle Choir** | **Snuff:** put out small lights | The bright cathedral |
 | **The Witch** (final boss) | Break the curse | Ending |
 
 The names, abilities, and order are all up for change. **(open)**
 
+He can still push a lamp by walking into it from the start. **Shadow Grip** is the later version of that, from far away. It moved off the first boss so the Lamplighter could teach double jump. Whether the Eclipse Beast is the right boss for Shadow Grip is **(open)**.
+
 ### Combat
 
-- Combat is a short melee lash of the flame itself, not a weapon he holds. Hitting an enemy from above bounces him up. Healing costs a resource called Umbra.
-- **Bosses use light as a weapon.** Their light attacks erase your ground, so the arena changes during the fight. Some bosses are made of shadow, and you beat them by shining light on them.
+Press **F** to attack. The lash goes in the direction he is facing. Facing is left or right, taken from the last way he moved, and standing still keeps it. The attack is a whip of the flame itself, not a weapon he holds. Healing costs a resource called Umbra.
+
+The swing has three beats: a short startup, the active frames while the lash is out, and a short recovery before another F will swing again. He does not turn around during the active frames.
+
+Landing on an enemy from above while falling bounces him up. That bounce is separate from the F lash.
+
+**Bosses use light as a weapon.** Their light attacks erase your ground, so the arena changes during the fight. Some bosses are made of shadow, and you beat them by shining light on them.
+
+### Hitboxes
+
+Fights use two kinds of box. These are not the crates in the rooms. Crates, walls, and shadow floors stay ordinary collision. The lash does not push a box.
+
+| Kind | What it is | When it exists |
+|---|---|---|
+| **Hurtbox** | The part of a body that can take a hit. The spirit has one. Every enemy has one. | The whole time that body can be damaged. |
+| **Hitbox** | The part of an attack that deals damage. | Only during that attack's active frames. |
+
+Every attack, his or an enemy's, is written down the same way:
+
+- Who owns it
+- Which direction it faces
+- How far in front of the owner it sits, and how big it is
+- How many frames of startup, active, and recovery it has
+- How much damage it deals
+- Which hurtboxes it is allowed to touch
+
+On F, the spirit's hitbox appears in front of his facing direction for the active frames only. If it overlaps an enemy hurtbox, that enemy takes the damage **once** for that swing. The same swing cannot hit them again. The next press of F is a new swing.
+
+Enemy attacks use the same list: their own offset, size, frames, and damage. If an enemy hitbox overlaps the spirit's hurtbox, he loses health. Enemy hits still skip the shade bar.
+
+The numbers for his lash and for each enemy are **(open)**. The framework is the part to build first, before the numbers are tuned.
 
 ## World
 
-One connected world split into areas, each with its own look and music.
+One connected world of **steel and steam**. The ground is riveted plate, iron beams, and brick. Pipes run along the walls. Brass valves, coal soot, rust, and vents of white steam are in every district. Lamps and furnace glow are the light. Open sky is rare, and when it shows through a broken roof it is moonlight, not a sunny field.
+
+Each area is a district of that same machine, with its own music. They are not separate biomes.
 
 | Area | Description |
 |---|---|
-| **The Cursed Cottage** | Where you start. It's your parents' home and the tutorial. |
-| **Lantern Village** | An abandoned town full of street lamps |
-| **The Clockworks** | Giant gears and moving machines |
-| **Moth Hollow** | A cave with glowing mushrooms and bugs |
-| **Glass Spire** | Mirrors and light beams |
-| **Cathedral of Candles** | Very bright and very dangerous |
-| **The Witch's Wood** | The final area |
+| **The Cursed Cottage** | Where you start. A boiler-house home: pipes in the walls, a cold furnace, the tutorial. |
+| **Lantern Village** | An abandoned town. Iron lamp posts, steam leaking from street grates. |
+| **The Clockworks** | Giant gears, pistons, and moving machines. |
+| **Moth Hollow** | A collapsed boiler tunnel. Moths and wet fungus on the iron. |
+| **Glass Spire** | A brass-and-glass tower of mirrors, gauges, and light beams. |
+| **Cathedral of Candles** | A furnace nave. Gas-fed flames. Very bright and very dangerous. |
+| **The Witch's Wood** | The final area. Trees grown through a dead foundry, roots wrapped around gears. |
 
 - Shortcuts open up as you explore. There are optional secret rooms and side bosses.
 - You save at checkpoints. One idea is that save points are dark spots, like an unlit fireplace. **(open)**
-- There's a map that fills in as you explore.
+- The zone map fills in as you explore. See [Menus and the map](#menus-and-the-map).
+
+## Menus and the map
+
+### Title menu
+
+The game opens on a menu with two choices.
+
+| Choice | What it does |
+|---|---|
+| **Play** | Opens the save slots. Choosing a slot starts that game, or continues it. |
+| **Controls** | Lists every action and the key bound to it. Choose an action, press a new key, and that key replaces the old one. |
+
+Two actions cannot share a key. A reset puts the defaults back. Every action below can be rebound, including attack, the map, and the menu.
+
+| Action | Default key |
+|---|---|
+| Move left / right | A / D, or the arrow keys |
+| Run | Shift |
+| Jump | Space |
+| Attack | F |
+| Zone map | Tab |
+| Menu | Esc |
+
+During a game, **Esc** opens this same menu. In **single player** the game pauses. The spirit, enemies, lights, boxes, shade, and health all stop until the menu closes. In **co-op** Esc opens the menu for that player only, and the world does not pause.
+
+### Zone map
+
+**Tab** opens a map of the zone he is standing in, drawn to fit one screen. It is the whole of that zone, not the whole world. Tab again closes it.
+
+- A room is drawn after he enters it. Rooms he has never entered stay blank.
+- Each living player gets an icon on the room they are in. The icons look different, so co-op players can tell who is who. A partner's icon shows even in a room this player has not mapped yet, so nobody gets lost.
+- The map does not move lamps or fight. It only shows where people are.
+- In single player, Tab pauses the game the same way Esc does, so shade does not drain while the map is up. In co-op, Tab does not pause the world.
 
 ## Multiplayer
 
@@ -204,6 +271,7 @@ One connected world split into areas, each with its own look and music.
 - **Players could cast shadows too.** A player standing in front of a light would make a small shadow a teammate can stand on. It's fun, but it makes puzzles harder to design. **(open)**
 - A player whose health hits 0 comes back as a small wisp and can be revived at a checkpoint or by a teammate.
 - In single player, co-op puzzles change so one person can solve them, for example with a lever that locks a gear in place.
+- Esc and Tab pause only in single player. In co-op the world keeps moving while one player has the menu or the zone map open.
 
 ### Save files
 
@@ -233,6 +301,7 @@ Requirement: *save files must start with the other players.*
 | Lights on or off | A soft ignition whoosh, or a candle puff |
 | Shadow ground appearing | A low hum or an ink splash |
 | Health hitting 0 | Ash blowing away as the flame comes apart |
+| Attack swing | A short flame whip |
 | Hitting enemies | Crunchy, punchy hits |
 | Boss getting hurt | A big low hit and a short freeze-frame |
 
@@ -245,7 +314,7 @@ Requirement: *save files must start with the other players.*
 
 ## Visuals and animation
 
-- **Style:** 2D, dark, and high contrast, with warm lamplight against deep black. Hand-drawn or pixel art is **(open)**. Pixel art would be faster to make.
+- **Style:** 2D, dark, and high contrast. Iron, rust, brass, coal, and steam, with warm lamplight against deep black. Hand-drawn or pixel art is **(open)**. Pixel art would be faster to make.
 - **The spirit:** he is not a little knight. No mask, no horned hood, no cloak shaped like a person, no sword as the silhouette. The whole body is **black fire**: a ragged flame of shadow, taller when he is still, streaming back when he runs. **Two white eyes** are the only face. They sit in the flame and move on their own, so you can tell where he is looking. The flame's edge has a faint ember-red, not a costume.
 - **Idle:** the flame breathes in and out. The eyes drift, then settle. Every few seconds one taller flicker rises and falls.
 - **Shadows on the ground** should look a bit magical, like dark ink with a faint purple edge, so players can easily tell where they can walk. They are separate from the spirit's body. His body is fire. The floor-shadows are ink.
@@ -259,13 +328,14 @@ Requirement: *save files must start with the other players.*
 | **Walk** | Low steps. Eyes level. The flame barely trails. |
 | **Run** | Body stretched back, eyes leading, embers behind. |
 | **Jump** | Compress, then a burst upward. |
-| **Double jump** | A second, brighter burst. Eyes flare. |
+| **Double jump** | A second, brighter burst. Eyes flare. Plays only after the Lamplighter is beaten. |
+| **Attack** | The flame lashes out in the facing direction, then snaps back. Plays on F. |
 | **Fall** | Flame points up. Eyes tip down. |
 | **Push** | Flame spreads across a moveable box. Plays the whole time he is walking into it. |
 | **Bump** | Flame splashes on an immoveable box and snaps back into shape. |
 | **Shade drain** | Flame thins and eyes squint while the bar drops. He is still whole. |
 | **Light burn** | Plays only after the shade bar is empty. Edges become ash and the health number falls. At 0, the flame comes apart. |
-| **Also needed** | Attack, block, wall-slide, hurt, death, and getting an ability. |
+| **Also needed** | Block, wall-slide, hurt, death, and getting an ability. |
 
 Box animations are only **idle**, **slide**, and **shake**, described under [Boxes](#boxes). A sliding box has to read clearly, because the shadow under it is moving too.
 
@@ -277,7 +347,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 | Alternative | Unity | Also works, but it's heavier and its licensing has been messy. |
 | Art tools | Aseprite or Krita | Cheap or free 2D art tools |
 | Multiplayer | Godot networking, Steam later | Use direct connections for testing, then Steam for real online play. |
-| Version control | Git + GitHub | So we both work on the same code and don't lose anything |
+| Version control | Git + GitHub | So we both work on the same code and don't lose anything. Each finished change is committed and pushed. The codespace disk is not the only copy. |
 
 **Hardest technical part:** shadows that act as real ground have to come out the same on every player's computer during online play. The plan is for the host to decide where all the lights and objects are and send that to everyone. Each computer then builds the shadow ground from it.
 
@@ -287,7 +357,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 
 1. Set up the Godot project.
 2. Make one room with one hearth lamp and one moveable box, where the box's shadow is walkable.
-3. Add walk, run, jump, and double jump that feel good.
+3. Add walk, run, and a single jump that feel good. Double jump stays locked until the first boss.
 4. Add the shade bar and the health number. One hearth lamp drains a full shade bar in about 1.5 seconds, then health at about 100 per second from a starting value of 100. At 0, respawn. Shade refills in shadow in about 1 second. Health does not.
 5. Add one immoveable box beside it. Walking into the moveable box plays push and drags its shadow. Walking into the immoveable box plays bump, and that shadow stays.
 6. Let the player push the lamp so the shadow ground updates.
@@ -298,15 +368,16 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 1. Add gears and giant moving objects.
 2. Add switches and lights that turn on and off.
 3. Add the other light types: candle, moon, crimson, and sunshaft. One new type at a time, after hearth already works.
-4. Add combat, the steel-clang block, and enemies.
-5. Add checkpoints and saving.
+4. Add the F attack and the hitbox framework: one player hurtbox, one player hitbox in the facing direction, and one enemy with its own hurtbox and hitbox. A swing hits once.
+5. Add the title menu with Play and Controls, rebinding, and Esc pausing a single-player game.
+6. Add checkpoints and saving.
 
 ### Phase 2: First real slice
 
 1. Build the Cursed Cottage and Lantern Village, about 15 rooms.
-2. Add the Lamplighter boss and the first ability.
+2. Add the Lamplighter boss. Beating him unlocks double jump.
 3. Add the first sounds and music.
-4. Add the map screen.
+4. Add the Tab map for the current zone, with a player icon. Build the cottage and village rooms in steel and steam.
 5. Add one shade heart that raises maximum health from 100 to 125.
 
 ### Phase 3: Multiplayer
@@ -334,7 +405,7 @@ Box animations are only **idle**, **slide**, and **shake**, described under [Box
 7. Should players cast shadows teammates can stand on?
 8. Should we start with the Phase 0 prototype?
 9. How high should the jump and double jump go, and is run a held button?
-10. Is **Ash Glide** the right Eclipse Beast reward now that double jump is a starting move?
+10. Is the Eclipse Beast the right boss for **Shadow Grip**, now that the Lamplighter unlocks double jump?
 11. Should moonlight stay completely safe, and should crimson light stay safe to stand in?
 12. Is about 1 second the right shade refill, and is about 100 health per second the right burn once the bar is empty?
 13. Should each shade heart add 25 max health, and which bosses raise it too?
