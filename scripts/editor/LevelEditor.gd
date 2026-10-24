@@ -86,9 +86,17 @@ func _build_ui() -> void:
 	_hud.add_child(del_btn)
 
 	var save_btn := Button.new()
-	save_btn.text = "Save Overlay"
+	save_btn.text = "Save (this browser only)"
 	save_btn.pressed.connect(_save)
 	_hud.add_child(save_btn)
+	var copy_btn := Button.new()
+	copy_btn.text = "Copy Level JSON"
+	copy_btn.pressed.connect(_copy_json)
+	_hud.add_child(copy_btn)
+	var paste_btn := Button.new()
+	paste_btn.text = "Paste Level JSON"
+	paste_btn.pressed.connect(_paste_json)
+	_hud.add_child(paste_btn)
 	var play_btn := Button.new()
 	play_btn.text = "Playtest Zone"
 	play_btn.pressed.connect(_playtest)
@@ -102,7 +110,8 @@ func _build_ui() -> void:
 
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.text = "Click bottom-right on title with password to reopen. Drag middle-mouse to pan."
+	_status.custom_minimum_size.x = 240
+	_status.text = "Editor works locally. Save is THIS browser only — other players will NOT see it. Copy Level JSON and paste it in chat / commit to data/levels/ to ship for everyone. MMB pan, wheel zoom."
 	_hud.add_child(_status)
 
 
@@ -189,15 +198,43 @@ func _select(piece: EditorPiece) -> void:
 		_selected.set_selected(true)
 
 
-func _save() -> void:
+func _build_data() -> Dictionary:
 	var pieces: Array = []
 	for p in _pieces:
 		pieces.append(p.to_dict())
-	var data := {"zone": zone_id, "pieces": pieces}
+	return {"zone": zone_id, "pieces": pieces}
+
+
+func _save() -> void:
+	var data := _build_data()
 	var err := LevelData.save_raw(zone_id, data, false)
-	# Also try writing into res for repo commits when running in editor/export writable.
-	LevelData.save_raw(zone_id, data, true)
-	_status.text = "Saved %s (%d) — %s" % [zone_id, pieces.size(), "ok" if err == OK else str(err)]
+	_status.text = "Saved locally (%d pieces). Other players won't see this until JSON is in the repo. %s" % [data["pieces"].size(), "ok" if err == OK else str(err)]
+
+
+func _copy_json() -> void:
+	var text := JSON.stringify(_build_data(), "\t")
+	DisplayServer.clipboard_set(text)
+	_status.text = "Copied %d pieces to clipboard. Paste here in chat (or into data/levels/%s.json) to ship for all players." % [_pieces.size(), zone_id]
+
+
+func _paste_json() -> void:
+	var text := DisplayServer.clipboard_get()
+	var parsed: Variant = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		_status.text = "Clipboard is not valid level JSON."
+		return
+	var data: Dictionary = parsed
+	_clear_pieces()
+	zone_id = str(data.get("zone", zone_id))
+	for raw in data.get("pieces", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var piece := EditorPiece.new()
+		_world.add_child(piece)
+		piece.apply_dict(raw)
+		_pieces.append(piece)
+	LevelData.save_raw(zone_id, data, false)
+	_status.text = "Imported %d pieces into %s (local)." % [_pieces.size(), zone_id]
 
 
 func _playtest() -> void:

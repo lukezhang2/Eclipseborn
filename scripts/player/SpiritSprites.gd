@@ -29,8 +29,8 @@ static func build_frames() -> SpriteFrames:
 		],
 		"jump": [_draw(0, -2, 0, true, 0, 0)],
 		"fall": [_draw(0, 2, 0, true, 0, 0)],
-		"push": [_draw(2, 0, 0, false, 0, 0, false, true)],
-		"pull": [_draw(-2, 0, 0, false, 0, 0, false, true)],
+		"push": [_draw(2, 0, 0, false, 0, 0, false, true), _draw(3, 0, 0, false, 0, 1, false, true)],
+		"pull": [_draw_pull(0), _draw_pull(1), _draw_pull(2)],
 		"bump": [_draw(-1, 0, 0, false, 0, 0)],
 		"crouch": [_draw_crouch(0)],
 		"crouch_walk": [_draw_crouch(1), _draw_crouch(2)],
@@ -43,7 +43,8 @@ static func build_frames() -> SpriteFrames:
 	bases["run"] = bases["walk"].duplicate()
 
 	for anim_name in bases.keys():
-		_add_anim(frames, anim_name, bases[anim_name], _speed_for(anim_name), anim_name in ["idle", "walk", "run", "crouch", "crouch_walk"])
+		var looping: bool = anim_name in ["idle", "walk", "run", "crouch", "crouch_walk", "pull", "push"]
+		_add_anim(frames, anim_name, bases[anim_name], _speed_for(anim_name), looping)
 
 	# Layered shade/burn variants for locomotion bases.
 	var loco := ["idle", "walk", "run", "jump", "fall", "crouch", "crouch_walk", "push", "pull"]
@@ -65,15 +66,18 @@ static func build_frames() -> SpriteFrames:
 
 
 static func _speed_for(anim_name: String) -> float:
-	match anim_name:
+	var base := anim_name.replace("_shade", "").replace("_burn", "")
+	match base:
 		"idle":
-			return 4.2  # ~40% slower than prior 7.0
+			return 4.2
 		"walk", "crouch_walk":
 			return 10.0
 		"run":
-			return 18.0  # same frames, faster
+			return 18.0
+		"pull", "push":
+			return 8.0
 		_:
-			if anim_name.begins_with("attack"):
+			if base.begins_with("attack"):
 				return 16.0
 			return 7.0
 
@@ -186,6 +190,36 @@ static func _draw_weapon(img: Image, cx: int, hy: int, look: int, phase: int) ->
 		butt = Vector2(cx + 2, hy + 4)
 	_line_thick(img, butt, tip, WEAPON, 2)
 	_line_thick(img, butt, tip, OUTLINE, 1)
+
+
+static func _draw_pull(phase: int) -> Image:
+	## Stand beside crate: lean, both arms stretched back toward the box.
+	var img := Image.create(48, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var lean := -2 - (phase % 2)
+	var cx := 24 + lean
+	var base := 52
+	var body_top := base - 28
+	_oval(img, cx, body_top + 10, 9, 14, FILL, true)
+	_oval(img, cx, body_top + 10, 9, 14, OUTLINE, false)
+	var hy := body_top - 1
+	_oval(img, cx, hy, 8, 8, FILL, true)
+	_oval(img, cx, hy, 8, 8, OUTLINE, false)
+	_oval(img, cx - 3, hy - 1, 2, 2, EYE, true)
+	_oval(img, cx + 3, hy - 1, 2, 2, EYE, true)
+	# Legs planted / tiny scuttle
+	var ox := 1 if phase == 1 else (-1 if phase == 2 else 0)
+	_oval(img, cx - 3 + ox, base - 7, 2, 5, FILL, true)
+	_oval(img, cx + 3 - ox, base - 7, 2, 5, FILL, true)
+	_oval(img, cx - 3 + ox, base - 7, 2, 5, OUTLINE, false)
+	_oval(img, cx + 3 - ox, base - 7, 2, 5, OUTLINE, false)
+	# Arms reaching BACK (toward crate behind) — long stretch to the left of sprite
+	var reach := 10 + phase
+	_line_thick(img, Vector2(cx - 2, body_top + 8), Vector2(cx - reach, body_top + 10 + phase), FILL, 2)
+	_line_thick(img, Vector2(cx + 1, body_top + 9), Vector2(cx - reach + 2, body_top + 12), FILL, 2)
+	_line_thick(img, Vector2(cx - 2, body_top + 8), Vector2(cx - reach, body_top + 10 + phase), OUTLINE, 1)
+	_oval(img, cx - reach, body_top + 10 + phase, 2, 2, FILL, true)
+	return img
 
 
 static func _draw_crouch(leg: int) -> Image:

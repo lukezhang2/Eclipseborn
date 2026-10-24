@@ -1,13 +1,13 @@
 extends Node2D
 class_name Gear
-## Rotating gear with real teeth that slides a linked platform.
+## Real toothed gear that slides a linked platform.
 
 @export var linked_path: NodePath
 @export var rotate_speed: float = 40.0
 @export var move_amplitude: float = 120.0
 @export var player_can_spin: bool = true
-@export var tooth_count: int = 12
-@export var radius: float = 30.0
+@export var tooth_count: int = 14
+@export var radius: float = 32.0
 
 var _angle: float = 0.0
 var _base: Vector2
@@ -19,7 +19,7 @@ func _ready() -> void:
 	_build_visual()
 	call_deferred("_resolve_link")
 	var occ := ShadowOccluder.new()
-	occ.local_polygon = _circle_poly(radius * 0.9, 14)
+	occ.local_polygon = _circle_poly(radius * 0.85, 14)
 	add_child(occ)
 	add_to_group("gears")
 
@@ -48,39 +48,40 @@ func _physics_process(delta: float) -> void:
 
 
 func _build_visual() -> void:
-	# Outer ring
+	var steel := Color(0.48, 0.46, 0.42)
+	var disc := Polygon2D.new()
+	disc.polygon = _circle_poly(radius * 0.86, 28)
+	disc.color = steel.darkened(0.2)
+	add_child(disc)
 	var ring := Polygon2D.new()
-	ring.polygon = _ring_poly(radius, radius * 0.72, 28)
-	ring.color = Color(0.38, 0.36, 0.33)
+	ring.polygon = _ring_poly(radius * 0.86, radius * 0.6, 28)
+	ring.color = steel
 	add_child(ring)
-	# Hub
+	for i in 5:
+		var spoke := Polygon2D.new()
+		spoke.color = steel.lightened(0.15)
+		spoke.polygon = PackedVector2Array([
+			Vector2(-3.5, -radius * 0.58), Vector2(3.5, -radius * 0.58),
+			Vector2(2.8, -radius * 0.28), Vector2(-2.8, -radius * 0.28),
+		])
+		spoke.rotation = i * TAU / 5.0
+		add_child(spoke)
 	var hub := Polygon2D.new()
-	hub.polygon = _circle_poly(radius * 0.28, 16)
+	hub.polygon = _circle_poly(radius * 0.26, 16)
 	hub.color = Color(0.55, 0.42, 0.22)
 	add_child(hub)
-	var hub_hole := Polygon2D.new()
-	hub_hole.polygon = _circle_poly(radius * 0.1, 10)
-	hub_hole.color = Color(0.12, 0.1, 0.09)
-	add_child(hub_hole)
-	# Spokes
-	for i in 4:
-		var spoke := Polygon2D.new()
-		spoke.color = Color(0.45, 0.4, 0.32)
-		spoke.polygon = PackedVector2Array([
-			Vector2(-2.5, -radius * 0.65), Vector2(2.5, -radius * 0.65),
-			Vector2(2.5, -radius * 0.3), Vector2(-2.5, -radius * 0.3),
-		])
-		spoke.rotation = i * TAU / 4.0
-		add_child(spoke)
-	# Teeth
+	var hole := Polygon2D.new()
+	hole.polygon = _circle_poly(radius * 0.09, 10)
+	hole.color = Color(0.08, 0.07, 0.06)
+	add_child(hole)
 	for i in tooth_count:
 		var tooth := Polygon2D.new()
-		tooth.color = Color(0.5, 0.38, 0.2)
-		var tw := radius * 0.18
-		var th := radius * 0.28
+		tooth.color = steel.lightened(0.12)
+		var tw := radius * 0.13
+		var th := radius * 0.22
 		tooth.polygon = PackedVector2Array([
-			Vector2(-tw, -radius), Vector2(tw, -radius),
-			Vector2(tw * 0.7, -radius + th), Vector2(-tw * 0.7, -radius + th),
+			Vector2(-tw, -radius * 0.84), Vector2(tw, -radius * 0.84),
+			Vector2(tw * 0.7, -radius * 0.84 - th), Vector2(-tw * 0.7, -radius * 0.84 - th),
 		])
 		tooth.rotation = i * TAU / float(tooth_count)
 		add_child(tooth)

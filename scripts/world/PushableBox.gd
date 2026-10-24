@@ -1,11 +1,10 @@
 extends AnimatableBody2D
 class_name PushableBox
-## Moveable crate that occludes light. Clamped + shape-cast so it cannot embed in walls.
+## Moveable crate. Blocks light via physics ray — no visual shadow wedges.
 
 @export var box_size: Vector2 = Vector2(48, 48)
 @export var push_speed: float = 110.0
 
-var _occluder: ShadowOccluder
 var _visual: Sprite2D
 var _shake_time: float = 0.0
 
@@ -49,37 +48,13 @@ func _build() -> void:
 		edge.add_point(p)
 	edge.add_point(poly[0])
 	add_child(edge)
-	_occluder = ShadowOccluder.new()
-	_occluder.local_polygon = poly
-	add_child(_occluder)
 
 
 func rebuild_visual_for_size(size: Vector2) -> void:
 	box_size = size
-	if _visual:
-		_visual.texture = _make_wood_texture(int(size.x), int(size.y))
-	# Rebuild collision + occluder
 	for c in get_children():
-		if c is CollisionPolygon2D or c is ShadowOccluder or c is Line2D:
-			c.queue_free()
-	var half := box_size * 0.5
-	var poly := PackedVector2Array([
-		Vector2(-half.x, -half.y), Vector2(half.x, -half.y),
-		Vector2(half.x, half.y), Vector2(-half.x, half.y),
-	])
-	var cs := CollisionPolygon2D.new()
-	cs.polygon = poly
-	add_child(cs)
-	var edge := Line2D.new()
-	edge.width = 2.0
-	edge.default_color = Color(0.05, 0.02, 0.08, 0.95)
-	for p in poly:
-		edge.add_point(p)
-	edge.add_point(poly[0])
-	add_child(edge)
-	_occluder = ShadowOccluder.new()
-	_occluder.local_polygon = poly
-	add_child(_occluder)
+		c.queue_free()
+	_build()
 
 
 func _make_wood_texture(w: int, h: int) -> ImageTexture:
@@ -96,7 +71,6 @@ func _make_wood_texture(w: int, h: int) -> ImageTexture:
 			elif y % 10 == 0:
 				base = base.darkened(0.12)
 			img.set_pixel(x, y, base)
-	# Rivets at corners
 	for p in [Vector2i(5, 5), Vector2i(w - 6, 5), Vector2i(5, h - 6), Vector2i(w - 6, h - 6)]:
 		for oy in range(-1, 2):
 			for ox in range(-1, 2):
@@ -117,10 +91,9 @@ func _can_move(dx: float) -> bool:
 	var params := PhysicsShapeQueryParameters2D.new()
 	params.shape = shape
 	params.transform = Transform2D(0.0, global_position + Vector2(dx, 0))
-	params.collision_mask = 1  # world only
+	params.collision_mask = 1
 	params.exclude = [get_rid()]
-	var hits := space.intersect_shape(params, 4)
-	return hits.is_empty()
+	return space.intersect_shape(params, 4).is_empty()
 
 
 func try_push(from_global: Vector2, direction: float, delta: float) -> String:
@@ -133,7 +106,6 @@ func try_push(from_global: Vector2, direction: float, delta: float) -> String:
 		return ""
 	position.x += dx
 	_clamp_x()
-	ShadowWorld.mark_dirty()
 	return "push"
 
 
@@ -141,12 +113,16 @@ func try_pull(from_global: Vector2, pull_direction: float, delta: float) -> Stri
 	var my_center := global_position
 	if absf(from_global.y - my_center.y) > box_size.y * 0.9:
 		return ""
-	if absf(from_global.x - my_center.x) > box_size.x * 0.5 + 36.0:
+	if absf(from_global.x - my_center.x) > box_size.x * 0.5 + 48.0:
 		return ""
 	var dx := pull_direction * push_speed * 0.95 * delta
 	if not _can_move(dx):
 		return ""
 	position.x += dx
 	_clamp_x()
-	ShadowWorld.mark_dirty()
 	return "pull"
+
+
+func pull_stand_x(player_facing_sign: float) -> float:
+	## World X where the player should stand while pulling (beside the crate).
+	return global_position.x - player_facing_sign * (box_size.x * 0.5 + 18.0)

@@ -89,36 +89,44 @@ static func add_wall(parent: Node2D, x: float, y: float, width: float, height: f
 
 
 static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float, height: float) -> void:
-	## Decorative back wall (no collision) with brick courses.
+	## Distant mural — darker, flatter, no collision. Reads as BG not solid geometry.
 	var face := Node2D.new()
 	face.position = Vector2(x, y)
-	face.z_index = -10
+	face.z_index = -14
+	face.modulate = Color(0.55, 0.5, 0.48, 0.75)
 	var bg := Polygon2D.new()
 	var hx := width * 0.5
 	var hy := height * 0.5
 	bg.polygon = PackedVector2Array([
 		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
 	])
-	bg.color = Color(0.14, 0.12, 0.11)
+	bg.color = Color(0.11, 0.09, 0.1)
 	face.add_child(bg)
 	var row := 0
-	var yy := -hy + 8.0
-	while yy < hy:
-		var offset := 12.0 if row % 2 == 1 else 0.0
+	var yy := -hy + 10.0
+	while yy < hy - 20:
+		var offset := 14.0 if row % 2 == 1 else 0.0
 		var xx := -hx + offset
 		while xx < hx:
 			var brick := Polygon2D.new()
-			var bw := 28.0
-			var bh := 12.0
+			var bw := 30.0
+			var bh := 11.0
 			brick.polygon = PackedVector2Array([
-				Vector2(xx, yy), Vector2(xx + bw - 2, yy),
-				Vector2(xx + bw - 2, yy + bh - 2), Vector2(xx, yy + bh - 2)
+				Vector2(xx, yy), Vector2(xx + bw - 3, yy),
+				Vector2(xx + bw - 3, yy + bh - 2), Vector2(xx, yy + bh - 2)
 			])
-			brick.color = Color(0.28 + fmod(xx * 0.01, 0.06), 0.18, 0.14)
+			brick.color = Color(0.2 + fmod(xx * 0.008, 0.04), 0.13, 0.11, 0.7)
 			face.add_child(brick)
 			xx += bw
-		yy += 14.0
+		yy += 13.0
 		row += 1
+	# Soft vignette so it sinks into the room
+	var fade := Polygon2D.new()
+	fade.color = Color(0.05, 0.04, 0.06, 0.35)
+	fade.polygon = PackedVector2Array([
+		Vector2(-hx, hy - 40), Vector2(hx, hy - 40), Vector2(hx, hy), Vector2(-hx, hy)
+	])
+	face.add_child(fade)
 	parent.add_child(face)
 
 
@@ -251,23 +259,43 @@ static func add_steam_vent(parent: Node2D, pos: Vector2) -> void:
 	parent.add_child(puff)
 
 
-static func add_backdrop(parent: Node2D, width: float, height: float) -> void:
+static func add_backdrop(parent: Node2D, width: float, height: float, floor_top: float = 500.0) -> void:
+	## Playfield fill (below sky fire). Far silhouettes read as background, not solids.
 	var bg := Polygon2D.new()
 	bg.polygon = PackedVector2Array([
-		Vector2(0, -200), Vector2(width, -200), Vector2(width, height), Vector2(0, height)
+		Vector2(0, 60), Vector2(width, 60), Vector2(width, height), Vector2(0, height)
 	])
-	bg.color = Color(0.05, 0.045, 0.055)
-	bg.z_index = -20
+	bg.color = Color(0.06, 0.05, 0.07)
+	bg.z_index = -18
 	parent.add_child(bg)
-	# Far soot gradient strips
-	var strip := Polygon2D.new()
-	strip.z_index = -19
-	strip.color = Color(0.08, 0.06, 0.05, 0.5)
-	strip.polygon = PackedVector2Array([
-		Vector2(0, height - 120), Vector2(width, height - 160),
-		Vector2(width, height), Vector2(0, height)
-	])
-	parent.add_child(strip)
+	# Distant building silhouettes (desaturated, soft) — clearly non-interactive BG.
+	var x := 40.0
+	while x < width:
+		var sil := Polygon2D.new()
+		sil.z_index = -17
+		var bw := randf_range(70, 140)
+		var bh := randf_range(80, 200)
+		sil.polygon = PackedVector2Array([
+			Vector2(x, floor_top - 8), Vector2(x + bw, floor_top - 8),
+			Vector2(x + bw, floor_top - 8 - bh), Vector2(x, floor_top - 8 - bh)
+		])
+		sil.color = Color(0.09, 0.08, 0.1, 0.55)
+		parent.add_child(sil)
+		# Fake distant windows
+		for wi in 3:
+			var win := Polygon2D.new()
+			win.z_index = -16
+			var wx := x + 12 + wi * 22
+			var wy := floor_top - 40 - wi * 28
+			win.polygon = PackedVector2Array([
+				Vector2(wx, wy), Vector2(wx + 8, wy), Vector2(wx + 8, wy - 10), Vector2(wx, wy - 10)
+			])
+			win.color = Color(0.35, 0.28, 0.15, 0.15)
+			parent.add_child(win)
+		x += bw + randf_range(30, 80)
+	var sky := BlackFireSky.new()
+	sky.setup(width, floor_top)
+	parent.add_child(sky)
 
 
 static func spawn_player(parent: Node2D, pos: Vector2) -> Player:

@@ -203,6 +203,7 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 			if pulling:
 				if box.try_pull(global_position, dir, delta) == "pull":
 					_pulling = true
+					_attach_pull_pose(box, dir, delta)
 			else:
 				var r: String = box.try_push(global_position, dir, delta)
 				if r == "push":
@@ -217,7 +218,17 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 			if box is PushableBox:
 				if (box as PushableBox).try_pull(global_position, dir, delta) == "pull":
 					_pulling = true
+					_attach_pull_pose(box as PushableBox, dir, delta)
 					break
+
+
+func _attach_pull_pose(box: PushableBox, dir: float, delta: float) -> void:
+	## Snap beside the crate, face the pull direction (away from crate contact).
+	if dir == 0.0:
+		return
+	facing = signf(dir)
+	var target_x := box.pull_stand_x(facing)
+	global_position.x = move_toward(global_position.x, target_x, 220.0 * delta)
 
 
 func _find_lamp_owner(node: Node) -> Node:
