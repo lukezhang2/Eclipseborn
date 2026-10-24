@@ -1,10 +1,15 @@
 extends Control
-## Level editor with SubViewport world, named catalog pieces, and editable lantern radius.
+## Level editor: fixed left toolbar, world SubViewport, bottom scrub for long levels.
 
 
 enum Tool { SELECT, MOVE, RESIZE, DELETE }
 
 const PANEL_W := 320.0
+const BOTTOM_H := 44.0
+const OVERSCROLL := 960.0 ## How far past the rightmost piece you can pan to keep building.
+const MIN_WORLD_RIGHT := 1600.0
+const CAM_Y := 360.0
+
 
 var zone_id: String = "cursed_cottage"
 var tool: Tool = Tool.SELECT
@@ -14,6 +19,7 @@ var _removed_ids: Array = []
 var _selected: EditorPiece = null
 var _world: Node2D
 var _cam: Camera2D
+var _bg: Polygon2D
 var _viewport: SubViewport
 var _vp_container: SubViewportContainer
 var _piece_list: ItemList
@@ -23,9 +29,14 @@ var _radius_row: HBoxContainer
 var _status: Label
 var _tool_label: Label
 var _zone_option: OptionButton
+var _scrub: HScrollBar
+var _scrub_label: Label
+var _extent_label: Label
 var _panning: bool = false
 var _pan_last: Vector2 = Vector2.ZERO
 var _syncing_list: bool = false
+var _syncing_scrub: bool = false
+var _world_right: float = MIN_WORLD_RIGHT
 
 
 func _ready() -> void:
@@ -37,17 +48,54 @@ func _ready() -> void:
 
 
 func _build_layout() -> void:
-	var root := HBoxContainer.new()
-	root.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(root)
+	## Full-screen world; left panel + bottom scrub are screen-locked overlays.
+	_vp_container = SubViewportContainer.new()
+	_vp_container.name = "WorldView"
+	_vp_container.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	_vp_container.offset_left = PANEL_W
+	_vp_container.offset_bottom = -BOTTOM_H
+	_vp_container.stretch = true
+	_vp_container.mouse_filter = Control.MOUSE_FILTER_STOP
+	_vp_container.gui_input.connect(_on_vp_gui_input)
+	add_child(_vp_container)
 
+	_viewport = SubViewport.new()
+	_viewport.size = Vector2i(960, 720)
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.handle_input_locally = true
+	_viewport.physics_object_picking = true
+	_vp_container.add_child(_viewport)
+
+	_world = Node2D.new()
+	_world.name = "World"
+	_viewport.add_child(_world)
+
+	_bg = Polygon2D.new()
+	_bg.z_index = -100
+	_bg.color = Color(0.05, 0.045, 0.06)
+	_world.add_child(_bg)
+
+	_cam = Camera2D.new()
+	_cam.position = Vector2(700, CAM_Y)
+	_world.add_child(_cam)
+	_cam.make_current()
+
+	_build_left_panel()
+	_build_bottom_scrub()
+	_rebuild_bg()
+
+
+func _build_left_panel() -> void:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(PANEL_W, 0)
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.name = "LeftPanel"
+	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	panel.offset_left = 0
+	panel.offset_right = PANEL_W
+	panel.offset_top = 0
+	panel.offset_bottom = -BOTTOM_H
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(panel)
+	panel.z_index = 20
+	add_child(panel)
 
 	var margin := MarginContainer.new()
 	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -65,35 +113,50 @@ func _build_layout() -> void:
 	scroll.add_child(col)
 	_build_sidebar(col)
 
-	_vp_container = SubViewportContainer.new()
-	_vp_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_vp_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_vp_container.stretch = true
-	_vp_container.mouse_filter = Control.MOUSE_FILTER_STOP
-	_vp_container.gui_input.connect(_on_vp_gui_input)
-	root.add_child(_vp_container)
 
-	_viewport = SubViewport.new()
-	_viewport.size = Vector2i(960, 720)
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_viewport.handle_input_locally = true
-	_viewport.physics_object_picking = true
-	_vp_container.add_child(_viewport)
+func _build_bottom_scrub() -> void:
+	var bar := PanelContainer.new()
+	bar.name = "BottomScrub"
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_top = -BOTTOM_H
+	bar.offset_bottom = 0
+	bar.offset_left = 0
+	bar.offset_right = 0
+	bar.mouse_filter = Control.MOUSE_FILTER_STOP
+	bar.z_index = 20
+	add_child(bar)
 
-	_world = Node2D.new()
-	_world.name = "World"
-	_viewport.add_child(_world)
-	var bg := Polygon2D.new()
-	bg.z_index = -100
-	bg.color = Color(0.05, 0.045, 0.06)
-	bg.polygon = PackedVector2Array([
-		Vector2(-400, -400), Vector2(4500, -400), Vector2(4500, 1100), Vector2(-400, 1100)
-	])
-	_world.add_child(bg)
-	_cam = Camera2D.new()
-	_cam.position = Vector2(700, 360)
-	_world.add_child(_cam)
-	_cam.make_current()
+	var margin := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(m, 8)
+	bar.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	margin.add_child(row)
+
+	_scrub_label = Label.new()
+	_scrub_label.text = "Scroll"
+	_scrub_label.custom_minimum_size.x = 56
+	row.add_child(_scrub_label)
+
+	_scrub = HScrollBar.new()
+	_scrub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scrub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_scrub.custom_minimum_size = Vector2(0, 18)
+	_scrub.min_value = 0
+	_scrub.max_value = MIN_WORLD_RIGHT + OVERSCROLL
+	_scrub.page = 640
+	_scrub.value = 0
+	_scrub.value_changed.connect(_on_scrub_changed)
+	row.add_child(_scrub)
+
+	_extent_label = Label.new()
+	_extent_label.name = "ExtentLabel"
+	_extent_label.text = "0"
+	_extent_label.custom_minimum_size.x = 72
+	_extent_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(_extent_label)
 
 
 func _build_sidebar(col: VBoxContainer) -> void:
@@ -154,6 +217,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 			_selected.light_radius = v
 			_selected._rebuild()
 			_selected.set_selected(true)
+			_refresh_world_extent()
 	)
 	_radius_row.add_child(_radius_spin)
 
@@ -213,7 +277,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(280, 70)
-	_status.text = "MMB pan · wheel zoom · select a lantern to edit radius."
+	_status.text = "Left panel is fixed. Bottom bar scrolls the level. Build past the end to grow it."
 	col.add_child(_status)
 
 
@@ -228,6 +292,83 @@ func _section(t: String) -> Label:
 	l.text = t
 	l.add_theme_color_override("font_color", Color(0.75, 0.7, 0.55))
 	return l
+
+
+func _piece_right_edge(p: EditorPiece) -> float:
+	if p == null or not is_instance_valid(p):
+		return 0.0
+	match p.kind:
+		EditorPiece.Kind.LIGHT:
+			return p.position.x + maxf(p.light_radius, 40.0)
+		_:
+			return p.position.x + maxf(p.size.x, 8.0) * 0.5
+
+
+func _compute_world_right() -> float:
+	var right := MIN_WORLD_RIGHT
+	for p in _pieces:
+		if is_instance_valid(p):
+			right = maxf(right, _piece_right_edge(p))
+	return right
+
+
+func _refresh_world_extent() -> void:
+	_world_right = _compute_world_right()
+	_rebuild_bg()
+	_sync_scrub_from_camera(true)
+
+
+func _rebuild_bg() -> void:
+	if _bg == null:
+		return
+	var right := _world_right + OVERSCROLL + 400.0
+	_bg.polygon = PackedVector2Array([
+		Vector2(-400, -400), Vector2(right, -400), Vector2(right, 1100), Vector2(-400, 1100)
+	])
+
+
+func _view_page_width() -> float:
+	## Approximate visible world width behind the camera at current zoom.
+	var cont_w := maxf(_vp_container.size.x, 1.0)
+	return cont_w / maxf(_cam.zoom.x, 0.05)
+
+
+func _sync_scrub_from_camera(_force_range: bool = false) -> void:
+	if _scrub == null or _cam == null:
+		return
+	_syncing_scrub = true
+	var page := _view_page_width()
+	var max_scroll := maxf(_world_right + OVERSCROLL, page + 1.0)
+	_scrub.min_value = 0.0
+	_scrub.max_value = max_scroll
+	_scrub.page = clampf(page, 64.0, max_scroll)
+	# Camera X is the center of the view; scrub value is left edge.
+	var left := _cam.position.x - page * 0.5
+	_scrub.set_value_no_signal(clampf(left, 0.0, maxf(0.0, max_scroll - _scrub.page)))
+	if _extent_label:
+		_extent_label.text = "%.0f" % _world_right
+	_scrub_label.text = "x %.0f" % _cam.position.x
+	_syncing_scrub = false
+
+
+func _on_scrub_changed(value: float) -> void:
+	if _syncing_scrub or _cam == null:
+		return
+	var page := _view_page_width()
+	_cam.position.x = value + page * 0.5
+	_cam.position.y = CAM_Y
+	_scrub_label.text = "x %.0f" % _cam.position.x
+
+
+func _clamp_camera() -> void:
+	if _cam == null:
+		return
+	var page := _view_page_width()
+	var max_left := maxf(0.0, _world_right + OVERSCROLL - page)
+	var left := clampf(_cam.position.x - page * 0.5, 0.0, max_left)
+	_cam.position.x = left + page * 0.5
+	_cam.position.y = CAM_Y
+	_sync_scrub_from_camera()
 
 
 func _clear_pieces() -> void:
@@ -249,7 +390,6 @@ func _load_zone() -> void:
 		var oid := str(raw.get("id", ""))
 		if oid != "":
 			overrides[oid] = raw
-	# Always seed from the live catalog so the zone is never empty.
 	for cat in ZoneCatalog.pieces_for(zone_id):
 		var id := str(cat.get("id", ""))
 		if id != "" and _removed_ids.has(id):
@@ -262,14 +402,15 @@ func _load_zone() -> void:
 					merged[key] = ov[key]
 			overrides.erase(id)
 		_spawn_piece_dict(merged)
-	# Extra user-added pieces (non-catalog).
 	for id in overrides.keys():
 		var raw: Dictionary = overrides[id]
 		if bool(raw.get("builtin", false)):
 			continue
 		_spawn_piece_dict(raw)
-	_cam.position = Vector2(700, 360)
+	_cam.position = Vector2(700, CAM_Y)
+	_cam.zoom = Vector2.ONE
 	_refresh_list()
+	_refresh_world_extent()
 	_status.text = "Loaded %s — %d pieces." % [zone_id, _pieces.size()]
 
 
@@ -310,7 +451,8 @@ func _on_list_selected(index: int) -> void:
 	if _syncing_list or index < 0 or index >= _pieces.size():
 		return
 	_select(_pieces[index])
-	_cam.position = _selected.position
+	_cam.position = Vector2(_selected.position.x, CAM_Y)
+	_clamp_camera()
 
 
 func _select(piece: EditorPiece) -> void:
@@ -334,6 +476,7 @@ func _delete_selected() -> void:
 	if is_instance_valid(doomed):
 		doomed.queue_free()
 	_refresh_list()
+	_refresh_world_extent()
 	_status.text = "Deleted '%s'." % id
 	_save()
 
@@ -357,6 +500,7 @@ func _add_piece() -> void:
 	_select(_pieces.back())
 	tool = Tool.MOVE
 	_tool_label.text = "Tool: Move"
+	_refresh_world_extent()
 
 
 func _build_data() -> Dictionary:
@@ -397,10 +541,12 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			return
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
 			_cam.zoom = (_cam.zoom * 1.1).clamp(Vector2(0.2, 0.2), Vector2(4, 4))
+			_clamp_camera()
 			_vp_container.accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			_cam.zoom = (_cam.zoom * 0.9).clamp(Vector2(0.2, 0.2), Vector2(4, 4))
+			_clamp_camera()
 			_vp_container.accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -409,12 +555,14 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 				_on_click(world)
 			elif _selected and tool != Tool.DELETE:
 				_selected.end_interact()
+				_refresh_world_extent()
 			_vp_container.accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		if _panning:
 			_cam.position -= (mm.position - _pan_last) / _cam.zoom
 			_pan_last = mm.position
+			_clamp_camera()
 			_vp_container.accept_event()
 			return
 		if _selected == null or tool == Tool.DELETE:
@@ -422,8 +570,10 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 		var world := _vp_to_world(mm.position)
 		if tool == Tool.MOVE or _selected._dragging:
 			_selected.drag_to(world)
+			_refresh_world_extent()
 		elif tool == Tool.RESIZE or _selected._resizing:
 			_selected.resize_to(world)
+			_refresh_world_extent()
 		_vp_container.accept_event()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE:
@@ -432,8 +582,12 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 				_vp_container.accept_event()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		call_deferred("_clamp_camera")
+
+
 func _vp_to_world(local_pos: Vector2) -> Vector2:
-	## Convert SubViewportContainer-local mouse into world coords.
 	var vp_size := Vector2(_viewport.size)
 	var cont_size := _vp_container.size
 	if cont_size.x < 1.0 or cont_size.y < 1.0:
