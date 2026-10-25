@@ -101,7 +101,8 @@ func _reset_boss_encounter() -> void:
 	_set_arena_gate_sealed(false)
 	if _boss == null or not is_instance_valid(_boss):
 		_boss = WickwrightScript.new()
-		_boss.position = Vector2(400, ARENA_TOP - 140)
+		## Low enough that jump / up-slash sword volumes overlap the hurtbox.
+		_boss.position = Vector2(400, ARENA_TOP - 88)
 		add_child(_boss)
 		if _boss.has_signal("defeated"):
 			_boss.connect("defeated", _on_boss_defeated)
@@ -121,7 +122,8 @@ func _set_arena_gate_sealed(sealed: bool) -> void:
 
 
 func _reset_arena_lamps() -> void:
-	var ids := ["tower_lamp_a", "tower_lamp_b", "tower_lamp_c"]
+	## Left / mid / right high lamps (overlay tower_lamp_6 / 4 / 5).
+	var ids := ["tower_lamp_6", "tower_lamp_4", "tower_lamp_5"]
 	var switch_ids := ["tower_switch_a", "tower_switch_b", "tower_switch_c"]
 	var starts := [true, false, true]
 	for i in 3:
@@ -486,16 +488,12 @@ func _build_arena() -> void:
 	mosaic.polygon = mpts
 	add_child(mosaic)
 
-	## Floor lanterns (Match the Hour) — no dangling chains.
-	var ids := ["tower_lamp_a", "tower_lamp_b", "tower_lamp_c"]
+	## High arena lamps (tower_lamp_6/4/5) spawn from overlay via apply(); floor a/b/c removed.
+	var ids := ["tower_lamp_6", "tower_lamp_4", "tower_lamp_5"]
 	var xs := [250.0, 400.0, 550.0]
 	var starts := [true, false, true]
-	for i in 3:
-		var lamp := _make_floor_lamp(ids[i], Vector2(xs[i], ARENA_TOP - 8), 100.0, starts[i])
-		if lamp:
-			add_child(lamp)
 
-	## High levers that control those floor lanterns (boss yanks these).
+	## High levers that control those lamps (boss yanks these).
 	var lever_y := ARENA_TOP - 110.0
 	_ledge(250, lever_y, 90.0)
 	_ledge(400, lever_y, 90.0)
@@ -514,6 +512,15 @@ func _build_arena() -> void:
 		sw.name = sw_id
 		sw.starts_on = starts[i]
 		sw.target_ids = PackedStringArray([ids[i]])
+		var saved := LevelData.merged_piece("clockwork_tower", sw_id)
+		if saved.has("starts_on"):
+			sw.starts_on = bool(saved.get("starts_on"))
+		if saved.has("target_ids"):
+			var tids: PackedStringArray = PackedStringArray()
+			for t in saved.get("target_ids", []):
+				tids.append(str(t))
+			if not tids.is_empty():
+				sw.target_ids = tids
 		LevelData.tag(sw, sw.name)
 		add_child(sw)
 
@@ -561,7 +568,7 @@ func _build_arena() -> void:
 		_spawn_broken_wall_decor(Vector2(MAP_W - 80, ARENA_TOP - 100))
 	else:
 		_boss = WickwrightScript.new()
-		_boss.position = Vector2(400, ARENA_TOP - 140)
+		_boss.position = Vector2(400, ARENA_TOP - 88)
 		add_child(_boss)
 		if _boss.has_signal("defeated"):
 			_boss.connect("defeated", _on_boss_defeated)
@@ -788,7 +795,7 @@ func _play_defeat_cutscene() -> void:
 	await get_tree().create_timer(0.4).timeout
 	_spawn_broken_wall_decor(Vector2(MAP_W - 60, ARENA_TOP - 110))
 	var tw2 := create_tween()
-	tw2.tween_property(boss, "global_position", Vector2(MAP_W + 40, ARENA_TOP - 140), 0.55).set_ease(Tween.EASE_IN)
+	tw2.tween_property(boss, "global_position", Vector2(MAP_W + 40, ARENA_TOP - 88), 0.55).set_ease(Tween.EASE_IN)
 	await tw2.finished
 	var tw3 := create_tween()
 	tw3.tween_property(boss, "global_position", Vector2(MAP_W + 120, ARENA_TOP + 360), 0.85).set_ease(Tween.EASE_IN)

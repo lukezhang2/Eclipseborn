@@ -39,7 +39,8 @@ var _art = null ## WickwrightArt
 var _dial_label_y: float = -56.0
 var _hurtbox: Hurtbox
 var _hitbox: Hitbox
-var _lamp_ids: PackedStringArray = PackedStringArray(["tower_lamp_a", "tower_lamp_b", "tower_lamp_c"])
+## Left / mid / right high lamps (match arena levers a→6, b→4, c→5).
+var _lamp_ids: PackedStringArray = PackedStringArray(["tower_lamp_6", "tower_lamp_4", "tower_lamp_5"])
 var _switch_ids: PackedStringArray = PackedStringArray(["tower_switch_a", "tower_switch_b", "tower_switch_c"])
 
 
@@ -69,7 +70,11 @@ func awaken() -> void:
 	_cooldown = 0.8
 	_hover_origin = _spawn_pos
 	if _hurtbox:
-		_hurtbox.monitorable = true
+		_hurtbox.set_deferred("monitorable", true)
+		## Ensure the shape is live (dormant path only toggles monitorable).
+		for c in _hurtbox.get_children():
+			if c is CollisionShape2D:
+				(c as CollisionShape2D).set_deferred("disabled", false)
 	if _dial_label:
 		_dial_label.visible = true
 	var ui := get_tree().get_first_node_in_group("tutorial_hint")
@@ -200,10 +205,10 @@ func _build() -> void:
 	_hurtbox.owner_body = self
 	var hcs := CollisionShape2D.new()
 	var hr := RectangleShape2D.new()
-	## Cover the tall grandfather-clock body so sword swings connect.
-	hr.size = Vector2(56, 100)
+	## Tall strike volume: body + drop so jump/side swings reach the hover perch.
+	hr.size = Vector2(84, 160)
 	hcs.shape = hr
-	hcs.position = Vector2(0, -8)
+	hcs.position = Vector2(0, 20)
 	_hurtbox.add_child(hcs)
 	_hurtbox.hurt.connect(_on_hurt)
 	add_child(_hurtbox)
@@ -460,12 +465,62 @@ func _on_hurt(amount: int, from: Node) -> void:
 		return
 	_hurt_cd = HURT_IFRAMES
 	hp -= 1
-	EnemyHitFX.play(_art if _art else _body_poly, self, from)
-	if _heart_open and _art == null:
-		EnemyHitFX.play(_heart_poly, null, null)
+	_play_hurt_feedback(from)
 	_update_phase()
 	if hp <= 0:
 		_start_defeat()
+
+
+func _play_hurt_feedback(from: Node) -> void:
+	## Flash the whole boss (art modulate alone is easy to miss on brass fill).
+	modulate = Color(2.4, 2.4, 2.4, 1.0)
+	var tw := create_tween()
+	tw.tween_property(self, "modulate", Color(1.8, 0.25, 0.3, 1.0), 0.05)
+	tw.tween_property(self, "modulate", Color.WHITE, 0.16)
+	## Nudge away from the attacker — hover lerps ignore CharacterBody velocity.
+	var away := 1.0
+	if from is Node2D and is_instance_valid(from):
+		away = signf(global_position.x - (from as Node2D).global_position.x)
+		if away == 0.0:
+			away = 1.0
+	global_position.x += away * 22.0
+	global_position.y -= 10.0
+	EnemyHitFX.play(_art if _art else _body_poly, null, null)
+	if _heart_open and _art == null:
+		EnemyHitFX.play(_heart_poly, null, null)
+	_spawn_hit_sparks()
+	if _dial_label:
+		_dial_label.text = "Wounds  %d / %d" % [MAX_HP - hp, MAX_HP]
+		_dial_label.modulate = Color(1.0, 0.45, 0.4)
+		var tw2 := create_tween()
+		tw2.tween_property(_dial_label, "modulate", Color.WHITE, 0.35)
+		tw2.tween_callback(_refresh_dial_label)
+
+
+func _spawn_hit_sparks() -> void:
+	var burst := Node2D.new()
+	burst.z_index = 8
+	add_child(burst)
+	for i in 7:
+		var spark := Polygon2D.new()
+		var ang := TAU * float(i) / 7.0 + randf() * 0.4
+		var r := 3.0 + randf() * 2.5
+		spark.polygon = PackedVector2Array([
+			Vector2(0, -r), Vector2(r * 0.6, 0), Vector2(0, r), Vector2(-r * 0.6, 0)
+		])
+		spark.color = Color(1.0, 0.85, 0.35, 1.0) if i % 2 == 0 else Color(1.0, 0.35, 0.25, 1.0)
+		spark.position = Vector2(cos(ang), sin(ang)) * 6.0
+		burst.add_child(spark)
+		var dest := spark.position + Vector2(cos(ang), sin(ang)) * randf_range(28.0, 48.0)
+		var tw := create_tween()
+		tw.tween_property(spark, "position", dest, 0.22).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(spark, "modulate:a", 0.0, 0.22)
+	var clear := create_tween()
+	clear.tween_interval(0.25)
+	clear.tween_callback(func() -> void:
+		if is_instance_valid(burst):
+			burst.queue_free()
+	)
 
 
 func _update_phase() -> void:

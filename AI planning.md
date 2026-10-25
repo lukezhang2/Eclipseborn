@@ -28,6 +28,8 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.81 — sync clockwork_tower (arena levers→lamps 4–6, remove floor a/b/c, enemies in overlay); `index-0_1_81.pck`
+- v0.1.80 — Wickwright sword hits reach + flash/sparks/wound dial feedback; `index-0_1_80.pck`
 - v0.1.77 — Wickwright takes full sword hits (10 to kill, larger hurtbox); `index-0_1_77.pck`
 - v0.1.76 — Enemies drop 2–3 silver gears on kill; gear pickup delay 0.25s; `index-0_1_76.pck`
 - v0.1.75 — sync clockwork_tower (gallery pushable lanterns, cloister floors, arena lamps 4–6, removed texts/practice lamps); `index-0_1_75.pck`
