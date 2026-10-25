@@ -15,19 +15,17 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 ## Cursor
 
 ### Active / claimed
-_(none)_
+- House real light occlusion + left exit door + rebuild lantern washes; continuous map lands with v0.1.12 (main already at 0.1.11).
 
 ### Queue
 _(none)_
 
 ### Done recently
+- Continuous zone-map panorama + live player icon (`ZoneMap`/`MapDraw`) — on branch, ships with v0.1.12
 - v0.1.10 — sync lantern_village from editor save (switch/lamp/crate/platform); `index-0_1_10.pck`
 - v0.1.8 — corner-aware lantern rays + safer umbra (closes random light gaps); `index-0_1_8.pck`
 - v0.1.7 — default `blocks_light` ON for most piece kinds
 - v0.1.5 — Godot export scripts + cache-busted Pages packs
-- v0.1.4 — blocks_light + Layer ±
-- v0.1.3 — houses light-only layer 128
-- v0.1.2 — AI planning board
 
 ---
 
@@ -48,7 +46,6 @@ _(none)_
 _(none)_
 
 ### Done recently
-- v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause (not web-exported yet)
-- v0.1.9 — pause menu Settings: volume (master/music/SFX), brightness, fullscreen; `Settings` autoload
-- v0.1.6 — E = Interact (`interact` action, `Interactable` base); `LightSwitch` flips on E
-- Claude rules added (no game change)
+- v0.1.11 — Settings on the title menu too (`SettingsPanel` shared with pause)
+- v0.1.9 — Settings menu (volume, brightness, fullscreen)
+- v0.1.6 — E = Interact for levers / switches / buttons
