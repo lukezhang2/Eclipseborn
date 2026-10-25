@@ -1,0 +1,16 @@
+---
+description: Always keep Godot available and re-export the Web build after game changes
+alwaysApply: true
+---
+
+# Web export (Godot must be available)
+
+After any completed change that affects gameplay, UI, version, or shipped assets:
+
+1. Run `bash tools/export-web.sh` (it installs Godot 4.3 + templates if missing, then exports).
+2. Commit the updated `index.html`, `index.js`, `index.wasm` (if changed), `index.pck`, and the versioned `index-<ver>.pck` produced by the script.
+3. Push so GitHub Pages serves the new pack. The script cache-busts via `mainPack: index-<version>.pck` so browsers do not keep showing an old title-menu version.
+
+Do **not** claim a version bump is live until the web export has been rebuilt and pushed.
+
+If `godot` is missing mid-session, run `bash tools/ensure-godot.sh` first.

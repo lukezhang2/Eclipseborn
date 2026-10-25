@@ -21,10 +21,10 @@ _(none)_
 _(none)_
 
 ### Done recently
-- v0.1.4 — `blocks_light` bool + Layer ± in editor; player layer shown as 0; `LightOnlyBlocker`
-- v0.1.3 — houses light-block on layer 128 (no player collision)
-- v0.1.2 — created `AI planning.md` + `.cursor/rules/ai-planning.mdc`
-- v0.1.1 — house zones in editor, editable NPC dialogue, version bump rule
+- v0.1.5 — `tools/ensure-godot.sh` + `tools/export-web.sh`; versioned `index-0_1_5.pck` cache-bust; env install proposal for Godot
+- v0.1.4 — blocks_light + Layer ±
+- v0.1.3 — houses light-only layer 128
+- v0.1.2 — AI planning board
 
 ---
 
