@@ -49,6 +49,7 @@ _(none)_
 _(none)_
 
 ### Done recently
-- v0.1.11 — Settings on the title menu too (`SettingsPanel` shared with pause)
+- v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause
 - v0.1.9 — Settings menu (volume, brightness, fullscreen)
 - v0.1.6 — E = Interact for levers / switches / buttons
+- Claude rules added (no game change)
