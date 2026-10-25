@@ -8,6 +8,7 @@ export_presets.cfg
 *.zip
 *.pck
 !index.pck
+!index-*.pck
 *.tmp
 *~
 .DS_Store
