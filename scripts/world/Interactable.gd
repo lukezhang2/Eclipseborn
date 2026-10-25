@@ -26,12 +26,12 @@ func _process(_delta: float) -> void:
 	if p and is_instance_valid(p):
 		var d: Vector2 = global_position - p.global_position
 		near = absf(d.x) < interact_range and absf(d.y) < interact_range + 36.0
-	_prompt.visible = near
+	_prompt.visible = near and GameState.can_interact()
 	if not near:
 		return
 	# Read the binding each frame so a rebind in the pause menu shows up right away.
 	_prompt.text = "%s — %s" % [InputMapManager.get_slot_text("interact", 0), verb]
-	if Input.is_action_just_pressed("interact"):
+	if GameState.can_interact() and Input.is_action_just_pressed("interact"):
 		interact()
 
 

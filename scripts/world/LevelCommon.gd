@@ -381,21 +381,28 @@ static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float =
 	parent.add_child(lamp)
 
 
-static func add_steam_vent(parent: Node2D, pos: Vector2) -> void:
-	var grate := Polygon2D.new()
-	grate.position = pos
-	grate.color = Color(0.15, 0.15, 0.16)
-	grate.polygon = PackedVector2Array([
-		Vector2(-18, -4), Vector2(18, -4), Vector2(18, 4), Vector2(-18, 4)
-	])
-	parent.add_child(grate)
-	var puff := Polygon2D.new()
-	puff.position = pos + Vector2(0, -20)
-	puff.color = Color(0.75, 0.75, 0.78, 0.25)
-	puff.polygon = PackedVector2Array([
-		Vector2(-8, 10), Vector2(8, 10), Vector2(14, -10), Vector2(-14, -10)
-	])
-	parent.add_child(puff)
+static func add_steam_vent(parent: Node2D, pos: Vector2) -> SteamVent:
+	var vent := SteamVent.new()
+	vent.position = pos
+	parent.add_child(vent)
+	return vent
+
+
+static func add_moving_platform(parent: Node2D, pos: Vector2, size: Vector2, cfg: Dictionary = {}) -> Node2D:
+	## Steel floor + PlatformDriver (+ optional bg gear). cfg keys match PlatformDriver.configure.
+	var body := add_steel_floor(parent, pos.x, pos.y, size.x, maxf(size.y, 16.0))
+	if cfg.has("rotation"):
+		body.rotation_degrees = float(cfg.get("rotation"))
+	var gear_pos := pos + Vector2(float(cfg.get("gear_dx", -90.0)), float(cfg.get("gear_dy", -80.0)))
+	var bg: Node2D = null
+	if bool(cfg.get("with_gear", true)):
+		bg = add_bg_gear(parent, gear_pos, float(cfg.get("gear_radius", 55.0)), 0.0)
+	var driver := PlatformDriver.new()
+	driver.position = gear_pos if bg else pos
+	driver.configure(cfg)
+	parent.add_child(driver)
+	driver.bind(body, bg)
+	return body
 
 
 static func add_backdrop(parent: Node2D, width: float, height: float, floor_top: float = 500.0, roof_top: float = 180.0) -> void:

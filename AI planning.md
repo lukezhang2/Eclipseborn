@@ -21,6 +21,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.15 — house fade + interact lock; editor platform path/spin + rotate tool; steam vents
 - v0.1.14 — Minecraft lever; editor lever→lantern/door links; switchable doors; checkpoint fast travel
 - v0.1.13 — geometry house cover (burns + washes), left exit door (Interact/walk), rebuilt village/cottage lights
 - v0.1.12 — house light occlusion (layer 128 burns), left Interact exit, rebuilt lantern washes, continuous zone map

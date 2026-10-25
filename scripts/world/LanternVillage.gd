@@ -180,25 +180,26 @@ func _build_light_puzzle() -> void:
 
 
 func _build_bg_gears_and_platforms() -> void:
-	var bg1 := LevelCommon.add_bg_gear(self, Vector2(1450, 300), 55.0, 18.0)
-	var plat1 := LevelCommon.add_steel_floor(self, 1544, 410, 140, 20)
-	var d1 := PlatformDriver.new()
-	d1.position = Vector2(1450, 300)
-	d1.move_amplitude = 90.0
-	d1.move_speed = 0.65
-	add_child(d1)
-	d1.bind(plat1, bg1)
-
-	var bg2 := LevelCommon.add_bg_gear(self, Vector2(2200, 260), 70.0, -14.0)
-	var plat2 := LevelCommon.add_steel_floor(self, 2300, FLOOR_TOP - 130, 120, 20)
-	var d2 := PlatformDriver.new()
-	d2.position = Vector2(2200, 260)
-	d2.move_amplitude = 70.0
-	d2.move_speed = 0.55
-	d2.vertical = true
-	add_child(d2)
-	d2.bind(plat2, bg2)
-
+	LevelCommon.add_moving_platform(self, Vector2(1544, 410), Vector2(140, 20), {
+		"move_amplitude": 90.0,
+		"move_speed": 0.65,
+		"vertical": false,
+		"rotate_while_moving": true,
+		"rotate_speed": 1.0,
+		"gear_dx": -94.0,
+		"gear_dy": -110.0,
+		"gear_radius": 55.0,
+	})
+	LevelCommon.add_moving_platform(self, Vector2(2300, FLOOR_TOP - 130), Vector2(120, 20), {
+		"move_amplitude": 70.0,
+		"move_speed": 0.55,
+		"vertical": true,
+		"rotate_while_moving": true,
+		"rotate_speed": 1.2,
+		"gear_dx": -100.0,
+		"gear_dy": -110.0,
+		"gear_radius": 70.0,
+	})
 	LevelCommon.add_bg_gear(self, Vector2(800, 240), 40.0, 10.0)
 	LevelCommon.add_bg_gear(self, Vector2(2600, 220), 48.0, -8.0)
 

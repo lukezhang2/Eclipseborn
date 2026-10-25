@@ -36,6 +36,10 @@ static func is_switch_kind(kind: String) -> bool:
 	return kind == "prop_switch"
 
 
+static func is_platform_kind(kind: String) -> bool:
+	return kind == "prop_platform"
+
+
 static func default_draw_layer(kind: String) -> int:
 	## Relative to PLAYER_DRAW_LAYER (0). Negative = behind player.
 	match kind:
@@ -47,7 +51,7 @@ static func default_draw_layer(kind: String) -> int:
 			return -4
 		"prop_pipe", "prop_window", "prop_valve", "prop_desk":
 			return -3
-		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit":
+		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit", "prop_platform":
 			return -2
 		"crate", "prop_breakable", "prop_npc", "prop_enemy", "prop_switch", "prop_door":
 			return 1
@@ -97,6 +101,8 @@ static func default_size(kind: String) -> Vector2:
 			return Vector2(28, 40)
 		"prop_door":
 			return Vector2(28, 96)
+		"prop_platform":
+			return Vector2(140, 20)
 		"prop_desk":
 			return Vector2(200, 28)
 		"prop_exit":
@@ -111,6 +117,8 @@ static func anchor(kind: String) -> String:
 		"prop_house", "prop_checkpoint", "prop_bench", "prop_vent", \
 		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_door", "prop_exit":
 			return "bottom"
+		"prop_platform":
+			return "center"
 		"prop_desk":
 			return "center"
 		_:

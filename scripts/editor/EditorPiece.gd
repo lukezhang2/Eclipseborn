@@ -29,6 +29,16 @@ var draw_layer: int = 0
 var target_ids: PackedStringArray = PackedStringArray()
 ## Door starts open / switch starts on.
 var starts_on: bool = true
+## Degrees — used by Rotate tool / JSON `rotation`.
+var rotation_deg: float = 0.0
+## Moving platform path/spin (prop_platform).
+var move_amplitude: float = 90.0
+var move_speed: float = 0.65
+var move_vertical: bool = false
+var path_y_amplitude: float = 0.0
+var rotate_while_moving: bool = true
+var rotate_speed: float = 1.0
+var rotate_platform: bool = false
 
 var _visual: Sprite2D
 var _outline: Line2D
@@ -83,6 +93,7 @@ func to_dict() -> Dictionary:
 		"builtin": builtin,
 		"blocks_light": blocks_light,
 		"layer": draw_layer,
+		"rotation": rotation_deg,
 	}
 	if kind == Kind.LIGHT:
 		d["kind"] = "light"
@@ -109,6 +120,15 @@ func to_dict() -> Dictionary:
 	if catalog_kind == "prop_door" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_door"):
 		d["kind"] = "prop_door"
 		d["starts_open"] = starts_on
+	if catalog_kind == "prop_platform" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_platform"):
+		d["kind"] = "prop_platform"
+		d["move_amplitude"] = move_amplitude
+		d["move_speed"] = move_speed
+		d["vertical"] = move_vertical
+		d["path_y_amplitude"] = path_y_amplitude
+		d["rotate_while_moving"] = rotate_while_moving
+		d["rotate_speed"] = rotate_speed
+		d["rotate_platform"] = rotate_platform
 	return d
 
 
@@ -131,6 +151,16 @@ func apply_dict(d: Dictionary) -> void:
 		starts_on = bool(d.get("starts_on", true))
 	elif k == "prop_door":
 		starts_on = bool(d.get("starts_open", false))
+	rotation_deg = float(d.get("rotation", 0.0))
+	rotation_degrees = rotation_deg
+	if k == "prop_platform":
+		move_amplitude = float(d.get("move_amplitude", d.get("amplitude", 90.0)))
+		move_speed = float(d.get("move_speed", d.get("speed", 0.65)))
+		move_vertical = bool(d.get("vertical", false))
+		path_y_amplitude = float(d.get("path_y_amplitude", 0.0))
+		rotate_while_moving = bool(d.get("rotate_while_moving", d.get("rotate", true)))
+		rotate_speed = float(d.get("rotate_speed", 1.0))
+		rotate_platform = bool(d.get("rotate_platform", false))
 	match k:
 		"background":
 			kind = Kind.BACKGROUND
@@ -172,6 +202,11 @@ func get_dialogue_text() -> String:
 func set_draw_layer(layer: int) -> void:
 	draw_layer = clampi(layer, -20, 20)
 	z_index = draw_layer
+
+
+func set_rotation_deg(deg: float) -> void:
+	rotation_deg = deg
+	rotation_degrees = deg
 
 
 func set_selected(on: bool) -> void:
@@ -331,6 +366,8 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.55, 0.55, 0.52)
 		"prop_door":
 			col = Color(0.4, 0.26, 0.14)
+		"prop_platform":
+			col = Color(0.35, 0.42, 0.5)
 		_:
 			col = Color(0.4, 0.42, 0.48)
 	for y in h:
