@@ -35,6 +35,8 @@ var _active_light_kind: int = GameState.LightKind.HEARTH
 var _anim_name: String = "idle"
 var _was_on_floor: bool = true
 var _control_locked: bool = false
+var _land_suppress: float = 0.0
+var _floor_sfx: String = "steel"
 
 @onready var visual: Node2D = $Visual
 @onready var sprite: AnimatedSprite2D = $Visual/Sprite
@@ -120,6 +122,7 @@ func _physics_process(delta: float) -> void:
 	if GameState.is_paused or GameState.intro_cutscene_playing:
 		return
 
+	_land_suppress = maxf(0.0, _land_suppress - delta)
 	_update_aim_and_crouch()
 	_update_light_exposure(delta)
 	_update_attack(delta)
@@ -128,12 +131,13 @@ func _physics_process(delta: float) -> void:
 		velocity.y += GRAVITY * delta
 	else:
 		_jumps_remaining = 2 if GameState.has_double_jump else 1
-		if not _was_on_floor:
-			AudioManager.play_land()
-	_was_on_floor = is_on_floor()
 
-	if _control_locked:
+	## Capture fall speed before slide zeros it — used for a real landing thud.
+	var fall_speed := velocity.y
+
+	if _control_locked or GameState.is_dead:
 		move_and_slide()
+		_finish_floor_audio(fall_speed)
 		_update_visual(0.0)
 		return
 
@@ -154,8 +158,6 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 	else:
 		velocity.x = dir * speed
-		if is_on_floor() and absf(dir) > 0.1:
-			AudioManager.play_walk()
 
 	if Input.is_action_just_pressed("jump") and not crouching:
 		_try_jump()
@@ -163,6 +165,9 @@ func _physics_process(delta: float) -> void:
 		_start_attack()
 
 	move_and_slide()
+	_finish_floor_audio(fall_speed)
+	if is_on_floor() and absf(dir) > 0.1 and not GameState.is_dead:
+		AudioManager.play_walk(_floor_sfx)
 	# Push/pull after slide so contact + proximity both work.
 	if dir != 0.0 or Input.is_action_pressed("pull"):
 		_try_move_boxes(dir if dir != 0.0 else facing, delta)
@@ -171,6 +176,41 @@ func _physics_process(delta: float) -> void:
 	_sync_hurtbox()
 	_sync_hitbox()
 	_try_enter_hatch()
+
+
+func _finish_floor_audio(fall_speed: float) -> void:
+	_floor_sfx = _detect_floor_sfx()
+	var on_floor := is_on_floor()
+	if on_floor and not _was_on_floor:
+		## Only real falls (not death jitter / tiny floor flicker).
+		if (
+			not GameState.is_dead
+			and _land_suppress <= 0.0
+			and fall_speed > 110.0
+		):
+			AudioManager.play_land(_floor_sfx)
+	_was_on_floor = on_floor
+
+
+func _detect_floor_sfx() -> String:
+	for i in get_slide_collision_count():
+		var col := get_slide_collision(i)
+		if col == null:
+			continue
+		var n := col.get_normal()
+		if n.y > -0.55:
+			continue
+		var collider := col.get_collider()
+		if collider is Node and (collider as Node).has_meta("floor_sfx"):
+			return str((collider as Node).get_meta("floor_sfx"))
+	return "steel"
+
+
+func notify_respawned() -> void:
+	## Ignore the teleport "landing" when snapping back to a checkpoint.
+	_land_suppress = 0.45
+	_was_on_floor = true
+	velocity = Vector2.ZERO
 
 
 func _wants_down_aim() -> bool:
@@ -407,14 +447,15 @@ func _sync_hitbox() -> void:
 
 func _update_light_exposure(delta: float) -> void:
 	_recompute_light_state()
+	if GameState.is_dead:
+		AudioManager.stop_all_burns()
+		return
 	if _in_vulnerable_light:
 		GameState.apply_light_exposure(delta, _active_light_kind as GameState.LightKind)
 		# Quiet crackle while shade drains; a bit louder once HP burns in light.
 		if GameState.shade > 0.0:
 			AudioManager.set_shade_burning(true)
-			AudioManager.set_health_burning(false)
 		else:
-			AudioManager.set_shade_burning(false)
 			AudioManager.set_health_burning(true)
 	else:
 		GameState.refill_shade_safe(delta)

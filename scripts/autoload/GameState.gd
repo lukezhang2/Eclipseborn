@@ -53,6 +53,8 @@ var currency: int = 0
 var currency_hud_unlocked: bool = false
 
 var is_paused: bool = false
+## True between death and respawn — suppresses land/walk spam while the body settles.
+var is_dead: bool = false
 var single_player: bool = true
 var player: Node2D = null
 ## True until the first-spawn cutscene finishes on a new save.
@@ -342,6 +344,7 @@ func add_shade_heart() -> void:
 
 
 func _die() -> void:
+	is_dead = true
 	AudioManager.stop_all_burns()
 	died.emit()
 	# Soft respawn at checkpoint.
@@ -355,4 +358,7 @@ func _respawn() -> void:
 	shade_changed.emit(shade)
 	if player and is_instance_valid(player):
 		player.global_position = checkpoint_position
+		if player.has_method("notify_respawned"):
+			player.notify_respawned()
+	is_dead = false
 	respawned.emit()

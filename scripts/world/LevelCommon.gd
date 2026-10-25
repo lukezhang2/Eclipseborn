@@ -31,6 +31,8 @@ static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, he
 	body.add_child(occ)
 	body.set_meta("editor_kind", "floor")
 	body.set_meta("editor_size", Vector2(width, height))
+	## Footstep bank — steel is the default for all floors until we author more.
+	body.set_meta("floor_sfx", "steel")
 	parent.add_child(body)
 	return body
 
