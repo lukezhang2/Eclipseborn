@@ -1,7 +1,7 @@
 extends Interactable
 class_name LightSwitch
 ## Railway-switch lever (light shows green on / red off). Links to lanterns / doors by catalog id (or node name).
-## Interact (E) flips it; all linked targets get set_on(powered).
+## Flip with Interact (E) or by hitting it with an attack.
 
 
 @export var target_ids: PackedStringArray = PackedStringArray()
@@ -11,6 +11,8 @@ class_name LightSwitch
 
 var _on: bool = true
 var _art: WorldArt
+var _hurtbox: Hurtbox
+var _hit_cd: float = 0.0
 
 
 func _ready() -> void:
@@ -18,8 +20,14 @@ func _ready() -> void:
 	super()
 	_on = starts_on
 	_build_lever()
+	_build_hurtbox()
 	_apply_visual()
 	call_deferred("_apply_targets")
+
+
+func _process(delta: float) -> void:
+	super(delta)
+	_hit_cd = maxf(0.0, _hit_cd - delta)
 
 
 func set_target_ids(ids: PackedStringArray) -> void:
@@ -27,9 +35,37 @@ func set_target_ids(ids: PackedStringArray) -> void:
 
 
 func interact() -> void:
+	_flip()
+
+
+func _flip() -> void:
+	if get_meta("smashed", false):
+		return
 	_on = not _on
 	_apply_visual(true)
 	_apply_targets()
+
+
+func _build_hurtbox() -> void:
+	_hurtbox = Hurtbox.new()
+	_hurtbox.team = "enemy"
+	_hurtbox.owner_body = self
+	var hcs := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	## Tall enough to catch a slash; sits on the lever body.
+	rect.size = Vector2(28, 44)
+	hcs.shape = rect
+	hcs.position = Vector2(0, -18)
+	_hurtbox.add_child(hcs)
+	_hurtbox.hurt.connect(_on_hurt)
+	add_child(_hurtbox)
+
+
+func _on_hurt(_amount: int, _from: Node) -> void:
+	if _hit_cd > 0.0:
+		return
+	_hit_cd = 0.2
+	_flip()
 
 
 func is_powered() -> bool:

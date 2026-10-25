@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.61 — levers flip on attack hit as well as Interact; `index-0_1_61.pck`
 - v0.1.60 — player map: undiscovered cover hides lantern light that spilled above it; `index-0_1_60.pck`
 - v0.1.59 — Clockwork Tower boss resets on player death (HP/phase/gate/lamps); `index-0_1_59.pck`
 - v0.1.58 — Editor zone-link doors/houses/hatches + spawn more palette kinds (pipe/jar/enemy/tower); `index-0_1_58.pck`
