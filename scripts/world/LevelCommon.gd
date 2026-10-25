@@ -403,6 +403,16 @@ static func add_steam_vent(parent: Node2D, pos: Vector2) -> SteamVent:
 	return vent
 
 
+static func add_ladder(parent: Node2D, bottom: Vector2, height: float, width: float = 28.0) -> Ladder:
+	## Brass climb ladder. `bottom` is the walkable floor top where the ladder starts.
+	var lad := Ladder.new()
+	lad.position = bottom
+	lad.ladder_height = height
+	lad.ladder_width = width
+	parent.add_child(lad)
+	return lad
+
+
 static func add_moving_platform(parent: Node2D, pos: Vector2, size: Vector2, cfg: Dictionary = {}) -> Node2D:
 	## Steel floor + PlatformDriver (+ optional bg gear). cfg keys match PlatformDriver.configure.
 	var body := add_steel_floor(parent, pos.x, pos.y, size.x, maxf(size.y, 16.0))

@@ -106,7 +106,7 @@ const LIGHT_BLOCK_PHYSICS_LAYER := 128
 static func default_blocks_light(kind: String) -> bool:
 	## Default ON — opt out for emitters, characters, and pure draw props.
 	match kind:
-		"light", "background", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint":
+		"light", "background", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint", "prop_ladder":
 			return false
 		_:
 			return true
@@ -135,7 +135,7 @@ static func default_draw_layer(kind: String) -> int:
 		## Houses/towers above washes (−3) so lantern fill does not paint through facades.
 		"prop_house", "prop_tower":
 			return -1
-		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit", "prop_platform":
+		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit", "prop_platform", "prop_ladder":
 			return -2
 		"crate", "prop_breakable", "prop_npc", "prop_enemy", "prop_switch", "prop_door":
 			return 1
@@ -191,6 +191,8 @@ static func default_size(kind: String) -> Vector2:
 			return Vector2(200, 28)
 		"prop_exit":
 			return Vector2(40, 50)
+		"prop_ladder":
+			return Vector2(28, 200)
 		_:
 			return Vector2(48, 48)
 
@@ -199,7 +201,8 @@ static func anchor(kind: String) -> String:
 	## Matches how room scripts place the node origin.
 	match kind:
 		"prop_house", "prop_checkpoint", "prop_bench", "prop_vent", \
-		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_door", "prop_exit":
+		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_door", "prop_exit", \
+		"prop_ladder":
 			return "bottom"
 		"prop_platform":
 			return "center"

@@ -495,6 +495,8 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.35, 0.2, 0.4)
 		"prop_lantern", "prop_tower":
 			col = Color(0.55, 0.45, 0.25)
+		"prop_ladder":
+			col = Color(0.5, 0.4, 0.26)
 		"prop_bg_gear":
 			col = Color(0.4, 0.38, 0.36)
 		"prop_valve":

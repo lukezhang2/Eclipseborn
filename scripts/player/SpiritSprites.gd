@@ -35,6 +35,8 @@ static func build_frames() -> SpriteFrames:
 		"bump": [_draw(-1, 0, 0, false, 0, 0)],
 		"crouch": [_draw_crouch(0)],
 		"crouch_walk": [_draw_crouch(1), _draw_crouch(2)],
+		"climb": [_draw_climb(0), _draw_climb(1), _draw_climb(2), _draw_climb(3)],
+		"climb_idle": [_draw_climb(0)],
 		"attack_east": _attack(0),
 		"attack_west": _attack(0),
 		"attack_north": _attack(1),
@@ -44,11 +46,11 @@ static func build_frames() -> SpriteFrames:
 	bases["run"] = bases["walk"].duplicate()
 
 	for anim_name in bases.keys():
-		var looping: bool = anim_name in ["idle", "walk", "run", "crouch", "crouch_walk", "pull", "push", "fall"]
+		var looping: bool = anim_name in ["idle", "walk", "run", "crouch", "crouch_walk", "pull", "push", "fall", "climb", "climb_idle"]
 		_add_anim(frames, anim_name, bases[anim_name], _speed_for(anim_name), looping)
 
 	# Layered shade/burn variants for locomotion bases.
-	var loco := ["idle", "walk", "run", "jump", "fall", "crouch", "crouch_walk", "push", "pull"]
+	var loco := ["idle", "walk", "run", "jump", "fall", "crouch", "crouch_walk", "push", "pull", "climb", "climb_idle"]
 	for base_name in loco:
 		var src: Array = bases[base_name]
 		var shade_imgs: Array = []
@@ -69,7 +71,7 @@ static func build_frames() -> SpriteFrames:
 static func _speed_for(anim_name: String) -> float:
 	var base := anim_name.replace("_shade", "").replace("_burn", "")
 	match base:
-		"idle":
+		"idle", "climb_idle":
 			return 4.2
 		"walk", "crouch_walk":
 			return 10.0
@@ -77,6 +79,8 @@ static func _speed_for(anim_name: String) -> float:
 			return 18.0
 		"pull", "push":
 			return 8.0
+		"climb":
+			return 9.0
 		"fall":
 			return 5.5
 		_:
@@ -279,6 +283,45 @@ static func _draw_crouch(leg: int) -> Image:
 	_oval(img, cx + 4 - ox, base - 3, 3, 3, FILL, true)
 	_oval(img, cx - 4 + ox, base - 3, 3, 3, OUTLINE, false)
 	_oval(img, cx + 4 - ox, base - 3, 3, 3, OUTLINE, false)
+	return img
+
+
+static func _draw_climb(phase: int) -> Image:
+	## Reach-up climb: alternate arms/legs on imaginary rungs.
+	var img := Image.create(48, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var fill := FILL
+	var cx := 24
+	var base := 52
+	var bob := (phase % 2)
+	var body_top := base - 30 + bob
+	_oval(img, cx, body_top + 11, 8, 13, fill, true)
+	_oval(img, cx, body_top + 11, 8, 13, OUTLINE, false)
+	var hy := body_top - 1
+	_oval(img, cx, hy, 7, 7, fill, true)
+	_oval(img, cx, hy, 7, 7, OUTLINE, false)
+	_oval(img, cx - 3, hy - 1, 2, 2, EYE, true)
+	_oval(img, cx + 3, hy - 1, 2, 2, EYE, true)
+	## Legs step on rungs.
+	var left_up := phase == 0 or phase == 1
+	var llx := cx - 4
+	var lrx := cx + 4
+	var lly := base - (10 if left_up else 5)
+	var lry := base - (5 if left_up else 10)
+	_oval(img, llx, lly - 4, 2, 5, fill, true)
+	_oval(img, lrx, lry - 4, 2, 5, fill, true)
+	_oval(img, llx, lly - 4, 2, 5, OUTLINE, false)
+	_oval(img, lrx, lry - 4, 2, 5, OUTLINE, false)
+	## Arms reach above the head, alternating.
+	var arm_l := body_top + (2 if left_up else -6)
+	var arm_r := body_top + (-6 if left_up else 2)
+	_oval(img, cx - 8, arm_l, 3, 5, fill, true)
+	_oval(img, cx + 8, arm_r, 3, 5, fill, true)
+	_oval(img, cx - 8, arm_l, 3, 5, OUTLINE, false)
+	_oval(img, cx + 8, arm_r, 3, 5, OUTLINE, false)
+	## Hands gripping higher.
+	_oval(img, cx - 8, arm_l - 5, 2, 2, fill, true)
+	_oval(img, cx + 8, arm_r - 5, 2, 2, fill, true)
 	return img
 
 

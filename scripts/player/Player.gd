@@ -8,6 +8,8 @@ const CROUCH_MULT := 0.6
 const JUMP_VELOCITY := -360.0
 const DOUBLE_JUMP_VELOCITY := -320.0
 const GRAVITY := 980.0
+const CLIMB_SPEED := 115.0
+const CLIMB_SLIDE_X := 55.0
 const ATTACK_STARTUP := 0.05
 const ATTACK_ACTIVE := 0.11
 const ATTACK_RECOVERY := 0.12
@@ -30,6 +32,8 @@ var _attack_phase: String = "none"
 var _bump_timer: float = 0.0
 var _pushing: bool = false
 var _pulling: bool = false
+var _climbing: bool = false
+var _ladder: Node = null
 var _in_vulnerable_light: bool = false
 var _active_light_kind: int = GameState.LightKind.HEARTH
 var _active_light_intensity: float = 1.0
@@ -128,19 +132,33 @@ func _physics_process(delta: float) -> void:
 	_update_light_exposure(delta)
 	_update_attack(delta)
 
-	if not is_on_floor():
-		velocity.y += GRAVITY * delta
-	else:
-		_jumps_remaining = 2 if GameState.has_double_jump else 1
-
 	## Capture fall speed before slide zeros it — used for a real landing thud.
 	var fall_speed := velocity.y
 
 	if _control_locked or GameState.is_dead:
+		_climbing = false
+		_ladder = null
+		if not is_on_floor():
+			velocity.y += GRAVITY * delta
 		move_and_slide()
 		_finish_floor_audio(fall_speed)
 		_update_visual(0.0)
 		return
+
+	## Ladder climb — hold look_up (W) / look_down while overlapping a ladder.
+	if _try_handle_climb(delta):
+		move_and_slide()
+		_finish_floor_audio(0.0)
+		_update_visual(0.0)
+		_update_crouch_collision()
+		_sync_hurtbox()
+		_sync_hitbox()
+		return
+
+	if not is_on_floor():
+		velocity.y += GRAVITY * delta
+	else:
+		_jumps_remaining = 2 if GameState.has_double_jump else 1
 
 	var dir := _get_move_axis()
 	if dir != 0.0:
@@ -177,6 +195,94 @@ func _physics_process(delta: float) -> void:
 	_sync_hurtbox()
 	_sync_hitbox()
 	_try_enter_hatch()
+
+
+## Returns true when climb movement owns this frame (skips walk gravity).
+func _try_handle_climb(delta: float) -> bool:
+	var near := _find_ladder()
+	if _climbing:
+		if near == null or not is_instance_valid(_ladder) or Input.is_action_just_pressed("jump"):
+			_exit_climb(Input.is_action_just_pressed("jump"))
+			return false
+		if not (_ladder as Ladder).contains_player(self):
+			_exit_climb(false)
+			return false
+		_apply_climb_motion(delta)
+		return true
+
+	if near == null:
+		return false
+	var want_up := Input.is_action_pressed("look_up")
+	var want_down := Input.is_action_pressed("look_down") or (
+		Input.is_action_pressed("crouch") and not is_on_floor()
+	)
+	## Mount when pressing W near a ladder, or S while mid-air / at the top.
+	if want_up or (want_down and (not is_on_floor() or global_position.y <= (near as Ladder).top_y() + 8.0)):
+		_enter_climb(near)
+		_apply_climb_motion(delta)
+		return true
+	return false
+
+
+func _find_ladder() -> Node:
+	for n in get_tree().get_nodes_in_group("ladders"):
+		if n is Ladder and (n as Ladder).contains_player(self):
+			return n
+	return null
+
+
+func _enter_climb(ladder: Node) -> void:
+	_climbing = true
+	_ladder = ladder
+	_pushing = false
+	_pulling = false
+	crouching = false
+	_attack_phase = "none"
+	_attack_timer = 0.0
+	if hitbox:
+		hitbox.deactivate()
+	## Snap onto the ladder center so climb reads cleanly.
+	if ladder is Ladder:
+		global_position.x = ladder.global_position.x
+	velocity = Vector2.ZERO
+
+
+func _exit_climb(jump_off: bool) -> void:
+	_climbing = false
+	_ladder = null
+	if jump_off:
+		velocity.y = JUMP_VELOCITY * 0.72
+		_jumps_remaining = 1 if GameState.has_double_jump else 0
+		AudioManager.play_jump()
+	else:
+		velocity.y = mini(velocity.y, 40.0)
+
+
+func _apply_climb_motion(_delta: float) -> void:
+	var up := Input.get_action_strength("look_up")
+	var down := Input.get_action_strength("look_down")
+	if Input.is_action_pressed("crouch"):
+		down = maxf(down, 1.0)
+	var vert := down - up
+	var horiz := _get_move_axis()
+	velocity.x = horiz * CLIMB_SLIDE_X
+	velocity.y = vert * CLIMB_SPEED
+	if absf(horiz) > 0.01:
+		facing = signf(horiz)
+	if up > 0.1:
+		aim_dir = Vector2.UP
+	elif down > 0.1:
+		aim_dir = Vector2.DOWN
+	## Soft clamp so you don't fly off the top/bottom without letting go.
+	if _ladder is Ladder:
+		var lad := _ladder as Ladder
+		if global_position.y < lad.top_y() - 4.0 and velocity.y < 0.0:
+			velocity.y = 0.0
+			global_position.y = lad.top_y() - 4.0
+		if global_position.y > lad.bottom_y() + 6.0 and velocity.y > 0.0:
+			## Step off the bottom onto the floor.
+			_exit_climb(false)
+			velocity.y = 0.0
 
 
 func _finish_floor_audio(fall_speed: float) -> void:
@@ -238,6 +344,9 @@ func _wants_down_aim() -> bool:
 
 
 func _update_aim_and_crouch() -> void:
+	if _climbing:
+		crouching = false
+		return
 	crouching = Input.is_action_pressed("crouch") and is_on_floor()
 	if _attack_phase != "none":
 		return
@@ -544,7 +653,9 @@ func _update_visual(dir: float) -> void:
 	if _attack_phase != "none":
 		return
 	var base := "idle"
-	if _pulling:
+	if _climbing:
+		base = "climb" if absf(velocity.y) > 8.0 or absf(velocity.x) > 8.0 else "climb_idle"
+	elif _pulling:
 		base = "pull"
 	elif _pushing:
 		base = "push"

@@ -530,7 +530,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Crate"],
 		["light", "Lantern"], ["prop_switch", "Lever"], ["prop_door", "Door (switchable)"],
 		["prop_platform", "Moving platform"], ["prop_vent", "Steam vent"],
-		["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
+		["prop_ladder", "Ladder"], ["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
 		["prop_npc", "NPC / Shopkeeper"], ["prop_desk", "Desk"],
 	]:
 		add_opt.add_item(item[1])
@@ -1070,6 +1070,8 @@ func _pretty_palette_name(palette: String) -> String:
 			return "Lever"
 		"prop_vent":
 			return "Steam Vent"
+		"prop_ladder":
+			return "Ladder"
 		"prop_breakable":
 			return "Glowing Jar"
 		_:
@@ -1114,7 +1116,7 @@ func _add_piece() -> void:
 	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
 	var y := _cam.position.y + 20.0
 	## Snap floor-sitting kinds onto the zone floor so crates aren't buried.
-	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc", "prop_switch", "prop_door"]:
+	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_ladder", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc", "prop_switch", "prop_door"]:
 		y = PieceSpecs.sit_on_floor_y(_palette_id, floor_top, sz)
 	elif _palette_id == "prop_platform":
 		y = floor_top - 90.0

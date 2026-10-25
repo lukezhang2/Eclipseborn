@@ -158,6 +158,9 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			LevelCommon.add_bench(parent, pos)
 		"prop_vent":
 			LevelCommon.add_steam_vent(parent, pos)
+		"prop_ladder":
+			var lad := LevelCommon.add_ladder(parent, pos, maxf(size.y, 40.0), maxf(size.x, 20.0))
+			LevelData.tag(lad, str(p.get("id", "")))
 		"prop_window":
 			LevelCommon.add_window(parent, pos.x, pos.y, size.x, size.y, false)
 		"prop_bg_gear":
