@@ -1,12 +1,14 @@
 extends Node2D
 class_name House
 ## Village house facade — F at the door loads a real interior zone.
+## blocks_light: occludes lanterns without player collision.
 
 
 @export var house_name: String = "House"
 @export var house_id: String = "house_keep"
 @export var width: float = 120.0
 @export var height: float = 90.0
+@export var blocks_light: bool = true
 @export var interior_scene: String = "res://scenes/rooms/HouseInterior.tscn"
 
 var _prompt: Label
@@ -52,24 +54,7 @@ func _build() -> void:
 	])
 	add_child(win)
 
-	## Light-only blocker (layer 128). Not in the player's mask, so the street stays walkable.
-	## ShadowWorld OCCLUDER_MASK includes 128 so washes still stop at the facade.
-	var body := StaticBody2D.new()
-	body.collision_layer = 128
-	body.collision_mask = 0
-	var cs := CollisionPolygon2D.new()
-	cs.polygon = PackedVector2Array([
-		Vector2(-hx, 0), Vector2(hx, 0), Vector2(hx, -height), Vector2(-hx, -height)
-	])
-	body.add_child(cs)
-	add_child(body)
-	var occ := ShadowOccluder.new()
-	## Wall + roof silhouette for umbra wedges.
-	occ.local_polygon = PackedVector2Array([
-		Vector2(-hx - 8, 0), Vector2(hx + 8, 0), Vector2(hx + 8, -height),
-		Vector2(0, -height - 36), Vector2(-hx - 8, -height)
-	])
-	add_child(occ)
+	_apply_light_block(hx)
 
 	_prompt = Label.new()
 	_prompt.text = "F — Enter %s" % house_name
@@ -78,6 +63,20 @@ func _build() -> void:
 	_prompt.add_theme_color_override("font_color", Color(0.92, 0.86, 0.7))
 	_prompt.visible = false
 	add_child(_prompt)
+
+
+func set_blocks_light(on: bool) -> void:
+	blocks_light = on
+	var hx := width * 0.5
+	_apply_light_block(hx)
+
+
+func _apply_light_block(hx: float) -> void:
+	var poly := PackedVector2Array([
+		Vector2(-hx - 8, 0), Vector2(hx + 8, 0), Vector2(hx + 8, -height),
+		Vector2(0, -height - 36), Vector2(-hx - 8, -height)
+	])
+	LightOnlyBlocker.attach(self, poly, blocks_light)
 
 
 func _process(_delta: float) -> void:

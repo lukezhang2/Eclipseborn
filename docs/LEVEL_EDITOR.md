@@ -65,6 +65,8 @@ Browser **Save** only writes `user://` (local to that browser). It does **not** 
 | `x`, `y` | World position. See **anchor**. |
 | `w`, `h` | AABB size in pixels (must match gameplay). |
 | `anchor` | `center` — `(x,y)` is box center. `bottom` — `(x,y)` is feet on the floor (houses, checkpoints, benches, towers). |
+| `blocks_light` | `true` = occludes lantern washes via light-only physics layer 128 (no player collision). Houses default on. |
+| `layer` | Draw layer (`z_index`). Player is **0**. Use editor Layer ± to change. |
 | `builtin` | `true` = seeded from `ZoneCatalog` / room script. |
 | `radius` | Lantern wash radius (`kind: light` only). |
 | `removed_ids` | Catalog ids deleted in the editor; rooms call `LevelData.prune_removed`. |

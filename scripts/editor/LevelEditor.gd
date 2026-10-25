@@ -30,6 +30,8 @@ var _radius_spin: SpinBox
 var _radius_row: HBoxContainer
 var _dialogue_row: VBoxContainer
 var _dialogue_edit: TextEdit
+var _blocks_light_btn: CheckButton
+var _layer_label: Label
 var _status: Label
 var _tool_label: Label
 var _zone_option: OptionButton
@@ -244,6 +246,45 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	dlg_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
 	_dialogue_row.add_child(dlg_hint)
 
+	col.add_child(_section("Light & layer"))
+	_blocks_light_btn = CheckButton.new()
+	_blocks_light_btn.text = "Blocks light"
+	_blocks_light_btn.tooltip_text = "Occludes lantern washes without solid player collision (layer 128)"
+	_blocks_light_btn.disabled = true
+	_blocks_light_btn.toggled.connect(func(on: bool) -> void:
+		if _selected:
+			_selected.blocks_light = on
+			_status.text = "Blocks light: %s" % ("ON" if on else "OFF")
+	)
+	col.add_child(_blocks_light_btn)
+
+	var layer_row := HBoxContainer.new()
+	layer_row.add_theme_constant_override("separation", 6)
+	col.add_child(layer_row)
+	var layer_down := Button.new()
+	layer_down.text = "Layer −"
+	layer_down.tooltip_text = "Move selected piece one draw layer down (behind)"
+	layer_down.pressed.connect(func() -> void:
+		if _selected:
+			_selected.set_draw_layer(_selected.draw_layer - 1)
+			_update_inspector()
+	)
+	layer_row.add_child(layer_down)
+	var layer_up := Button.new()
+	layer_up.text = "Layer +"
+	layer_up.tooltip_text = "Move selected piece one draw layer up (in front)"
+	layer_up.pressed.connect(func() -> void:
+		if _selected:
+			_selected.set_draw_layer(_selected.draw_layer + 1)
+			_update_inspector()
+	)
+	layer_row.add_child(layer_up)
+	_layer_label = Label.new()
+	_layer_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_layer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_layer_label.text = "Piece: —  |  Player: %d" % PieceSpecs.PLAYER_DRAW_LAYER
+	col.add_child(_layer_label)
+
 	col.add_child(_section("Tools"))
 	var tools := HBoxContainer.new()
 	col.add_child(tools)
@@ -444,7 +485,7 @@ func _load_zone() -> void:
 		var merged: Dictionary = cat.duplicate(true)
 		if overrides.has(id):
 			var ov: Dictionary = overrides[id]
-			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor"]:
+			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor", "blocks_light", "layer"]:
 				if ov.has(key):
 					merged[key] = ov[key]
 			overrides.erase(id)
@@ -500,6 +541,17 @@ func _update_inspector() -> void:
 	else:
 		_dialogue_edit.text = ""
 	_syncing_dialogue = false
+	_blocks_light_btn.disabled = _selected == null
+	if _selected:
+		_blocks_light_btn.set_pressed_no_signal(_selected.blocks_light)
+		var rel := _selected.draw_layer - PieceSpecs.PLAYER_DRAW_LAYER
+		var rel_s := ("+%d" % rel) if rel > 0 else str(rel)
+		_layer_label.text = "Piece layer: %d (%s vs player)  |  Player layer: %d" % [
+			_selected.draw_layer, rel_s, PieceSpecs.PLAYER_DRAW_LAYER
+		]
+	else:
+		_blocks_light_btn.set_pressed_no_signal(false)
+		_layer_label.text = "Piece: —  |  Player layer: %d" % PieceSpecs.PLAYER_DRAW_LAYER
 
 
 func _on_dialogue_changed() -> void:
@@ -567,6 +619,8 @@ func _add_piece() -> void:
 	if _palette_id == "prop_npc":
 		d["name"] = "Shopkeeper"
 		d["lines"] = ["You're the stranger here — the only one who needs the shade."]
+	d["blocks_light"] = PieceSpecs.default_blocks_light(_palette_id)
+	d["layer"] = PieceSpecs.default_draw_layer(_palette_id)
 	_spawn_piece_dict(d)
 	_select(_pieces.back())
 	tool = Tool.MOVE

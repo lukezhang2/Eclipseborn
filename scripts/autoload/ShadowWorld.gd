@@ -5,8 +5,8 @@ extends Node
 signal shadows_rebuilt
 
 const RAY_COUNT := 72
-## 1 = world, 8 = crates, 128 = scenery light blockers (houses) — never player-collidable.
-const OCCLUDER_MASK := 1 | 8 | 128
+## 1 = world, 8 = crates, 128 = LightOnlyBlocker (blocks_light scenery) — never player-collidable.
+const OCCLUDER_MASK := 1 | 8 | 128 ## keep in sync with PieceSpecs.LIGHT_BLOCK_PHYSICS_LAYER
 
 var lights: Array = []
 var occluders: Array = []

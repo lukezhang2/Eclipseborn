@@ -130,6 +130,8 @@ static func _p(id: String, kind: String, name: String, x: float, y: float, w: fl
 		"w": w,
 		"h": h,
 		"anchor": PieceSpecs.anchor(kind),
+		"blocks_light": PieceSpecs.default_blocks_light(kind),
+		"layer": PieceSpecs.default_draw_layer(kind),
 		"builtin": true,
 	}
 
@@ -145,6 +147,8 @@ static func _plight(id: String, name: String, x: float, y: float, radius: float)
 		"h": 36,
 		"radius": radius,
 		"anchor": "center",
+		"blocks_light": false,
+		"layer": PieceSpecs.default_draw_layer("light"),
 		"builtin": true,
 		"pushable": false,
 	}
@@ -164,6 +168,8 @@ static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant) 
 		"w": 28,
 		"h": 48,
 		"anchor": "bottom",
+		"blocks_light": false,
+		"layer": PieceSpecs.default_draw_layer("prop_npc"),
 		"builtin": true,
 		"lines": arr,
 	}

@@ -102,35 +102,32 @@ func _resolve_spawn() -> Vector2:
 
 func _build_houses() -> void:
 	## Shopkeepers live inside — street only shows doors.
-	if not LevelData.is_removed("lantern_village", "house_keep"):
-		var h1 := House.new()
-		h1.position = Vector2(520, FLOOR_TOP)
-		h1.house_name = "Lantern Keep"
-		h1.house_id = "house_keep"
-		h1.width = 130.0
-		h1.height = 100.0
-		LevelData.tag(h1, "house_keep")
-		add_child(h1)
+	_spawn_house("house_keep", "Lantern Keep", Vector2(520, FLOOR_TOP), 130.0, 100.0)
+	_spawn_house("house_gear", "Gearwright", Vector2(980, FLOOR_TOP), 110.0, 88.0)
+	_spawn_house("house_inn", "Shade Inn", Vector2(1780, FLOOR_TOP), 140.0, 110.0)
 
-	if not LevelData.is_removed("lantern_village", "house_gear"):
-		var h2 := House.new()
-		h2.position = Vector2(980, FLOOR_TOP)
-		h2.house_name = "Gearwright"
-		h2.house_id = "house_gear"
-		h2.width = 110.0
-		h2.height = 88.0
-		LevelData.tag(h2, "house_gear")
-		add_child(h2)
 
-	if not LevelData.is_removed("lantern_village", "house_inn"):
-		var h3 := House.new()
-		h3.position = Vector2(1780, FLOOR_TOP)
-		h3.house_name = "Shade Inn"
-		h3.house_id = "house_inn"
-		h3.width = 140.0
-		h3.height = 110.0
-		LevelData.tag(h3, "house_inn")
-		add_child(h3)
+func _spawn_house(id: String, title: String, pos: Vector2, w: float, h: float) -> void:
+	if LevelData.is_removed("lantern_village", id):
+		return
+	var house := House.new()
+	house.position = pos
+	house.house_name = title
+	house.house_id = id
+	house.width = w
+	house.height = h
+	house.blocks_light = true
+	var saved := LevelData.merged_piece("lantern_village", id)
+	if saved.has("blocks_light"):
+		house.blocks_light = bool(saved.get("blocks_light"))
+	if saved.has("layer"):
+		house.z_index = int(saved.get("layer"))
+	if saved.has("x"):
+		house.position.x = float(saved.get("x"))
+	if saved.has("y"):
+		house.position.y = float(saved.get("y"))
+	LevelData.tag(house, id)
+	add_child(house)
 
 
 func _build_light_puzzle() -> void:

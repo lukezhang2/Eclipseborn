@@ -14,6 +14,43 @@ const SCHEMA_VERSION := 1
 const CRATE_COTTAGE := Vector2(58, 58)
 const CRATE_VILLAGE := Vector2(67, 67)
 
+## Draw layer the live Player uses (CharacterBody2D default z_index).
+const PLAYER_DRAW_LAYER := 0
+## Physics layer bit used only for light rays (not player collision). See ShadowWorld.
+const LIGHT_BLOCK_PHYSICS_LAYER := 128
+
+
+static func default_blocks_light(kind: String) -> bool:
+	match kind:
+		"floor", "wall", "block", "crate", "prop_house", "prop_desk", "prop_hatch":
+			return true
+		"light", "background", "prop_npc", "prop_bench", "prop_vent", "prop_checkpoint", \
+		"prop_enemy", "prop_bg_gear", "prop_pickup", "prop_pipe", "prop_window", "prop_valve":
+			return false
+		_:
+			return false
+
+
+static func default_draw_layer(kind: String) -> int:
+	## Relative to PLAYER_DRAW_LAYER (0). Negative = behind player.
+	match kind:
+		"background", "prop_bg_gear":
+			return -8
+		"prop_house", "prop_tower":
+			return -6
+		"floor", "wall", "block":
+			return -4
+		"prop_pipe", "prop_window", "prop_valve", "prop_desk":
+			return -3
+		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit":
+			return -2
+		"crate", "prop_breakable", "prop_npc", "prop_enemy", "prop_switch":
+			return 1
+		"light", "prop_lantern", "prop_pickup":
+			return 2
+		_:
+			return 0
+
 
 static func default_size(kind: String) -> Vector2:
 	match kind:

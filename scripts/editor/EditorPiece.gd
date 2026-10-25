@@ -21,6 +21,10 @@ var catalog_kind: String = "floor"
 var anchor_mode: String = "center"
 ## NPC dialogue lines (one string per line). Empty for non-NPCs.
 var dialogue_lines: PackedStringArray = PackedStringArray()
+## If true, gameplay should occlude lantern washes (no player collision required).
+var blocks_light: bool = false
+## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
+var draw_layer: int = 0
 
 var _visual: Sprite2D
 var _outline: Line2D
@@ -34,7 +38,7 @@ var is_selected: bool = false
 
 
 func _ready() -> void:
-	z_index = 10
+	z_index = draw_layer
 	_rebuild()
 
 
@@ -73,6 +77,8 @@ func to_dict() -> Dictionary:
 		"h": size.y,
 		"anchor": anchor_mode,
 		"builtin": builtin,
+		"blocks_light": blocks_light,
+		"layer": draw_layer,
 	}
 	if kind == Kind.LIGHT:
 		d["kind"] = "light"
@@ -101,6 +107,9 @@ func apply_dict(d: Dictionary) -> void:
 	var k: String = str(d.get("kind", "block"))
 	catalog_kind = k
 	anchor_mode = str(d.get("anchor", PieceSpecs.anchor(k)))
+	blocks_light = bool(d.get("blocks_light", PieceSpecs.default_blocks_light(k)))
+	draw_layer = int(d.get("layer", PieceSpecs.default_draw_layer(k)))
+	z_index = draw_layer
 	match k:
 		"background":
 			kind = Kind.BACKGROUND
@@ -137,6 +146,11 @@ func set_dialogue_text(text: String) -> void:
 
 func get_dialogue_text() -> String:
 	return "\n".join(dialogue_lines)
+
+
+func set_draw_layer(layer: int) -> void:
+	draw_layer = clampi(layer, -20, 20)
+	z_index = draw_layer
 
 
 func set_selected(on: bool) -> void:
