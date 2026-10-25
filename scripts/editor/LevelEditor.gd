@@ -24,7 +24,11 @@ var _palette_id: String = "floor"
 var _palette_style: int = 0
 var _pieces: Array[EditorPiece] = []
 var _removed_ids: Array = []
+## Primary selection (inspector focus). `_selection` holds all selected pieces.
 var _selected: EditorPiece = null
+var _selection: Array[EditorPiece] = []
+## Piece → start position while group-dragging under Move.
+var _group_drag_starts: Dictionary = {}
 var _backdrop: Dictionary = {}
 var _sky: BlackFireSky = null
 var _world: Node2D
@@ -325,6 +329,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_pieces_block.add_child(_section("Pieces"))
 	_piece_list = ItemList.new()
 	_piece_list.custom_minimum_size = Vector2(280, 200)
+	_piece_list.select_mode = ItemList.SELECT_MULTI
 	_piece_list.item_selected.connect(_on_list_selected)
 	_pieces_block.add_child(_piece_list)
 
@@ -366,11 +371,16 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_radius_spin.value_changed.connect(func(v: float) -> void:
 		if _syncing_light or _history_restoring:
 			return
-		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
-			_push_undo_inspector()
-			_selected.light_radius = v
-			_selected._rebuild()
-			_selected.set_selected(true)
+		var any := false
+		for p in _selection:
+			if p and is_instance_valid(p) and p.kind == EditorPiece.Kind.LIGHT:
+				if not any:
+					_push_undo_inspector()
+					any = true
+				p.light_radius = v
+				p._rebuild()
+				p.set_selected(true)
+		if any:
 			_refresh_world_extent()
 	)
 	_radius_row.add_child(_radius_spin)
@@ -390,11 +400,15 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_intensity_spin.value_changed.connect(func(v: float) -> void:
 		if _syncing_light or _history_restoring:
 			return
-		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
-			_push_undo_inspector()
-			_selected.light_intensity = v
-			_selected._rebuild()
-			_selected.set_selected(true)
+		var any := false
+		for p in _selection:
+			if p and is_instance_valid(p) and p.kind == EditorPiece.Kind.LIGHT:
+				if not any:
+					_push_undo_inspector()
+					any = true
+				p.light_intensity = v
+				p._rebuild()
+				p.set_selected(true)
 	)
 	_intensity_row.add_child(_intensity_spin)
 
@@ -416,12 +430,22 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_kind_option.item_selected.connect(func(i: int) -> void:
 		if _syncing_light or _history_restoring:
 			return
-		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
-			_push_undo()
-			_selected.light_kind = _kind_option.get_item_id(i)
-			_selected._rebuild()
-			_selected.set_selected(true)
-			_status.text = "Lantern kind: %s" % _kind_option.get_item_text(i)
+		var lights: Array[EditorPiece] = []
+		for p in _selection:
+			if p and is_instance_valid(p) and p.kind == EditorPiece.Kind.LIGHT:
+				lights.append(p)
+		if lights.is_empty():
+			return
+		_push_undo()
+		var kid := _kind_option.get_item_id(i)
+		for p in lights:
+			p.light_kind = kid
+			p._rebuild()
+			p.set_selected(true)
+		_status.text = "Lantern kind: %s%s" % [
+			_kind_option.get_item_text(i),
+			" (%d)" % lights.size() if lights.size() > 1 else "",
+		]
 	)
 	_kind_row.add_child(_kind_option)
 
@@ -751,11 +775,16 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_blocks_light_btn.tooltip_text = "Occludes lantern washes without solid player collision (layer 128)"
 	_blocks_light_btn.disabled = true
 	_blocks_light_btn.toggled.connect(func(on: bool) -> void:
-		if _history_restoring or _selected == null:
+		if _history_restoring or _selection.is_empty():
 			return
 		_push_undo()
-		_selected.blocks_light = on
-		_status.text = "Blocks light: %s" % ("ON" if on else "OFF")
+		for p in _selection:
+			if p and is_instance_valid(p):
+				p.blocks_light = on
+		_status.text = "Blocks light: %s%s" % [
+			"ON" if on else "OFF",
+			" (%d)" % _selection.size() if _selection.size() > 1 else "",
+		]
 	)
 	_pieces_block.add_child(_blocks_light_btn)
 
@@ -764,22 +793,28 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_pieces_block.add_child(layer_row)
 	var layer_down := Button.new()
 	layer_down.text = "Layer −"
-	layer_down.tooltip_text = "Move selected piece one draw layer down (behind)"
+	layer_down.tooltip_text = "Move selected piece(s) one draw layer down (behind)"
 	layer_down.pressed.connect(func() -> void:
-		if _selected:
-			_push_undo()
-			_selected.set_draw_layer(_selected.draw_layer - 1)
-			_update_inspector()
+		if _selection.is_empty():
+			return
+		_push_undo()
+		for p in _selection:
+			if p and is_instance_valid(p):
+				p.set_draw_layer(p.draw_layer - 1)
+		_update_inspector()
 	)
 	layer_row.add_child(layer_down)
 	var layer_up := Button.new()
 	layer_up.text = "Layer +"
-	layer_up.tooltip_text = "Move selected piece one draw layer up (in front)"
+	layer_up.tooltip_text = "Move selected piece(s) one draw layer up (in front)"
 	layer_up.pressed.connect(func() -> void:
-		if _selected:
-			_push_undo()
-			_selected.set_draw_layer(_selected.draw_layer + 1)
-			_update_inspector()
+		if _selection.is_empty():
+			return
+		_push_undo()
+		for p in _selection:
+			if p and is_instance_valid(p):
+				p.set_draw_layer(p.draw_layer + 1)
+		_update_inspector()
 	)
 	layer_row.add_child(layer_up)
 	_layer_label = Label.new()
@@ -802,11 +837,12 @@ func _build_sidebar(col: VBoxContainer) -> void:
 			tool = t
 			_tool_label.text = "Tool: %s" % pair[0]
 			_sync_move_arrows()
+			_sync_resize_edges()
 		)
 		tools.add_child(b)
 	_tool_label = Label.new()
 	_tool_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tool_label.text = "Tool: Select — click world or list · RMB/MMB drag to pan · Move shows X/Y arrows"
+	_tool_label.text = "Tool: Select — Ctrl/Cmd+click multi-select · top layer wins · Resize shows N/E/S/W edges"
 	col.add_child(_tool_label)
 
 	var hist := HBoxContainer.new()
@@ -1410,6 +1446,8 @@ func _clear_pieces() -> void:
 			p.queue_free()
 	_pieces.clear()
 	_selected = null
+	_selection.clear()
+	_group_drag_starts.clear()
 
 
 func _load_zone() -> void:
@@ -1486,8 +1524,8 @@ func _refresh_list() -> void:
 		if p.kind == EditorPiece.Kind.LIGHT:
 			extra = "  r=%.0f i=%.2f %s" % [p.light_radius, p.light_intensity, _light_kind_label(p.light_kind)]
 		_piece_list.add_item("%s [%s]%s" % [p.display_name, p.piece_id, extra])
-		if p == _selected:
-			_piece_list.select(i)
+		if p in _selection:
+			_piece_list.select(i, false)
 	_syncing_list = false
 	_update_inspector()
 
@@ -1857,35 +1895,77 @@ func _on_list_selected(index: int) -> void:
 	_clamp_camera()
 
 
-func _select(piece) -> void:
-	if piece != _selected:
+func _select(piece, additive: bool = false) -> void:
+	var next: EditorPiece = piece as EditorPiece if piece != null else null
+	if not additive:
+		if next != _selected or _selection.size() != (1 if next else 0):
+			_break_undo_coalesce()
+		for p in _selection:
+			if p and is_instance_valid(p) and p != next:
+				p.set_selected(false)
+				p.show_move_arrows = false
+				p.show_resize_edges = false
+				p.queue_redraw()
+		_selection.clear()
+		_selected = next
+		if _selected and is_instance_valid(_selected):
+			_selection.append(_selected)
+			_selected.set_selected(true)
+	else:
+		## Ctrl/Cmd+click: toggle membership; keep primary for inspector.
+		if next == null:
+			_sync_move_arrows()
+			_sync_resize_edges()
+			_refresh_list()
+			return
 		_break_undo_coalesce()
-	if _selected and is_instance_valid(_selected):
-		_selected.set_selected(false)
-		_selected.show_move_arrows = false
-		_selected.queue_redraw()
-	_selected = piece as EditorPiece if piece != null else null
-	if _selected:
-		_selected.set_selected(true)
+		if next in _selection:
+			_selection.erase(next)
+			next.set_selected(false)
+			next.show_move_arrows = false
+			next.show_resize_edges = false
+			next.queue_redraw()
+			if _selected == next:
+				_selected = _selection.back() if not _selection.is_empty() else null
+				if _selected and is_instance_valid(_selected):
+					_selected.set_selected(true)
+		else:
+			_selection.append(next)
+			next.set_selected(true)
+			_selected = next
 	_sync_move_arrows()
+	_sync_resize_edges()
 	_refresh_list()
+	if _selection.size() > 1:
+		_status.text = "Selected %d pieces (Ctrl/Cmd+click)." % _selection.size()
 
 
 func _delete_selected() -> void:
-	if _selected == null:
+	if _selection.is_empty():
 		return
 	_push_undo()
-	var doomed := _selected
-	var id := doomed.piece_id
+	var ids: Array = []
+	var doomed: Array[EditorPiece] = []
+	for p in _selection:
+		if p and is_instance_valid(p):
+			doomed.append(p)
 	_selected = null
-	_pieces.erase(doomed)
-	if doomed.builtin and id != "" and not _removed_ids.has(id):
-		_removed_ids.append(id)
-	if is_instance_valid(doomed):
-		doomed.queue_free()
+	_selection.clear()
+	_group_drag_starts.clear()
+	for piece in doomed:
+		var id := piece.piece_id
+		ids.append(id)
+		_pieces.erase(piece)
+		if piece.builtin and id != "" and not _removed_ids.has(id):
+			_removed_ids.append(id)
+		if is_instance_valid(piece):
+			piece.queue_free()
 	_refresh_list()
 	_refresh_world_extent()
-	_status.text = "Deleted '%s'." % id
+	if ids.size() == 1:
+		_status.text = "Deleted '%s'." % ids[0]
+	else:
+		_status.text = "Deleted %d pieces." % ids.size()
 	_save()
 
 
@@ -1968,35 +2048,114 @@ func _pretty_palette_name(palette: String) -> String:
 
 
 func _duplicate_selected() -> void:
-	if _selected == null:
+	if _selection.is_empty():
 		return
 	_push_undo()
-	var d: Dictionary = _selected.to_dict().duplicate(true)
-	d["builtin"] = false
-	var base := PieceSpecs.id_base(str(d.get("id", _selected.catalog_kind)))
-	var new_id := PieceSpecs.alloc_numbered_id(base, _existing_piece_ids())
-	var num := int(new_id.get_slice("_", new_id.get_slice_count("_") - 1))
-	d["id"] = new_id
-	d["name"] = PieceSpecs.number_display_name(str(d.get("name", base)), num)
-	d["x"] = float(d.get("x", _selected.position.x)) + 28.0
-	d["y"] = float(d.get("y", _selected.position.y)) - 28.0
-	_spawn_piece_dict(d)
-	_select(_pieces.back())
+	var sources: Array[EditorPiece] = []
+	for p in _selection:
+		if p and is_instance_valid(p):
+			sources.append(p)
+	var new_ids: Array = []
+	var created: Array[EditorPiece] = []
+	for src in sources:
+		var d: Dictionary = src.to_dict().duplicate(true)
+		d["builtin"] = false
+		var base := PieceSpecs.id_base(str(d.get("id", src.catalog_kind)))
+		var new_id := PieceSpecs.alloc_numbered_id(base, _existing_piece_ids())
+		var num := int(new_id.get_slice("_", new_id.get_slice_count("_") - 1))
+		d["id"] = new_id
+		d["name"] = PieceSpecs.number_display_name(str(d.get("name", base)), num)
+		d["x"] = float(d.get("x", src.position.x)) + 28.0
+		d["y"] = float(d.get("y", src.position.y)) - 28.0
+		_spawn_piece_dict(d)
+		created.append(_pieces.back())
+		new_ids.append(new_id)
+	## Replace selection with the duplicates.
+	for p in _selection:
+		if p and is_instance_valid(p):
+			p.set_selected(false)
+			p.show_move_arrows = false
+			p.show_resize_edges = false
+			p.queue_redraw()
+	_selection.clear()
+	for p in created:
+		_selection.append(p)
+		p.set_selected(true)
+	_selected = created.back() if not created.is_empty() else null
 	tool = Tool.MOVE
 	_tool_label.text = "Tool: Move"
 	_sync_move_arrows()
+	_sync_resize_edges()
+	_refresh_list()
 	_refresh_world_extent()
-	_status.text = "Duplicated → %s" % new_id
+	if new_ids.size() == 1:
+		_status.text = "Duplicated → %s" % new_ids[0]
+	else:
+		_status.text = "Duplicated %d pieces." % new_ids.size()
 	_save()
 
 
 func _sync_move_arrows() -> void:
 	for p in _pieces:
 		if p and is_instance_valid(p):
-			var on := tool == Tool.MOVE and p == _selected
+			var on := tool == Tool.MOVE and p in _selection
 			if p.show_move_arrows != on:
 				p.show_move_arrows = on
 				p.queue_redraw()
+
+
+func _sync_resize_edges() -> void:
+	for p in _pieces:
+		if p and is_instance_valid(p):
+			## Edge grips on the primary only — avoids overlapping handle chaos.
+			var on := tool == Tool.RESIZE and p == _selected and p.kind != EditorPiece.Kind.LIGHT
+			if p.show_resize_edges != on:
+				p.show_resize_edges = on
+				p.queue_redraw()
+
+
+func _pick_at(world: Vector2) -> EditorPiece:
+	## Highest draw_layer under the cursor wins; tie → later spawn (fronter in list).
+	var best: EditorPiece = null
+	var best_layer := -999999
+	var best_idx := -1
+	for i in _pieces.size():
+		var p := _pieces[i]
+		if p == null or not is_instance_valid(p):
+			continue
+		if not p.contains_point(p.to_local(world)):
+			continue
+		if p.draw_layer > best_layer or (p.draw_layer == best_layer and i > best_idx):
+			best = p
+			best_layer = p.draw_layer
+			best_idx = i
+	return best
+
+
+func _begin_group_drag(anchor: EditorPiece, world: Vector2) -> void:
+	_group_drag_starts.clear()
+	for p in _selection:
+		if p and is_instance_valid(p):
+			_group_drag_starts[p] = p.position
+	if anchor and is_instance_valid(anchor):
+		anchor.begin_drag(world)
+
+
+func _drag_selection_to(world: Vector2) -> void:
+	if _selected == null or not is_instance_valid(_selected):
+		return
+	_selected.drag_to(world)
+	if _group_drag_starts.is_empty() or _selection.size() <= 1:
+		return
+	if not _group_drag_starts.has(_selected):
+		return
+	## Axis lock / free drag: apply the same delta to every other selected piece.
+	var delta: Vector2 = _selected.position - _group_drag_starts[_selected]
+	for p in _selection:
+		if p == null or not is_instance_valid(p) or p == _selected:
+			continue
+		if _group_drag_starts.has(p):
+			p.position = _group_drag_starts[p] + delta
 
 
 func _add_piece() -> void:
@@ -2084,6 +2243,7 @@ func _add_piece() -> void:
 	tool = Tool.MOVE
 	_tool_label.text = "Tool: Move"
 	_sync_move_arrows()
+	_sync_resize_edges()
 	_refresh_world_extent()
 	_save()
 
@@ -2439,9 +2599,11 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 				return
 			var world := _vp_to_world(mb.position)
 			if mb.pressed:
-				_on_click(world)
+				var additive := mb.ctrl_pressed or mb.meta_pressed
+				_on_click(world, additive)
 			else:
 				_rotating = false
+				_group_drag_starts.clear()
 				if _selected and tool != Tool.DELETE:
 					_selected.end_interact()
 					_refresh_world_extent()
@@ -2466,9 +2628,9 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			_selected.set_rotation_deg(_rotate_piece_start + delta_deg)
 			_update_inspector()
 		elif tool == Tool.MOVE or _selected._dragging or _selected._axis_drag != "":
-			_selected.drag_to(world)
+			_drag_selection_to(world)
 			## Axis arrows stay precise — skip edge snap while locking one axis.
-			if snap_enabled and _selected._axis_drag == "":
+			if snap_enabled and _selected._axis_drag == "" and _selection.size() <= 1:
 				_snap_selected_to_edges()
 			_refresh_world_extent()
 		elif tool == Tool.RESIZE or _selected._resizing:
@@ -2479,11 +2641,11 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 		_vp_container.accept_event()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE:
-			if _selected:
+			if not _selection.is_empty():
 				_delete_selected()
 				_vp_container.accept_event()
-		elif event.keycode == KEY_D and event.ctrl_pressed:
-			if _selected:
+		elif event.keycode == KEY_D and (event.ctrl_pressed or event.meta_pressed):
+			if not _selection.is_empty():
 				_duplicate_selected()
 				_vp_container.accept_event()
 		elif event.keycode == KEY_Z and event.ctrl_pressed and event.shift_pressed:
@@ -2580,47 +2742,60 @@ func _vp_to_world(local_pos: Vector2) -> Vector2:
 	return canvas.affine_inverse() * vp_pixel
 
 
-func _on_click(world: Vector2) -> void:
+func _on_click(world: Vector2, additive: bool = false) -> void:
 	## Axis tips sit outside the piece AABB — hit-test the selection first.
-	if _selected and is_instance_valid(_selected) and tool == Tool.MOVE:
+	if not additive and _selected and is_instance_valid(_selected) and tool == Tool.MOVE:
 		var axis_sel := _selected.axis_handle_at(_selected.to_local(world))
 		if axis_sel != "":
 			_begin_gesture()
+			_group_drag_starts.clear()
+			for sp in _selection:
+				if sp and is_instance_valid(sp):
+					_group_drag_starts[sp] = sp.position
 			_selected.begin_axis_drag(axis_sel, world)
 			return
-	if _selected and tool == Tool.RESIZE:
+	if not additive and _selected and tool == Tool.RESIZE:
 		var corner := _selected.handle_at(_selected.to_local(world))
 		if corner >= 0:
 			_begin_gesture()
 			_selected.begin_resize(corner)
 			return
-	for i in range(_pieces.size() - 1, -1, -1):
-		var p := _pieces[i]
-		if p.contains_point(p.to_local(world)):
-			if tool == Tool.DELETE:
-				_select(p)
-				_delete_selected()
-				return
-			_select(p)
-			if tool == Tool.SELECT or tool == Tool.MOVE:
-				tool = Tool.MOVE
-				_tool_label.text = "Tool: Move"
-				_sync_move_arrows()
-				var axis := p.axis_handle_at(p.to_local(world))
-				_begin_gesture()
-				if axis != "":
-					p.begin_axis_drag(axis, world)
-				else:
-					p.begin_drag(world)
-			elif tool == Tool.RESIZE:
-				var c := p.handle_at(p.to_local(world))
-				if c >= 0:
-					_begin_gesture()
-					p.begin_resize(c)
-			elif tool == Tool.ROTATE:
-				_begin_gesture()
-				_rotating = true
-				_rotate_start_angle = (world - p.position).angle()
-				_rotate_piece_start = p.rotation_deg
+	var p := _pick_at(world)
+	if p != null:
+		if tool == Tool.DELETE:
+			_select(p, false)
+			_delete_selected()
 			return
-	_select(null)
+		_select(p, additive)
+		if additive:
+			## Multi-select toggle only — don't start a drag.
+			return
+		if tool == Tool.SELECT or tool == Tool.MOVE:
+			tool = Tool.MOVE
+			_tool_label.text = "Tool: Move"
+			_sync_move_arrows()
+			_sync_resize_edges()
+			var axis := p.axis_handle_at(p.to_local(world))
+			_begin_gesture()
+			if axis != "":
+				_group_drag_starts.clear()
+				for sp in _selection:
+					if sp and is_instance_valid(sp):
+						_group_drag_starts[sp] = sp.position
+				p.begin_axis_drag(axis, world)
+			else:
+				_begin_group_drag(p, world)
+		elif tool == Tool.RESIZE:
+			_sync_resize_edges()
+			var c := p.handle_at(p.to_local(world))
+			if c >= 0:
+				_begin_gesture()
+				p.begin_resize(c)
+		elif tool == Tool.ROTATE:
+			_begin_gesture()
+			_rotating = true
+			_rotate_start_angle = (world - p.position).angle()
+			_rotate_piece_start = p.rotation_deg
+		return
+	if not additive:
+		_select(null)

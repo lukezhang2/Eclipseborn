@@ -78,8 +78,20 @@ var _axis_start_pos: Vector2 = Vector2.ZERO
 var _axis_start_mouse: Vector2 = Vector2.ZERO
 ## When true (Move tool + selected), draw/drag X/Y arrows.
 var show_move_arrows: bool = false
+## When true (Resize tool + selected), draw N/E/S/W edge grips.
+var show_resize_edges: bool = false
 const AXIS_LEN := 52.0
 const AXIS_HIT := 16.0
+const EDGE_HIT := 10.0
+## Corner handles 0–3 (NW/NE/SE/SW); edge handles 4–7 (N/E/S/W).
+const HANDLE_NW := 0
+const HANDLE_NE := 1
+const HANDLE_SE := 2
+const HANDLE_SW := 3
+const HANDLE_N := 4
+const HANDLE_E := 5
+const HANDLE_S := 6
+const HANDLE_W := 7
 var is_selected: bool = false
 
 
@@ -394,6 +406,9 @@ func _draw() -> void:
 	## Move-tool axis arrows (precise one-direction drag).
 	if show_move_arrows:
 		_draw_axis_arrows()
+	## Resize-tool edge grips (N/E/S/W length drag).
+	if show_resize_edges:
+		_draw_resize_edges()
 
 
 func _axis_origin() -> Vector2:
@@ -439,6 +454,28 @@ func axis_handle_at(local_pt: Vector2) -> String:
 	if absf(local_pt.x - o.x) <= 8.0 and local_pt.y <= o.y + 4.0 and local_pt.y >= o.y - AXIS_LEN - 4.0:
 		return "y"
 	return ""
+
+
+func _draw_resize_edges() -> void:
+	## Mid-edge bars: drag to grow/shrink that side only.
+	if kind == Kind.LIGHT:
+		return
+	var o := _local_origin_offset()
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	var col := Color(0.35, 0.95, 0.7, 0.95)
+	var thick := 4.0
+	## Short bars centered on each side (corners keep separate corner hits).
+	var n_len := minf(size.x * 0.55, 56.0)
+	var e_len := minf(size.y * 0.55, 56.0)
+	draw_line(o + Vector2(-n_len * 0.5, -hy), o + Vector2(n_len * 0.5, -hy), col, thick)
+	draw_line(o + Vector2(hx, -e_len * 0.5), o + Vector2(hx, e_len * 0.5), col, thick)
+	draw_line(o + Vector2(-n_len * 0.5, hy), o + Vector2(n_len * 0.5, hy), col, thick)
+	draw_line(o + Vector2(-hx, -e_len * 0.5), o + Vector2(-hx, e_len * 0.5), col, thick)
+	for c in [
+		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
+	]:
+		draw_circle(o + c, 5.0, Color(0.25, 1.0, 0.55, 1.0))
 
 
 func _local_origin_offset() -> Vector2:
@@ -774,15 +811,28 @@ func contains_point(local_pt: Vector2) -> bool:
 
 
 func handle_at(local_pt: Vector2) -> int:
+	## Corners first, then N/E/S/W edge midpoints (Resize tool).
 	if kind == Kind.LIGHT:
 		return -1
 	var p := _to_body_local(local_pt)
 	var hx := size.x * 0.5
 	var hy := size.y * 0.5
-	var corners := [Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)]
+	var corners := [
+		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
+	]
 	for i in 4:
 		if p.distance_to(corners[i]) < 14.0:
 			return i
+	var n_len := minf(size.x * 0.55, 56.0)
+	var e_len := minf(size.y * 0.55, 56.0)
+	if absf(p.y + hy) <= EDGE_HIT and absf(p.x) <= n_len * 0.5 + 4.0:
+		return HANDLE_N
+	if absf(p.x - hx) <= EDGE_HIT and absf(p.y) <= e_len * 0.5 + 4.0:
+		return HANDLE_E
+	if absf(p.y - hy) <= EDGE_HIT and absf(p.x) <= n_len * 0.5 + 4.0:
+		return HANDLE_S
+	if absf(p.x + hx) <= EDGE_HIT and absf(p.y) <= e_len * 0.5 + 4.0:
+		return HANDLE_W
 	return -1
 
 
@@ -832,18 +882,26 @@ func resize_to(world: Vector2) -> void:
 	var min_y := -hy
 	var max_y := hy
 	match _resize_corner:
-		0:
+		HANDLE_NW:
 			min_x = local.x
 			min_y = local.y
-		1:
+		HANDLE_NE:
 			max_x = local.x
 			min_y = local.y
-		2:
+		HANDLE_SE:
 			max_x = local.x
 			max_y = local.y
-		3:
+		HANDLE_SW:
 			min_x = local.x
 			max_y = local.y
+		HANDLE_N:
+			min_y = local.y
+		HANDLE_E:
+			max_x = local.x
+		HANDLE_S:
+			max_y = local.y
+		HANDLE_W:
+			min_x = local.x
 	var new_w := maxf(24.0, max_x - min_x)
 	var new_h := maxf(16.0, max_y - min_y)
 	var center_body := Vector2((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
