@@ -5,6 +5,8 @@ class_name WanderEnemy
 @export var move_speed: float = 55.0
 @export var attack_damage: int = 10
 @export var max_hp: int = 24
+## If true, walks through pushable crates / props (layer 8). Default: blocked by them.
+@export var pass_through_objects: bool = false
 
 var hp: int = 24
 var _dir: float = 1.0
@@ -22,7 +24,10 @@ func _ready() -> void:
 	hp = max_hp
 	# Layer 0: stand on world via mask, but do not body-block the player (damage via hit/hurt Areas).
 	collision_layer = 0
+	## 1=world, 4=shadow_ground, 8=crates — skip 8 only when allowed to phase through objects.
 	collision_mask = 1 | 4
+	if not pass_through_objects:
+		collision_mask |= 8
 	hurtbox.team = "enemy"
 	hurtbox.owner_body = self
 	hurtbox.hurt.connect(_on_hurt)
@@ -127,7 +132,8 @@ func _physics_process(delta: float) -> void:
 		var from := global_position + Vector2(_dir * 16.0, -4.0)
 		var to := from + Vector2(0, 28)
 		var q := PhysicsRayQueryParameters2D.create(from, to)
-		q.collision_mask = 1
+		## Same floors the body stands on (include crates when we collide with them).
+		q.collision_mask = collision_mask
 		q.exclude = [self]
 		if space.intersect_ray(q).is_empty():
 			_dir *= -1.0

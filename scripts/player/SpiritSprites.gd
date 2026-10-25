@@ -28,7 +28,8 @@ static func build_frames() -> SpriteFrames:
 			_draw(0, 0, 0, false, 0, 4),
 		],
 		"jump": [_draw(0, -2, 0, true, 0, 0)],
-		"fall": [_draw(0, 2, 0, true, 0, 0)],
+		## Soft flail — arms rise a little, not a big windmill.
+		"fall": [_draw_fall(0), _draw_fall(1)],
 		"push": [_draw(2, 0, 0, false, 0, 0, false, true), _draw(3, 0, 0, false, 0, 1, false, true)],
 		"pull": [_draw_pull(0), _draw_pull(1), _draw_pull(2)],
 		"bump": [_draw(-1, 0, 0, false, 0, 0)],
@@ -43,7 +44,7 @@ static func build_frames() -> SpriteFrames:
 	bases["run"] = bases["walk"].duplicate()
 
 	for anim_name in bases.keys():
-		var looping: bool = anim_name in ["idle", "walk", "run", "crouch", "crouch_walk", "pull", "push"]
+		var looping: bool = anim_name in ["idle", "walk", "run", "crouch", "crouch_walk", "pull", "push", "fall"]
 		_add_anim(frames, anim_name, bases[anim_name], _speed_for(anim_name), looping)
 
 	# Layered shade/burn variants for locomotion bases.
@@ -76,6 +77,8 @@ static func _speed_for(anim_name: String) -> float:
 			return 18.0
 		"pull", "push":
 			return 8.0
+		"fall":
+			return 5.5
 		_:
 			if base.begins_with("attack"):
 				return 16.0
@@ -176,6 +179,42 @@ static func _draw(
 		_oval(img, cx - 8, arm_y, 3, 5, OUTLINE, false)
 		_oval(img, arm_x, arm_y + (-3 if look > 0 else (3 if look < 0 else 0)), 3, 5, OUTLINE, false)
 
+	return img
+
+
+static func _draw_fall(phase: int) -> Image:
+	## Falling pose: same spirit body, arms slightly out/up (subtle, not frantic).
+	var img := Image.create(48, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var fill := FILL
+	var cx := 24
+	var base := 54
+	var body_top := base - 28
+	_oval(img, cx, body_top + 10, 9, 14, fill, true)
+	_oval(img, cx, body_top + 10, 9, 14, OUTLINE, false)
+	var hy := body_top
+	_oval(img, cx, hy, 8, 8, fill, true)
+	_oval(img, cx, hy, 8, 8, OUTLINE, false)
+	_oval(img, cx - 4, hy - 7, 2, 3, fill, true)
+	_oval(img, cx + 4, hy - 7, 2, 3, fill, true)
+	_oval(img, cx - 4, hy - 7, 2, 3, OUTLINE, false)
+	_oval(img, cx + 4, hy - 7, 2, 3, OUTLINE, false)
+	_oval(img, cx - 3, hy - 1, 2, 2, EYE, true)
+	_oval(img, cx + 3, hy - 1, 2, 2, EYE, true)
+	## Legs tucked a touch under the cloak.
+	_oval(img, cx - 4, base - 8, 2, 5, fill, true)
+	_oval(img, cx + 4, base - 9, 2, 5, fill, true)
+	_oval(img, cx - 4, base - 8, 2, 5, OUTLINE, false)
+	_oval(img, cx + 4, base - 9, 2, 5, OUTLINE, false)
+	## Arms: mild outward + upward, alternate a couple pixels between frames.
+	var lift := 2 + (phase % 2)
+	var spread := 2 + (phase % 2)
+	var ly := body_top + 5 - lift
+	var ry := body_top + 6 - lift
+	_oval(img, cx - 9 - spread, ly, 3, 5, fill, true)
+	_oval(img, cx + 9 + spread, ry, 3, 5, fill, true)
+	_oval(img, cx - 9 - spread, ly, 3, 5, OUTLINE, false)
+	_oval(img, cx + 9 + spread, ry, 3, 5, OUTLINE, false)
 	return img
 
 

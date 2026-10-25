@@ -6,6 +6,8 @@ class_name BasicEnemy
 @export var move_speed: float = 60.0
 @export var attack_damage: int = 8
 @export var attack_cooldown: float = 1.2
+## If true, walks through pushable crates / props (layer 8). Default: blocked by them.
+@export var pass_through_objects: bool = false
 
 var hp: int
 var _cooldown: float = 0.0
@@ -20,7 +22,10 @@ func _ready() -> void:
 	hp = max_hp
 	# Layer 0: stand on world via mask, but do not body-block the player (damage via hit/hurt Areas).
 	collision_layer = 0
+	## 1=world, 4=shadow_ground, 8=crates — skip 8 only when allowed to phase through objects.
 	collision_mask = 1 | 4
+	if not pass_through_objects:
+		collision_mask |= 8
 	hurtbox.team = "enemy"
 	hurtbox.owner_body = self
 	hurtbox.hurt.connect(_on_hurt)
