@@ -381,10 +381,7 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			parent.add_child(jar)
 			LevelData.tag(jar, str(p.get("id", "")))
 		"prop_enemy":
-			var scene := preload("res://scenes/enemies/WanderEnemy.tscn")
-			var enemy = scene.instantiate()
-			enemy.position = pos
-			parent.add_child(enemy)
+			var enemy := spawn_creature(parent, p, pos)
 			LevelData.tag(enemy, str(p.get("id", "")))
 		"prop_pipe":
 			LevelCommon.add_pipe(parent, pos + Vector2(-size.x * 0.5, 0), pos + Vector2(size.x * 0.5, 0), maxf(size.y, 8.0))
@@ -443,3 +440,42 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			crystal.display_name = str(p.get("name", "Shadow Crystal Fragment"))
 			parent.add_child(crystal)
 			LevelData.tag(crystal, pid)
+
+
+static func spawn_creature(parent: Node, p: Dictionary, pos: Vector2) -> Node:
+	## Missing enemy_kind stays a wanderer. Missing damage leaves the script default.
+	var kind := str(p.get("enemy_kind", "wander"))
+	var enemy: Node
+	match kind:
+		"mite":
+			enemy = RivetMite.new()
+		"beetle":
+			enemy = FuseBeetle.new()
+		"pendulum":
+			enemy = PendulumSentinel.new()
+		"lamplighter":
+			var packed: PackedScene = load("res://scenes/enemies/BasicEnemy.tscn")
+			enemy = packed.instantiate()
+			enemy.set_script(load("res://scripts/enemies/Lamplighter.gd"))
+		_:
+			var wander: PackedScene = load("res://scenes/enemies/WanderEnemy.tscn")
+			enemy = wander.instantiate()
+	enemy.position = pos
+	parent.add_child(enemy)
+	if p.has("damage"):
+		apply_attack_damage(enemy, int(p.get("damage")))
+	return enemy
+
+
+static func apply_attack_damage(enemy: Node, dmg: int) -> void:
+	if enemy == null:
+		return
+	enemy.set("attack_damage", dmg)
+	_stamp_hitboxes(enemy, dmg)
+
+
+static func _stamp_hitboxes(n: Node, dmg: int) -> void:
+	if n is Hitbox:
+		(n as Hitbox).damage = dmg
+	for c in n.get_children():
+		_stamp_hitboxes(c, dmg)

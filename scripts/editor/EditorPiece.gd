@@ -46,6 +46,11 @@ var draw_layer: int = 0
 var target_ids: PackedStringArray = PackedStringArray()
 ## Door starts open / switch starts on.
 var starts_on: bool = true
+## prop_enemy. damage_custom stays false when the save has no damage key,
+## so an already placed creature keeps the number in its script.
+var enemy_kind: String = "wander"
+var attack_damage: int = 10
+var damage_custom: bool = false
 ## Degrees — used by Rotate tool / JSON `rotation`.
 var rotation_deg: float = 0.0
 ## Moving platform path/spin (prop_platform).
@@ -173,6 +178,12 @@ func to_dict() -> Dictionary:
 		for t in target_ids:
 			tids.append(t)
 		d["target_ids"] = tids
+	if catalog_kind == "prop_enemy" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_enemy"):
+		d["kind"] = "prop_enemy"
+		if enemy_kind != "" and enemy_kind != "wander":
+			d["enemy_kind"] = enemy_kind
+		if damage_custom:
+			d["damage"] = attack_damage
 	if catalog_kind == "prop_door" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_door"):
 		d["kind"] = "prop_door"
 		d["starts_open"] = starts_on
@@ -207,6 +218,10 @@ func apply_dict(d: Dictionary) -> void:
 		starts_on = bool(d.get("starts_on", true))
 	elif k == "prop_door":
 		starts_on = bool(d.get("starts_open", false))
+	if k == "prop_enemy":
+		enemy_kind = str(d.get("enemy_kind", "wander"))
+		damage_custom = d.has("damage")
+		attack_damage = int(d.get("damage", PieceSpecs.creature_damage(enemy_kind)))
 	rotation_deg = float(d.get("rotation", 0.0))
 	rotation_degrees = rotation_deg
 	## Legacy village platforms were saved as floor — promote so the inspector appears.

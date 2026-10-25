@@ -273,11 +273,20 @@ func _spawn_catalog_platform(catalog_id: String, fallback_pos: Vector2, fallback
 
 
 func _build_wander_enemies() -> void:
-	var scene := preload("res://scenes/enemies/WanderEnemy.tscn")
-	for pos in [Vector2(1500, FLOOR_TOP - 20), Vector2(2050, FLOOR_TOP - 20)]:
-		var e = scene.instantiate()
-		e.position = pos
-		add_child(e)
+	var specs := [
+		["enemy_1", Vector2(1500, FLOOR_TOP - 20)],
+		["enemy_2", Vector2(2050, FLOOR_TOP - 20)],
+	]
+	for spec in specs:
+		var id := str(spec[0])
+		if LevelData.is_removed("lantern_village", id):
+			continue
+		var saved := LevelData.merged_piece("lantern_village", id)
+		var pos: Vector2 = spec[1]
+		if not saved.is_empty():
+			pos = Vector2(float(saved.get("x", pos.x)), float(saved.get("y", pos.y)))
+		var enemy := LevelData.spawn_creature(self, saved, pos)
+		LevelData.tag(enemy, id)
 
 
 func _build_clockwork_tower() -> void:

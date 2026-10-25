@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.63 — Editor creature damage (script defaults; Make default for new creatures only) and lever Starts on; `index-0_1_63.pck`
 - v0.1.62 — Session-only editor overlays (clear on refresh); brick/backdrop Background palette; `index-0_1_62.pck`
 - v0.1.61 — levers flip on attack hit as well as Interact; `index-0_1_61.pck`
 - v0.1.60 — player map: undiscovered cover hides lantern light that spilled above it; `index-0_1_60.pck`

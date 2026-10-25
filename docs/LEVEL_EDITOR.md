@@ -44,9 +44,16 @@ Editor **Save (this session)** and auto-saves only last until you refresh the pa
 ### Levers, doors, and links
 
 - Add **Lever** (`prop_switch`) or **Door (switchable)** (`prop_door`) from the palette.
-- Select a lever → **Lever links** list: multi-select lanterns and doors it should power.
-- Saved as `"target_ids": ["lamp_street", "door_street_1"]` plus optional `"starts_on"`.
+- Select a lever → **Starts on** (begins powered or unpowered) and **Lever links**: multi-select lanterns and doors it should power.
+- Saved as `"target_ids": ["lamp_street", "door_street_1"]` plus `"starts_on"`.
 - Doors respond to `set_on` (open when powered). Checkpoints: Interact to rest and open **Fast Travel**.
+
+### Creature damage
+
+- Select an **Enemy** → creature type and **Damage**.
+- Built-in defaults match the scripts: Wanderer 10, Rivet mite 8, Fuse beetle 10, Pendulum 14, Lamplighter 15.
+- **Make default** remembers that number for creatures you add afterward (`user://editor_defaults.cfg`). Pieces already in the level are not rewritten.
+- A piece only stores `"damage"` after you set it (or when you add a new creature). Older enemies with no key keep their script damage.
 
 ### Moving platforms & rotate
 

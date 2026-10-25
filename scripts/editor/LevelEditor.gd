@@ -46,7 +46,13 @@ var _shop_list: VBoxContainer
 var _syncing_shop: bool = false
 var _link_row: VBoxContainer
 var _link_list: ItemList
+var _starts_on_check: CheckButton
+var _syncing_switch: bool = false
 var _syncing_links: bool = false
+var _creature_row: VBoxContainer
+var _creature_option: OptionButton
+var _damage_spin: SpinBox
+var _syncing_creature: bool = false
 var _platform_row: VBoxContainer
 var _plat_amp: SpinBox
 var _plat_speed: SpinBox
@@ -547,6 +553,18 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_link_row.visible = false
 	_link_row.add_theme_constant_override("separation", 4)
 	_pieces_block.add_child(_link_row)
+	_link_row.add_child(_section("Lever"))
+	_starts_on_check = CheckButton.new()
+	_starts_on_check.text = "Starts on"
+	_starts_on_check.tooltip_text = "On: the lever begins powered. Off: it begins unpowered."
+	_starts_on_check.toggled.connect(func(on: bool) -> void:
+		if _syncing_switch or _history_restoring or _selected == null:
+			return
+		_push_undo()
+		_selected.starts_on = on
+		_status.text = "Lever starts %s" % ("on" if on else "off")
+	)
+	_link_row.add_child(_starts_on_check)
 	_link_row.add_child(_section("Lever links"))
 	var link_hint := Label.new()
 	link_hint.text = "Select lanterns / doors this lever powers (multi-select)."
@@ -565,6 +583,49 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		call_deferred("_on_links_changed")
 	)
 	_link_row.add_child(_link_list)
+
+	_creature_row = VBoxContainer.new()
+	_creature_row.visible = false
+	_creature_row.add_theme_constant_override("separation", 4)
+	_pieces_block.add_child(_creature_row)
+	_creature_row.add_child(_section("Creature"))
+	_creature_option = OptionButton.new()
+	for row in PieceSpecs.CREATURES:
+		_creature_option.add_item(str(row.get("label", "Creature")))
+		_creature_option.set_item_metadata(_creature_option.item_count - 1, str(row.get("id", "wander")))
+	_creature_option.item_selected.connect(func(idx: int) -> void:
+		if _syncing_creature or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		var kind := str(_creature_option.get_item_metadata(idx))
+		_selected.enemy_kind = kind
+		_selected.attack_damage = EditorDefaults.damage_for(kind)
+		_selected.damage_custom = true
+		_syncing_creature = true
+		_damage_spin.value = _selected.attack_damage
+		_syncing_creature = false
+		_status.text = "%s deals %d" % [_creature_option.get_item_text(idx), _selected.attack_damage]
+	)
+	_creature_row.add_child(_creature_option)
+	_damage_spin = _spin_row(_creature_row, "Damage", 0, 200, 1, 10)
+	_damage_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_creature or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		_selected.attack_damage = int(v)
+		_selected.damage_custom = true
+	)
+	var make_default := Button.new()
+	make_default.text = "Make default"
+	make_default.tooltip_text = "Creatures you add after this use this damage. Ones already placed stay as they are."
+	make_default.pressed.connect(_on_make_damage_default)
+	_creature_row.add_child(make_default)
+	var creature_hint := Label.new()
+	creature_hint.text = "Make default applies only to creatures added afterward. Already placed creatures keep their own damage."
+	creature_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	creature_hint.add_theme_font_size_override("font_size", 11)
+	creature_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
+	_creature_row.add_child(creature_hint)
 
 	_platform_row = VBoxContainer.new()
 	_platform_row.visible = false
@@ -1285,6 +1346,7 @@ func _load_zone() -> void:
 			for key in [
 				"x", "y", "w", "h", "name", "radius", "intensity", "light_kind", "pushable", "lines", "anchor",
 				"blocks_light", "layer", "target_ids", "starts_on", "starts_open", "rotation",
+				"damage", "enemy_kind",
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
 				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
 				"is_shopkeeper", "shop_items", "color", "text", "font_size",
@@ -1370,7 +1432,22 @@ func _update_inspector() -> void:
 	var is_switch := _selected != null and PieceSpecs.is_switch_kind(_selected.catalog_kind)
 	_link_row.visible = is_switch
 	if is_switch:
+		_syncing_switch = true
+		_starts_on_check.set_pressed_no_signal(_selected.starts_on)
+		_syncing_switch = false
 		_refresh_link_list()
+	var is_enemy := _selected != null and _selected.catalog_kind == "prop_enemy"
+	_creature_row.visible = is_enemy
+	if is_enemy:
+		_syncing_creature = true
+		var kind := _selected.enemy_kind if _selected.enemy_kind != "" else "wander"
+		for i in _creature_option.item_count:
+			if str(_creature_option.get_item_metadata(i)) == kind:
+				_creature_option.select(i)
+				break
+		var shown := _selected.attack_damage if _selected.damage_custom else PieceSpecs.creature_damage(kind)
+		_damage_spin.value = shown
+		_syncing_creature = false
 	var is_plat := _selected != null and PieceSpecs.is_platform_kind(_selected.catalog_kind)
 	_platform_row.visible = is_plat
 	if is_plat:
@@ -1474,6 +1551,20 @@ func _on_links_changed() -> void:
 		ids.append(str(_link_list.get_item_metadata(idx)))
 	_selected.target_ids = ids
 	_status.text = "Lever linked to %d target(s)." % ids.size()
+
+
+func _on_make_damage_default() -> void:
+	if _selected == null or _selected.catalog_kind != "prop_enemy":
+		return
+	var kind := _selected.enemy_kind if _selected.enemy_kind != "" else "wander"
+	var dmg := int(_damage_spin.value)
+	EditorDefaults.set_damage(kind, dmg)
+	var label := kind
+	for i in _creature_option.item_count:
+		if str(_creature_option.get_item_metadata(i)) == kind:
+			label = _creature_option.get_item_text(i)
+			break
+	_status.text = "New %s creatures will deal %d. Already placed creatures are unchanged." % [label, dmg]
 
 
 func _on_dialogue_changed() -> void:
@@ -1850,6 +1941,9 @@ func _add_piece() -> void:
 	if _palette_id == "prop_switch":
 		d["starts_on"] = true
 		d["target_ids"] = []
+	if _palette_id == "prop_enemy":
+		d["enemy_kind"] = "wander"
+		d["damage"] = EditorDefaults.damage_for("wander")
 	if _palette_id == "prop_door":
 		d["starts_open"] = false
 	if _palette_id == "prop_platform":
