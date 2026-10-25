@@ -25,7 +25,7 @@ func _ready() -> void:
 	_currency = _load("res://assets/sfx/currency.wav")
 	for i in 8:
 		var p := AudioStreamPlayer.new()
-		p.bus = "Master"
+		p.bus = Settings.SFX_BUS
 		add_child(p)
 		_players.append(p)
 

@@ -144,6 +144,10 @@ text = "Resume"
 layout_mode = 2
 text = "Controls"
 
+[node name="Settings" type="Button" parent="PauseMenu/Root/Center/Main"]
+layout_mode = 2
+text = "Settings"
+
 [node name="TitleScreen" type="Button" parent="PauseMenu/Root/Center/Main"]
 layout_mode = 2
 text = "Title Menu"
@@ -166,6 +170,7 @@ text = "Back"
 
 [connection signal="pressed" from="PauseMenu/Root/Center/Main/Resume" to="PauseMenu" method="_on_resume"]
 [connection signal="pressed" from="PauseMenu/Root/Center/Main/Controls" to="PauseMenu" method="_on_controls"]
+[connection signal="pressed" from="PauseMenu/Root/Center/Main/Settings" to="PauseMenu" method="_on_settings"]
 [connection signal="pressed" from="PauseMenu/Root/Center/Main/TitleScreen" to="PauseMenu" method="_on_title"]
 [connection signal="pressed" from="PauseMenu/Root/Center/Controls/Back" to="PauseMenu" method="_on_back"]
 

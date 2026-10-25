@@ -47,6 +47,13 @@ _(Claude: claim work below before coding. Do not take items listed as Active und
   - `LightSwitch` uses it: press E to flip (no longer toggles just by walking into it)
   - Bump version, re-export web build
   - Status: code done + version bumped to 0.1.6; **not yet run in Godot or web-exported** (no Godot on this Mac)
+- v0.1.9 — **Settings menu** (pause menu → Settings)
+  - New `Settings` autoload: creates `Music` + `SFX` audio buses, saves to `user://settings.cfg`
+  - Sliders: Master, Music, Sound Effects, Brightness (50–150%); Fullscreen toggle
+  - Changes preview live; **Save Settings** writes them; **Back to Game** closes the menu and undoes unsaved changes
+  - `AudioManager` SFX players move to the `SFX` bus (Music bus is ready for when music is added)
+  - Brightness = full-screen shader overlay on its own CanvasLayer
+  - Status: code done + version bumped to 0.1.9; **not yet run in Godot or web-exported** (no Godot on this Mac)
 
 ### Queue
 _(none)_
