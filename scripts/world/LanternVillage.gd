@@ -29,8 +29,8 @@ func _ready() -> void:
 	var wire_y := 90.0
 	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)
 	LevelCommon.add_window(self, 360, 220, 44, 60, false)
-	LevelCommon.add_bench(self, Vector2(660, FLOOR_TOP))
-	LevelCommon.add_steam_vent(self, Vector2(1050, FLOOR_TOP))
+	LevelCommon.add_bench(self, Vector2(455, FLOOR_TOP))
+	LevelCommon.add_steam_vent(self, Vector2(1053, FLOOR_TOP))
 
 	_build_houses()
 	_build_all_lights()
@@ -45,11 +45,14 @@ func _ready() -> void:
 	LevelCommon.make_room_trigger(self, Vector2(2200, 360), Vector2(500, 400), "lantern_village", "square")
 	LevelCommon.make_room_trigger(self, Vector2(2900, 360), Vector2(500, 400), "lantern_village", "tower", "Ascend the Clockwork Tower", "")
 
-	if not GameState.is_collected("shade_heart"):
+	if not GameState.is_collected("shade_heart") and not LevelData.is_removed("lantern_village", "shade_heart"):
 		var crystal := ShadowCrystal.new()
-		crystal.position = Vector2(2100, FLOOR_TOP - 100)
+		var heart := LevelData.merged_piece("lantern_village", "shade_heart")
+		crystal.position = Vector2(2407.53247070312, 256)
+		if heart.has("x") and heart.has("y"):
+			crystal.position = Vector2(float(heart.get("x")), float(heart.get("y")))
 		crystal.pickup_id = "shade_heart"
-		crystal.display_name = "Shadow Crystal Fragment"
+		crystal.display_name = str(heart.get("name", "Shade Heart"))
 		LevelData.tag(crystal, "shade_heart")
 		add_child(crystal)
 
@@ -174,7 +177,7 @@ func _make_hearth_lamp(catalog_id: String, fallback_pos: Vector2, fallback_r: fl
 
 
 func _build_light_puzzle() -> void:
-	var lamp := _make_hearth_lamp("lamp_puzzle", Vector2(1292, 238), 250.0)
+	var lamp := _make_hearth_lamp("lamp_puzzle", Vector2(1292, 238), 300.0)
 	add_child(lamp)
 
 	var crate := PushableBox.new()
@@ -185,8 +188,8 @@ func _build_light_puzzle() -> void:
 
 
 func _build_bg_gears_and_platforms() -> void:
-	_spawn_catalog_platform("platform_gear_a", Vector2(1544, 410), Vector2(140, 20), {
-		"move_amplitude": 90.0,
+	_spawn_catalog_platform("platform_gear_a", Vector2(1278, 414), Vector2(140, 20), {
+		"move_amplitude": 200.0,
 		"move_speed": 0.65,
 		"vertical": false,
 		"path_y_amplitude": 0.0,
@@ -198,7 +201,7 @@ func _build_bg_gears_and_platforms() -> void:
 		"gear_dy": -110.0,
 		"gear_radius": 55.0,
 	})
-	_spawn_catalog_platform("platform_gear_b", Vector2(2300, FLOOR_TOP - 130), Vector2(120, 20), {
+	_spawn_catalog_platform("platform_gear_b", Vector2(2305.59130859375, FLOOR_TOP - 130), Vector2(120, 20), {
 		"move_amplitude": 70.0,
 		"move_speed": 0.55,
 		"vertical": true,

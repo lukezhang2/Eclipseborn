@@ -9,6 +9,7 @@
 			"kind": "floor",
 			"layer": -4,
 			"name": "Cobble Floor",
+			"rotation": 0,
 			"w": 3200,
 			"x": 1600,
 			"y": 520
@@ -22,6 +23,7 @@
 			"kind": "wall",
 			"layer": -4,
 			"name": "Border Left",
+			"rotation": 0,
 			"w": 48,
 			"x": 24,
 			"y": 330
@@ -35,6 +37,7 @@
 			"kind": "wall",
 			"layer": -4,
 			"name": "Border Right",
+			"rotation": 0,
 			"w": 48,
 			"x": 3176,
 			"y": 330
@@ -48,6 +51,7 @@
 			"kind": "prop_pipe",
 			"layer": -3,
 			"name": "Overhead Wire",
+			"rotation": 0,
 			"w": 3080,
 			"x": 1600,
 			"y": 90
@@ -64,6 +68,7 @@
 			"name": "Hanging Lantern A",
 			"pushable": false,
 			"radius": 120,
+			"rotation": 0,
 			"w": 28,
 			"x": 280,
 			"y": 160
@@ -80,6 +85,7 @@
 			"name": "Hanging Lantern B",
 			"pushable": false,
 			"radius": 120,
+			"rotation": 0,
 			"w": 28,
 			"x": 720,
 			"y": 160
@@ -96,6 +102,7 @@
 			"name": "Hanging Lantern C",
 			"pushable": false,
 			"radius": 120,
+			"rotation": 0,
 			"w": 28,
 			"x": 1600,
 			"y": 160
@@ -109,6 +116,7 @@
 			"kind": "prop_window",
 			"layer": -3,
 			"name": "Window",
+			"rotation": 0,
 			"w": 44,
 			"x": 360,
 			"y": 220
@@ -122,8 +130,9 @@
 			"kind": "prop_bench",
 			"layer": -2,
 			"name": "Bench",
+			"rotation": 0,
 			"w": 60,
-			"x": 660,
+			"x": 455,
 			"y": 500
 		},
 		{
@@ -135,8 +144,9 @@
 			"kind": "prop_vent",
 			"layer": -2,
 			"name": "Steam Vent",
+			"rotation": 0,
 			"w": 36,
-			"x": 1050,
+			"x": 1053,
 			"y": 500
 		},
 		{
@@ -148,6 +158,7 @@
 			"kind": "prop_house",
 			"layer": -6,
 			"name": "House: Lantern Keep",
+			"rotation": 0,
 			"w": 130,
 			"x": 520,
 			"y": 500
@@ -161,6 +172,7 @@
 			"kind": "prop_house",
 			"layer": -6,
 			"name": "House: Gearwright",
+			"rotation": 0,
 			"w": 110,
 			"x": 980,
 			"y": 500
@@ -174,6 +186,7 @@
 			"kind": "prop_house",
 			"layer": -6,
 			"name": "House: Shade Inn",
+			"rotation": 0,
 			"w": 140,
 			"x": 1780,
 			"y": 500
@@ -187,6 +200,7 @@
 			"kind": "crate",
 			"layer": 1,
 			"name": "Pushable Crate (light puzzle)",
+			"rotation": 0,
 			"w": 56,
 			"x": 1250,
 			"y": 472
@@ -202,7 +216,8 @@
 			"light_kind": 0,
 			"name": "Pushable Hearth Lamp",
 			"pushable": false,
-			"radius": 250,
+			"radius": 300,
+			"rotation": 0,
 			"w": 28,
 			"x": 1292,
 			"y": 238
@@ -219,6 +234,7 @@
 			"name": "Street Lamp",
 			"pushable": false,
 			"radius": 250,
+			"rotation": 0,
 			"w": 28,
 			"x": 748,
 			"y": 312
@@ -235,6 +251,7 @@
 			"name": "Square Lamp",
 			"pushable": false,
 			"radius": 260,
+			"rotation": 0,
 			"w": 28,
 			"x": 2000,
 			"y": 300
@@ -248,6 +265,7 @@
 			"kind": "prop_switch",
 			"layer": 1,
 			"name": "Light Switch",
+			"rotation": 0,
 			"starts_on": true,
 			"target_ids": [
 				"lamp_street",
@@ -265,18 +283,18 @@
 			"id": "platform_gear_a",
 			"kind": "prop_platform",
 			"layer": -4,
-			"move_amplitude": 90.0,
+			"move_amplitude": 200,
 			"move_speed": 0.65,
 			"name": "Moving Platform A",
-			"path_y_amplitude": 0.0,
+			"path_y_amplitude": 0,
 			"rotate_platform": false,
-			"rotate_speed": 1.0,
+			"rotate_speed": 1,
 			"rotate_while_moving": true,
+			"rotation": 0,
 			"vertical": false,
 			"w": 140,
-			"with_gear": true,
-			"x": 1544,
-			"y": 410
+			"x": 1278,
+			"y": 414
 		},
 		{
 			"anchor": "center",
@@ -286,17 +304,17 @@
 			"id": "platform_gear_b",
 			"kind": "prop_platform",
 			"layer": -4,
-			"move_amplitude": 70.0,
+			"move_amplitude": 70,
 			"move_speed": 0.55,
 			"name": "Moving Platform B",
-			"path_y_amplitude": 0.0,
+			"path_y_amplitude": 0,
 			"rotate_platform": false,
 			"rotate_speed": 1.2,
 			"rotate_while_moving": true,
+			"rotation": 0,
 			"vertical": true,
 			"w": 120,
-			"with_gear": true,
-			"x": 2300,
+			"x": 2305.59130859375,
 			"y": 370
 		},
 		{
@@ -308,6 +326,7 @@
 			"kind": "prop_bg_gear",
 			"layer": -8,
 			"name": "BG Gear A",
+			"rotation": 0,
 			"w": 110,
 			"x": 1450,
 			"y": 300
@@ -321,6 +340,7 @@
 			"kind": "prop_bg_gear",
 			"layer": -8,
 			"name": "BG Gear B",
+			"rotation": 0,
 			"w": 140,
 			"x": 2200,
 			"y": 260
@@ -334,6 +354,7 @@
 			"kind": "prop_enemy",
 			"layer": 1,
 			"name": "Wander Enemy A",
+			"rotation": 0,
 			"w": 28,
 			"x": 1500,
 			"y": 480
@@ -347,6 +368,7 @@
 			"kind": "prop_enemy",
 			"layer": 1,
 			"name": "Wander Enemy B",
+			"rotation": 0,
 			"w": 28,
 			"x": 2050,
 			"y": 480
@@ -360,6 +382,7 @@
 			"kind": "prop_tower",
 			"layer": -6,
 			"name": "Clockwork Tower",
+			"rotation": 0,
 			"w": 160,
 			"x": 3000,
 			"y": 500
@@ -368,14 +391,15 @@
 			"anchor": "center",
 			"blocks_light": false,
 			"builtin": true,
-			"h": 32,
+			"h": 28,
 			"id": "shade_heart",
 			"kind": "prop_pickup",
 			"layer": 2,
-			"name": "Shadow Crystal Fragment",
-			"w": 32,
-			"x": 2100,
-			"y": 400
+			"name": "Shade Heart",
+			"rotation": 0,
+			"w": 28,
+			"x": 2407.53247070312,
+			"y": 256
 		},
 		{
 			"anchor": "bottom",
@@ -386,8 +410,23 @@
 			"kind": "prop_checkpoint",
 			"layer": -2,
 			"name": "Checkpoint (village gate) — the … hearth",
+			"rotation": 0,
 			"w": 56,
 			"x": 200,
+			"y": 500
+		},
+		{
+			"anchor": "bottom",
+			"blocks_light": true,
+			"builtin": false,
+			"h": 16,
+			"id": "prop_vent_585837",
+			"kind": "prop_vent",
+			"layer": -2,
+			"name": "Steam Vent",
+			"rotation": 0,
+			"w": 36,
+			"x": 320,
 			"y": 500
 		}
 	],
