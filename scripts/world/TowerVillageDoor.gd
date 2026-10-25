@@ -36,8 +36,10 @@ func _process(_delta: float) -> void:
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 70.0
 	_prompt.visible = near
 	if near and Input.is_action_just_pressed("attack") and GameState.can_interact():
-		GameState.lock_interact()
+		GameState.current_zone_id = "lantern_village"
 		## Left of the tower facade (village approach), not on the door/right edge.
-		GameState.pending_spawn = Vector2(2780, 460)
-		GameState.last_position = GameState.pending_spawn
-		get_tree().change_scene_to_file("res://scenes/rooms/LanternVillage.tscn")
+		GameState.change_zone(
+			"res://scenes/rooms/LanternVillage.tscn",
+			"Back to Lantern Village…",
+			Vector2(2780, 460)
+		)

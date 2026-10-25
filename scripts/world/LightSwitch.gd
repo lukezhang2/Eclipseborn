@@ -28,12 +28,21 @@ func set_target_ids(ids: PackedStringArray) -> void:
 
 func interact() -> void:
 	_on = not _on
-	_apply_visual()
+	_apply_visual(true)
 	_apply_targets()
 
 
 func is_powered() -> bool:
 	return _on
+
+
+## Boss / scripts can force a flip without player interact.
+func set_powered(powered: bool, animate: bool = true) -> void:
+	if _on == powered:
+		return
+	_on = powered
+	_apply_visual(animate)
+	_apply_targets()
 
 
 func _build_lever() -> void:
@@ -55,10 +64,16 @@ func _snap_to_floor() -> void:
 		_art.position.y = d - 4.0  # Lever base bottom is 4px below the art origin.
 
 
-func _apply_visual() -> void:
-	if _art:
-		_art.on = _on
-		_art.queue_redraw()
+func _apply_visual(animate: bool = false) -> void:
+	if _art == null:
+		return
+	_art.on = _on
+	_art.queue_redraw()
+	if animate:
+		var kick := -0.35 if _on else 0.35
+		_art.rotation = kick
+		var tw := create_tween()
+		tw.tween_property(_art, "rotation", 0.0, 0.18).set_ease(Tween.EASE_OUT)
 
 
 func _apply_targets() -> void:

@@ -330,7 +330,17 @@ func travel_to_checkpoint(entry: Dictionary) -> void:
 	last_position = pos
 	current_zone_id = zone
 	var scene_path := SaveManager.scene_for_zone(zone)
-	get_tree().change_scene_to_file(scene_path)
+	var label := str(entry.get("name", "Rest"))
+	change_zone(scene_path, "Traveling to %s…" % label, pos)
+
+
+## Prefer this over raw change_scene_to_file so the gear fade always plays.
+func change_zone(scene_path: String, caption: String = "", spawn: Vector2 = Vector2.ZERO) -> void:
+	if spawn != Vector2.ZERO:
+		pending_spawn = spawn
+		last_position = spawn
+	lock_interact(1.25)
+	ZoneTransition.go(get_tree(), scene_path, caption if caption != "" else "…")
 
 
 func apply_light_exposure(dt: float, kind: LightKind, intensity: float = 1.0) -> void:
@@ -397,11 +407,45 @@ func add_shade_heart() -> void:
 
 
 func _die() -> void:
+	if is_dead:
+		return
 	is_dead = true
 	AudioManager.stop_all_burns()
 	died.emit()
-	# Soft respawn at checkpoint.
-	get_tree().create_timer(0.6).timeout.connect(_respawn, CONNECT_ONE_SHOT)
+	_run_death_sequence()
+
+
+func _run_death_sequence() -> void:
+	## Death pose + screen fade, then soft respawn at the last rest hearth.
+	if player and is_instance_valid(player) and player.has_method("play_death"):
+		player.play_death()
+	var tree := get_tree()
+	if tree == null:
+		_respawn()
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	layer.name = "DeathFade"
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.01, 0.03, 0.0)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+	tree.root.add_child(layer)
+	var tw := tree.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(dim, "color:a", 1.0, 0.55)
+	await tw.finished
+	await tree.create_timer(0.2).timeout
+	_respawn()
+	if is_instance_valid(dim):
+		var tw2 := tree.create_tween()
+		tw2.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw2.tween_property(dim, "color:a", 0.0, 0.55)
+		await tw2.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
 
 
 func _respawn() -> void:

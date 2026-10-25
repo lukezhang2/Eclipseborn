@@ -54,8 +54,9 @@ func _process(_delta: float) -> void:
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 70.0
 	_prompt.visible = near
 	if near and Input.is_action_just_pressed("attack") and GameState.can_interact():
-		GameState.lock_interact()
-		## Drop into the shaft mid-climb.
-		GameState.pending_spawn = Vector2(390, 2100)
 		GameState.current_zone_id = "clockwork_tower"
-		get_tree().change_scene_to_file("res://scenes/rooms/ClockworkTower.tscn")
+		GameState.change_zone(
+			"res://scenes/rooms/ClockworkTower.tscn",
+			"Descending the shaft…",
+			Vector2(400, 2100)
+		)

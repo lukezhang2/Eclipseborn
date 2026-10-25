@@ -13,7 +13,7 @@ enum Phase { ONE, TWO, THREE }
 
 var hp: int = MAX_HP
 var phase: Phase = Phase.ONE
-var _state: String = "hover"
+var _state: String = "dormant"
 var _state_t: float = 0.0
 var _cooldown: float = 1.2
 var _hurt_cd: float = 0.0
@@ -21,6 +21,7 @@ var _heart_open: bool = false
 var _heart_t: float = 0.0
 var _target_pattern: Array = [true, false, true] ## A B C lamps that should be ON
 var _dying: bool = false
+var _awake: bool = false
 var _hover_origin: Vector2 = Vector2.ZERO
 var _dive_target: Vector2 = Vector2.ZERO
 var _visual: Node2D
@@ -44,6 +45,27 @@ func _ready() -> void:
 	add_to_group("enemies")
 	add_to_group("bosses")
 	name = "Wickwright"
+	## Sleep until the arena wake trigger fires.
+	if _hurtbox:
+		_hurtbox.set_deferred("monitorable", false)
+	if _dial_label:
+		_dial_label.visible = false
+
+
+func awaken() -> void:
+	if _awake or _dying:
+		return
+	_awake = true
+	_state = "hover"
+	_cooldown = 0.8
+	_hover_origin = global_position
+	if _hurtbox:
+		_hurtbox.monitorable = true
+	if _dial_label:
+		_dial_label.visible = true
+	var ui := get_tree().get_first_node_in_group("tutorial_hint")
+	if ui and ui.has_method("show_hint"):
+		ui.show_hint("The Wickwright stirs — match the Hour.", 3.5)
 
 
 func _build() -> void:
@@ -164,6 +186,11 @@ func _physics_process(delta: float) -> void:
 	_cooldown = maxf(0.0, _cooldown - delta)
 	_state_t += delta
 	_anim_wings(delta)
+	if not _awake:
+		## Idle hover bob while dormant — no attacks, no heart logic.
+		var bob := Vector2(sin(Time.get_ticks_msec() * 0.0015) * 12.0, cos(Time.get_ticks_msec() * 0.002) * 8.0)
+		global_position = global_position.lerp(_hover_origin + bob, clampf(2.0 * delta, 0.0, 1.0))
+		return
 	_update_heart(delta)
 	match _state:
 		"hover":
@@ -174,10 +201,10 @@ func _physics_process(delta: float) -> void:
 			_do_sweep(delta)
 		"flip":
 			_do_flip(delta)
-		"spit":
-			_do_spit(delta)
 		"cutscene":
 			pass
+		_:
+			_state = "hover"
 
 
 func _anim_wings(delta: float) -> void:
@@ -237,14 +264,13 @@ func _do_hover(delta: float) -> void:
 
 func _pick_attack() -> void:
 	var roll := randf()
-	if roll < 0.28:
+	## Lever yank is common — boss fights by rewriting the floor lamps.
+	if roll < 0.38:
 		_begin_flip()
-	elif roll < 0.55:
+	elif roll < 0.68:
 		_begin_dive()
-	elif roll < 0.78:
-		_begin_sweep()
 	else:
-		_begin_spit()
+		_begin_sweep()
 
 
 func _begin_dive() -> void:
@@ -299,8 +325,8 @@ func _begin_flip() -> void:
 
 
 func _do_flip(delta: float) -> void:
-	## Fly toward gallery height and yank a random switch.
-	var gallery_y := _hover_origin.y - 90.0
+	## Fly toward high lever perch and yank a switch (turns floor lanterns).
+	var gallery_y := _hover_origin.y - 70.0
 	global_position.y = lerpf(global_position.y, gallery_y, 4.0 * delta)
 	if _state_t > 0.55 and _state_t < 0.7:
 		_yank_random_switch()
@@ -313,55 +339,17 @@ func _yank_random_switch() -> void:
 	if _switch_ids.is_empty():
 		return
 	var sid := _switch_ids[randi() % _switch_ids.size()]
-	## In phase 2, first two switches may be "smashed" — skip disabled ones.
 	var sw := get_tree().root.find_child(sid, true, false)
 	if sw == null:
-		for n in get_tree().get_nodes_in_group("interactables"):
-			if str(n.get_meta("catalog_id", n.name)) == sid:
-				sw = n
-				break
-	if sw and sw.has_method("interact") and not sw.get_meta("smashed", false):
+		return
+	if sw.get_meta("smashed", false):
+		return
+	if sw.has_method("interact"):
 		sw.interact()
 
 
-func _begin_spit() -> void:
-	_state = "spit"
-	_state_t = 0.0
-	_cooldown = 2.4
-
-
-func _do_spit(delta: float) -> void:
-	if _state_t > 0.25 and _state_t < 0.35:
-		_spawn_fuse_puddle()
-	if _state_t > 0.9:
-		_state = "hover"
-		_state_t = 0.0
-
-
-func _spawn_fuse_puddle() -> void:
-	var p = GameState.player
-	var at: Vector2 = global_position
-	if p and is_instance_valid(p):
-		at = p.global_position
-	at += Vector2(randf_range(-40, 40), 0)
-	var lamp := LightSource.new()
-	lamp.position = at + Vector2(0, -10)
-	lamp.light_kind = GameState.LightKind.CANDLE
-	lamp.radius = 90.0
-	lamp.shadow_length = 120.0
-	lamp.pushable = false
-	lamp.is_enabled = true
-	lamp.name = "FusePuddle"
-	get_parent().add_child(lamp)
-	## Auto snuff
-	get_tree().create_timer(3.5).timeout.connect(func() -> void:
-		if is_instance_valid(lamp):
-			lamp.queue_free()
-	)
-
-
 func _on_hurt(amount: int, from: Node) -> void:
-	if _dying:
+	if _dying or not _awake:
 		return
 	var dmg := amount
 	if not _heart_open:
