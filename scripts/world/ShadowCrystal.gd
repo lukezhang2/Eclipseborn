@@ -99,6 +99,20 @@ func _build_visual() -> void:
 	])
 	_root.add_child(core)
 
+	## Tiny ember of red in the heart of the shard
+	var ember := Polygon2D.new()
+	ember.color = Color(0.72, 0.12, 0.16, 0.55)
+	ember.polygon = PackedVector2Array([
+		Vector2(0, -1.5), Vector2(1.6, 0.2), Vector2(0.2, 1.8), Vector2(-1.4, 0.4)
+	])
+	_root.add_child(ember)
+	var ember_core := Polygon2D.new()
+	ember_core.color = Color(0.9, 0.28, 0.22, 0.75)
+	ember_core.polygon = PackedVector2Array([
+		Vector2(0, -0.6), Vector2(0.7, 0.1), Vector2(0, 0.8), Vector2(-0.6, 0.1)
+	])
+	_root.add_child(ember_core)
+
 	## Specular glint
 	var glint := Polygon2D.new()
 	glint.color = Color(0.92, 0.88, 1.0, 0.85)
@@ -122,13 +136,6 @@ func _build_visual() -> void:
 	crack.default_color = Color(0.15, 0.08, 0.28, 0.75)
 	crack.points = PackedVector2Array([Vector2(-2, -8), Vector2(1, 0), Vector2(-1, 7)])
 	_root.add_child(crack)
-
-	var label := Label.new()
-	label.text = display_name
-	label.position = Vector2(-52, -36)
-	label.add_theme_font_size_override("font_size", 11)
-	label.add_theme_color_override("font_color", Color(0.7, 0.6, 0.85, 0.75))
-	_root.add_child(label)
 
 
 func _process(delta: float) -> void:
