@@ -32,6 +32,11 @@ Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/�
 - Add **Text label** from Decor; edit text/font size in the inspector. Zone plaques (e.g. tower workshop/gallery) appear as `prop_text` pieces in the editor.
 - **Right-click** (or middle-mouse) drag pans the viewport.
 
+### Zone doors & houses
+
+- **Zone door** (`prop_exit`) and **House facade** (`prop_house`): select → **Zone link** (target zone, spawn X/Y, fade caption). Builds on existing house exits / tower→village door.
+- Palette also includes hatch, pipe, jar, enemy, tower so more builtins can be placed as non-catalog overlays.
+
 ### Levers, doors, and links
 
 - Add **Lever** (`prop_switch`) or **Door (switchable)** (`prop_door`) from the palette.

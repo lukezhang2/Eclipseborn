@@ -10,6 +10,9 @@ class_name House
 @export var height: float = 90.0
 @export var blocks_light: bool = true
 @export var interior_scene: String = "res://scenes/rooms/HouseInterior.tscn"
+## Where the player lands inside the house (editor spawn X/Y).
+@export var interior_spawn: Vector2 = Vector2(160, 460)
+@export var travel_caption: String = ""
 ## WorldArt house style; -1 picks one of the timber designs from house_id so the village mixes.
 @export var art_style: int = -1
 
@@ -76,11 +79,18 @@ func _process(_delta: float) -> void:
 func _enter() -> void:
 	if not GameState.can_interact():
 		return
-	GameState.set_meta("pending_house_id", house_id)
+	var zone := house_id if house_id != "" else "house_keep"
+	GameState.set_meta("pending_house_id", zone)
 	## Land near the left exit, but not overlapping the walk-exit pad.
-	GameState.pending_spawn = Vector2(160, 460)
-	GameState.current_zone_id = house_id
+	GameState.pending_spawn = interior_spawn
+	GameState.current_zone_id = zone
 	GameState.last_position = GameState.pending_spawn
 	GameState.lock_interact(1.25)
 	var title := house_name if house_name != "" else "the house"
-	ZoneTransition.go(get_tree(), interior_scene, "Entering %s…" % title)
+	var caption := travel_caption.strip_edges()
+	if caption == "":
+		caption = "Entering %s…" % title
+	var scene := interior_scene
+	if scene == "" or scene == "res://scenes/rooms/HouseInterior.tscn":
+		scene = SaveManager.scene_for_zone(zone)
+	ZoneTransition.go(get_tree(), scene, caption)

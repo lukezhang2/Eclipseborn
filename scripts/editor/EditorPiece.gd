@@ -31,6 +31,11 @@ var tint_color: Color = Color.WHITE
 ## World text (prop_text).
 var label_text: String = "Text"
 var font_size: int = 14
+## Zone-link door (prop_exit) / house facade target.
+var target_zone: String = "lantern_village"
+var spawn_x: float = 520.0
+var spawn_y: float = 460.0
+var travel_caption: String = ""
 ## If true, gameplay should occlude lantern washes (no player collision required).
 var blocks_light: bool = true
 ## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
@@ -138,6 +143,24 @@ func to_dict() -> Dictionary:
 		d["text"] = label_text
 		d["font_size"] = font_size
 		d["color"] = tint_color.to_html(false)
+	if catalog_kind == "prop_exit" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_exit"):
+		d["kind"] = "prop_exit"
+		d["target_zone"] = target_zone
+		d["spawn_x"] = spawn_x
+		d["spawn_y"] = spawn_y
+		d["caption"] = travel_caption
+	if catalog_kind == "prop_house" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_house"):
+		d["kind"] = "prop_house"
+		d["target_zone"] = target_zone if target_zone != "" else piece_id
+		d["spawn_x"] = spawn_x
+		d["spawn_y"] = spawn_y
+		d["caption"] = travel_caption
+	if catalog_kind == "prop_hatch" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_hatch"):
+		d["kind"] = "prop_hatch"
+		d["target_zone"] = target_zone if target_zone != "" else "lantern_village"
+		d["spawn_x"] = spawn_x
+		d["spawn_y"] = spawn_y
+		d["caption"] = travel_caption
 	if catalog_kind == "prop_switch" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_switch"):
 		d["kind"] = "prop_switch"
 		d["starts_on"] = starts_on
@@ -229,6 +252,12 @@ func apply_dict(d: Dictionary) -> void:
 			if k == "prop_text":
 				if str(d.get("text", "")) == "" and display_name != "" and display_name != "Piece":
 					label_text = display_name
+			if k == "prop_exit" or k == "prop_house" or k == "prop_hatch":
+				var fallback_z := piece_id if k == "prop_house" else "lantern_village"
+				target_zone = str(d.get("target_zone", d.get("house_id", fallback_z)))
+				spawn_x = float(d.get("spawn_x", spawn_x))
+				spawn_y = float(d.get("spawn_y", spawn_y))
+				travel_caption = str(d.get("caption", d.get("travel_caption", travel_caption)))
 	if display_name == "" or display_name == "Piece":
 		display_name = piece_id if piece_id != "" else k
 	_rebuild()

@@ -62,6 +62,12 @@ var _text_row: VBoxContainer
 var _text_edit: TextEdit
 var _font_size_spin: SpinBox
 var _syncing_text: bool = false
+var _link_zone_row: VBoxContainer
+var _target_zone_option: OptionButton
+var _spawn_x_spin: SpinBox
+var _spawn_y_spin: SpinBox
+var _caption_edit: LineEdit
+var _syncing_zone_link: bool = false
 var _blocks_light_btn: CheckButton
 var _layer_label: Label
 var _status: Label
@@ -466,6 +472,54 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		_selected.set_selected(true)
 	)
 
+	_link_zone_row = VBoxContainer.new()
+	_link_zone_row.visible = false
+	_link_zone_row.add_theme_constant_override("separation", 4)
+	_pieces_block.add_child(_link_zone_row)
+	_link_zone_row.add_child(_section("Zone link"))
+	var zl_hint := Label.new()
+	zl_hint.text = "Door / house destination zone and spawn point (build off existing exits)."
+	zl_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	zl_hint.add_theme_font_size_override("font_size", 11)
+	zl_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
+	_link_zone_row.add_child(zl_hint)
+	_link_zone_row.add_child(_lbl("Target zone"))
+	_target_zone_option = OptionButton.new()
+	for zid in ZoneCatalog.zone_ids():
+		_target_zone_option.add_item(zid)
+	_target_zone_option.item_selected.connect(func(i: int) -> void:
+		if _syncing_zone_link or _history_restoring or _selected == null:
+			return
+		_push_undo()
+		_selected.target_zone = _target_zone_option.get_item_text(i)
+		_status.text = "Links to %s." % _selected.target_zone
+	)
+	_link_zone_row.add_child(_target_zone_option)
+	_spawn_x_spin = _spin_row(_link_zone_row, "Spawn X", -500, 5000, 1, 520)
+	_spawn_x_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_zone_link or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		_selected.spawn_x = v
+	)
+	_spawn_y_spin = _spin_row(_link_zone_row, "Spawn Y", -500, 5000, 1, 460)
+	_spawn_y_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_zone_link or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		_selected.spawn_y = v
+	)
+	_link_zone_row.add_child(_lbl("Fade caption"))
+	_caption_edit = LineEdit.new()
+	_caption_edit.placeholder_text = "Traveling…"
+	_caption_edit.text_changed.connect(func(t: String) -> void:
+		if _syncing_zone_link or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		_selected.travel_caption = t
+	)
+	_link_zone_row.add_child(_caption_edit)
+
 	_link_row = VBoxContainer.new()
 	_link_row.visible = false
 	_link_row.add_theme_constant_override("separation", 4)
@@ -851,11 +905,11 @@ func _refresh_sky_preview() -> void:
 
 ## Add palette: [tab title, [[kind, label], ...]]. Only kinds LevelData can spawn (plus the desk).
 const ADD_CATEGORIES := [
-	["Build", [["floor", "Steel floor"], ["prop_platform", "Moving platform"], ["wall", "Wall"], ["prop_door", "Door (switchable)"], ["prop_ladder", "Ladder"]]],
+	["Build", [["floor", "Steel floor"], ["prop_platform", "Moving platform"], ["wall", "Wall"], ["prop_door", "Door (switchable)"], ["prop_exit", "Zone door"], ["prop_ladder", "Ladder"], ["prop_pipe", "Pipe / rail"]]],
 	["Lights", [["light", "Lantern"], ["prop_switch", "Lever"]]],
-	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"]]],
-	["Decor", [["prop_window", "Window"], ["prop_bg_gear", "Background gear"], ["prop_text", "Text label"]]],
-	["People", [["prop_checkpoint", "Checkpoint"], ["prop_npc", "NPC / Shopkeeper"], ["prop_pickup", "Shadow crystal"]]],
+	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"], ["prop_hatch", "Hatch"], ["prop_breakable", "Glowing jar"]]],
+	["Decor", [["prop_window", "Window"], ["prop_bg_gear", "Background gear"], ["prop_text", "Text label"], ["prop_house", "House facade"], ["prop_tower", "Clockwork tower"]]],
+	["People", [["prop_checkpoint", "Checkpoint"], ["prop_npc", "NPC / Shopkeeper"], ["prop_enemy", "Enemy"], ["prop_pickup", "Shadow crystal"]]],
 ]
 
 
@@ -1181,6 +1235,7 @@ func _load_zone() -> void:
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
 				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
 				"is_shopkeeper", "shop_items", "color", "text", "font_size",
+				"target_zone", "spawn_x", "spawn_y", "caption", "house_id",
 			]:
 				if ov.has(key):
 					merged[key] = ov[key]
@@ -1291,6 +1346,27 @@ func _update_inspector() -> void:
 	else:
 		_text_edit.text = ""
 	_syncing_text = false
+	var is_zone_link := _selected != null and _selected.catalog_kind in ["prop_exit", "prop_house", "prop_hatch"]
+	_link_zone_row.visible = is_zone_link
+	_syncing_zone_link = true
+	if is_zone_link:
+		var tz := _selected.target_zone
+		if tz == "" and _selected.catalog_kind == "prop_house":
+			tz = _selected.piece_id
+		var found := false
+		for i in _target_zone_option.item_count:
+			if _target_zone_option.get_item_text(i) == tz:
+				_target_zone_option.select(i)
+				found = true
+				break
+		if not found and _target_zone_option.item_count > 0:
+			_target_zone_option.select(0)
+			tz = _target_zone_option.get_item_text(0)
+			_selected.target_zone = tz
+		_spawn_x_spin.value = _selected.spawn_x
+		_spawn_y_spin.value = _selected.spawn_y
+		_caption_edit.text = _selected.travel_caption
+	_syncing_zone_link = false
 	_blocks_light_btn.disabled = _selected == null
 	if _selected:
 		_blocks_light_btn.set_pressed_no_signal(_selected.blocks_light)
@@ -1590,6 +1666,18 @@ func _pretty_palette_name(palette: String) -> String:
 			return "Glowing Jar"
 		"prop_text":
 			return "Text"
+		"prop_exit":
+			return "Zone Door"
+		"prop_house":
+			return "House"
+		"prop_tower":
+			return "Clockwork Tower"
+		"prop_hatch":
+			return "Hatch"
+		"prop_enemy":
+			return "Enemy"
+		"prop_pipe":
+			return "Pipe"
 		_:
 			return palette.replace("prop_", "").replace("_", " ").capitalize()
 
@@ -1632,7 +1720,7 @@ func _add_piece() -> void:
 	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
 	var y := _cam.position.y + 20.0
 	## Snap floor-sitting kinds onto the zone floor so crates aren't buried.
-	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_ladder", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc", "prop_switch", "prop_door"]:
+	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_ladder", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc", "prop_switch", "prop_door", "prop_exit", "prop_tower", "prop_enemy", "prop_breakable"]:
 		y = PieceSpecs.sit_on_floor_y(_palette_id, floor_top, sz)
 	elif _palette_id == "prop_platform":
 		y = floor_top - 90.0
@@ -1663,6 +1751,20 @@ func _add_piece() -> void:
 		d["text"] = "Text"
 		d["font_size"] = 14
 		d["color"] = "c4b07a"
+	if _palette_id == "prop_exit":
+		d["target_zone"] = "lantern_village"
+		d["spawn_x"] = 520
+		d["spawn_y"] = 460
+		d["caption"] = "Traveling…"
+	if _palette_id == "prop_house":
+		d["target_zone"] = "house_keep"
+		d["spawn_x"] = 160
+		d["spawn_y"] = 460
+		d["caption"] = "Entering…"
+	if _palette_id == "prop_hatch":
+		d["target_zone"] = "lantern_village"
+		d["spawn_x"] = 140
+		d["spawn_y"] = 460
 	if _palette_id == "prop_switch":
 		d["starts_on"] = true
 		d["target_ids"] = []

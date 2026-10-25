@@ -82,9 +82,9 @@ static func _village() -> Array:
 	out.append(_p("window_1", "prop_window", "Window", 360, 220, 44, 60))
 	out.append(_p("bench_1", "prop_bench", "Bench", 455, FLOOR_TOP, 60, 20))
 	out.append(_p("vent_1", "prop_vent", "Steam Vent", 1053, FLOOR_TOP, 36, 16))
-	out.append(_p("house_keep", "prop_house", "House: Lantern Keep", 520, FLOOR_TOP, 130, 100))
-	out.append(_p("house_gear", "prop_house", "House: Gearwright", 980, FLOOR_TOP, 110, 88))
-	out.append(_p("house_inn", "prop_house", "House: Shade Inn", 1780, FLOOR_TOP, 140, 110))
+	out.append(_phouse("house_keep", "House: Lantern Keep", 520, FLOOR_TOP, 130, 100, "house_keep", 160, 460))
+	out.append(_phouse("house_gear", "House: Gearwright", 980, FLOOR_TOP, 110, 88, "house_gear", 160, 460))
+	out.append(_phouse("house_inn", "House: Shade Inn", 1780, FLOOR_TOP, 140, 110, "house_inn", 160, 460))
 	## Editor save uses 56×56 for this puzzle crate (sits at y=472 on FLOOR_TOP 500).
 	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, 472, 56, 56))
 	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1292, 238, 300))
@@ -149,7 +149,7 @@ static func _tower() -> Array:
 	out.append(_plight("lobby_lamp", "Lobby Lamp", 420, LOBBY_TOP - 120, 180))
 	out.append(_p("vent_lobby", "prop_vent", "Lobby Steam Vent", 520, LOBBY_TOP, 36, 16))
 	out.append(_p("bench_lobby", "prop_bench", "Lobby Bench", 340, LOBBY_TOP, 60, 20))
-	out.append(_p("exit_village", "prop_exit", "Village Door", 110, LOBBY_TOP - 8, 40, 50))
+	out.append(_pexit("exit_village", "Village Door", 110, LOBBY_TOP - 8, "lantern_village", ClockworkTower.VILLAGE_DOOR_X - 80.0, 460.0, "Back to Lantern Village…"))
 	out.append(_p("ladder_lobby", "prop_ladder", "Lobby Ladder", 600, LOBBY_TOP, 28, STORY_GAP))
 
 	## Story floors + ladders up the shaft.
@@ -247,7 +247,7 @@ static func _house_interior(house_id: String) -> Array:
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
 	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
 	out.append(_p("desk", "prop_desk", "Shop Desk", MAP_W * 0.5, FLOOR_TOP - 8, 200, 28))
-	out.append(_p("exit_door", "prop_exit", "Exit Door", 80, FLOOR_TOP, 40, 50))
+	out.append(_pexit("exit_door", "Exit Door", 80, FLOOR_TOP, "lantern_village", 520, 460, "Back to the street…"))
 	out.append(_plight("lamp_moon", "Moon Lamp", MAP_W - 100, 260, 140))
 	out.append(_pnpc(
 		str(profile.get("npc_id", "npc_shop")),
@@ -345,4 +345,44 @@ static func _ptext(
 	d["text"] = text
 	d["font_size"] = font_size
 	d["color"] = color_hex
+	return d
+
+
+static func _pexit(
+	id: String,
+	name: String,
+	x: float,
+	y: float,
+	target_zone: String,
+	spawn_x: float,
+	spawn_y: float,
+	caption: String = "",
+	w: float = 40.0,
+	h: float = 50.0
+) -> Dictionary:
+	var d := _p(id, "prop_exit", name, x, y, w, h)
+	d["target_zone"] = target_zone
+	d["spawn_x"] = spawn_x
+	d["spawn_y"] = spawn_y
+	d["caption"] = caption
+	return d
+
+
+static func _phouse(
+	id: String,
+	name: String,
+	x: float,
+	y: float,
+	w: float,
+	h: float,
+	target_zone: String,
+	spawn_x: float = 160.0,
+	spawn_y: float = 460.0
+) -> Dictionary:
+	var d := _p(id, "prop_house", name, x, y, w, h)
+	d["target_zone"] = target_zone
+	d["house_id"] = target_zone
+	d["spawn_x"] = spawn_x
+	d["spawn_y"] = spawn_y
+	d["caption"] = "Entering %s…" % name.replace("House: ", "")
 	return d

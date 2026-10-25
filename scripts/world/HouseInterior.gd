@@ -167,8 +167,27 @@ func _build_title_sign() -> void:
 
 func _build_exit() -> void:
 	## Exit is always on the LEFT wall (street door) — clear of the border pillar.
+	if LevelData.is_removed(house_id, "exit_door"):
+		return
 	var door := HouseExitDoor.new()
 	door.position = Vector2(88, FLOOR_Y)
 	door.name = "ExitDoor"
 	door.z_index = 3
+	door.target_zone = "lantern_village"
+	door.spawn_pos = return_spawn
+	door.travel_caption = "Back to the street…"
+	var saved := LevelData.merged_piece(house_id, "exit_door")
+	if not saved.is_empty():
+		if saved.has("x") and saved.has("y"):
+			door.position = Vector2(float(saved.get("x")), float(saved.get("y")))
+		if saved.has("target_zone") and str(saved.get("target_zone", "")) != "":
+			door.target_zone = str(saved.get("target_zone"))
+		if saved.has("spawn_x") or saved.has("spawn_y"):
+			door.spawn_pos = Vector2(
+				float(saved.get("spawn_x", door.spawn_pos.x)),
+				float(saved.get("spawn_y", door.spawn_pos.y))
+			)
+		if saved.has("caption") and str(saved.get("caption", "")) != "":
+			door.travel_caption = str(saved.get("caption"))
+	LevelData.tag(door, "exit_door")
 	add_child(door)

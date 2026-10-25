@@ -154,6 +154,23 @@ func _spawn_house(id: String, title: String, pos: Vector2, w: float, h: float) -
 		house.position.x = float(saved.get("x"))
 	if saved.has("y"):
 		house.position.y = float(saved.get("y"))
+	if saved.has("w"):
+		house.width = float(saved.get("w"))
+	if saved.has("h"):
+		house.height = float(saved.get("h"))
+	if saved.has("name") and str(saved.get("name", "")) != "":
+		house.house_name = str(saved.get("name"))
+	if saved.has("target_zone") and str(saved.get("target_zone", "")) != "":
+		house.house_id = str(saved.get("target_zone"))
+	elif saved.has("house_id") and str(saved.get("house_id", "")) != "":
+		house.house_id = str(saved.get("house_id"))
+	if saved.has("spawn_x") or saved.has("spawn_y"):
+		house.interior_spawn = Vector2(
+			float(saved.get("spawn_x", house.interior_spawn.x)),
+			float(saved.get("spawn_y", house.interior_spawn.y))
+		)
+	if saved.has("caption"):
+		house.travel_caption = str(saved.get("caption"))
 	LevelData.tag(house, id)
 	add_child(house)
 

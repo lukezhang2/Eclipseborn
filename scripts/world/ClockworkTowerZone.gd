@@ -524,8 +524,29 @@ func _on_arena_entered(body: Node) -> void:
 
 
 func _make_village_exit(pos: Vector2) -> void:
-	var exit: Node = VillageDoorScript.new()
+	if LevelData.is_removed("clockwork_tower", "exit_village"):
+		return
+	var exit: ZoneLinkDoor = VillageDoorScript.new()
 	exit.position = pos
+	exit.target_zone = "lantern_village"
+	exit.spawn_pos = Vector2(ClockworkTower.VILLAGE_DOOR_X - 80.0, 460)
+	exit.travel_caption = "Back to Lantern Village…"
+	exit.verb = "Village"
+	exit.show_exit_arrow = false
+	var saved := LevelData.merged_piece("clockwork_tower", "exit_village")
+	if not saved.is_empty():
+		if saved.has("x") and saved.has("y"):
+			exit.position = Vector2(float(saved.get("x")), float(saved.get("y")))
+		if saved.has("target_zone") and str(saved.get("target_zone", "")) != "":
+			exit.target_zone = str(saved.get("target_zone"))
+		if saved.has("spawn_x") or saved.has("spawn_y"):
+			exit.spawn_pos = Vector2(
+				float(saved.get("spawn_x", exit.spawn_pos.x)),
+				float(saved.get("spawn_y", exit.spawn_pos.y))
+			)
+		if saved.has("caption") and str(saved.get("caption", "")) != "":
+			exit.travel_caption = str(saved.get("caption"))
+	LevelData.tag(exit, "exit_village")
 	add_child(exit)
 
 

@@ -275,6 +275,72 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			door.starts_open = bool(p.get("starts_open", false))
 			parent.add_child(door)
 			LevelData.tag(door, str(p.get("id", "")))
+		"prop_exit":
+			var exit_scr: GDScript = load("res://scripts/world/ZoneLinkDoor.gd") as GDScript
+			var exit: Node = exit_scr.new()
+			exit.position = pos
+			exit.set("target_zone", str(p.get("target_zone", "lantern_village")))
+			exit.set("spawn_pos", Vector2(float(p.get("spawn_x", 520)), float(p.get("spawn_y", 460))))
+			exit.set("travel_caption", str(p.get("caption", p.get("travel_caption", ""))))
+			exit.set("verb", str(p.get("name", "Leave")))
+			exit.set("show_exit_arrow", bool(p.get("show_arrow", true)))
+			parent.add_child(exit)
+			LevelData.tag(exit, str(p.get("id", "")))
+		"prop_house":
+			var house_scr: GDScript = load("res://scripts/world/House.gd") as GDScript
+			var house: Node = house_scr.new()
+			house.position = pos
+			house.set("house_name", str(p.get("name", "House")))
+			house.set("house_id", str(p.get("target_zone", p.get("house_id", p.get("id", "house_keep")))))
+			house.set("width", maxf(size.x, 80.0))
+			house.set("height", maxf(size.y, 60.0))
+			house.set("blocks_light", bool(p.get("blocks_light", true)))
+			house.set("interior_spawn", Vector2(float(p.get("spawn_x", 160)), float(p.get("spawn_y", 460))))
+			house.set("travel_caption", str(p.get("caption", "")))
+			parent.add_child(house)
+			LevelData.tag(house, str(p.get("id", "")))
+		"prop_hatch":
+			var hatch_scr: GDScript = load("res://scripts/world/BreakableHatch.gd") as GDScript
+			var hatch: Node = hatch_scr.new()
+			hatch.position = pos
+			hatch.set("hatch_size", Vector2(maxf(size.x, 40.0), maxf(size.y, 12.0)))
+			var hz := str(p.get("target_zone", "lantern_village"))
+			hatch.set("next_scene", SaveManager.scene_for_zone(hz))
+			hatch.set("spawn_in_next", Vector2(float(p.get("spawn_x", 140)), float(p.get("spawn_y", 460))))
+			parent.add_child(hatch)
+			LevelData.tag(hatch, str(p.get("id", "")))
+		"prop_breakable":
+			var jar_scr: GDScript = load("res://scripts/world/BreakableProp.gd") as GDScript
+			var jar: Node = jar_scr.new()
+			jar.position = pos
+			jar.set("breakable_id", str(p.get("id", "")))
+			parent.add_child(jar)
+			LevelData.tag(jar, str(p.get("id", "")))
+		"prop_enemy":
+			var scene := preload("res://scenes/enemies/WanderEnemy.tscn")
+			var enemy = scene.instantiate()
+			enemy.position = pos
+			parent.add_child(enemy)
+			LevelData.tag(enemy, str(p.get("id", "")))
+		"prop_pipe":
+			LevelCommon.add_pipe(parent, pos + Vector2(-size.x * 0.5, 0), pos + Vector2(size.x * 0.5, 0), maxf(size.y, 8.0))
+		"prop_tower":
+			var tower_scr: GDScript = load("res://scripts/world/ClockworkTower.gd") as GDScript
+			var tower: Node = tower_scr.new()
+			tower.position = pos
+			parent.add_child(tower)
+			LevelData.tag(tower, str(p.get("id", "")))
+		"prop_desk":
+			var desk := Node2D.new()
+			desk.position = pos
+			var dart := WorldArt.new()
+			dart.kind = WorldArt.Kind.DESK
+			dart.style = int(p.get("style", 0))
+			dart.size = size
+			desk.add_child(dart)
+			desk.z_index = int(p.get("layer", PieceSpecs.default_draw_layer("prop_desk")))
+			parent.add_child(desk)
+			LevelData.tag(desk, str(p.get("id", "")))
 		"prop_npc":
 			var npc := NPC.new()
 			npc.position = pos
