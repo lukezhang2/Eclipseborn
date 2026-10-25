@@ -37,6 +37,7 @@ func _process(_delta: float) -> void:
 	_prompt.visible = near
 	if near and Input.is_action_just_pressed("attack") and GameState.can_interact():
 		GameState.lock_interact()
-		GameState.pending_spawn = Vector2(3000, 460)
+		## Left of the tower facade (village approach), not on the door/right edge.
+		GameState.pending_spawn = Vector2(2780, 460)
 		GameState.last_position = GameState.pending_spawn
 		get_tree().change_scene_to_file("res://scenes/rooms/LanternVillage.tscn")
