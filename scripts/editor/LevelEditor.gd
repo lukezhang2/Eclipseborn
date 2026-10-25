@@ -20,6 +20,8 @@ var tool: Tool = Tool.SELECT
 var edit_mode: EditMode = EditMode.PIECES
 var snap_enabled: bool = true
 var _palette_id: String = "floor"
+## Normalized kind for Add (prop_backdrop_1 → prop_backdrop + style).
+var _palette_style: int = 0
 var _pieces: Array[EditorPiece] = []
 var _removed_ids: Array = []
 var _selected: EditorPiece = null
@@ -68,6 +70,9 @@ var _spawn_x_spin: SpinBox
 var _spawn_y_spin: SpinBox
 var _caption_edit: LineEdit
 var _syncing_zone_link: bool = false
+var _backdrop_style_row: VBoxContainer
+var _backdrop_style_option: OptionButton
+var _syncing_backdrop_style: bool = false
 var _blocks_light_btn: CheckButton
 var _layer_label: Label
 var _status: Label
@@ -472,6 +477,24 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		_selected.set_selected(true)
 	)
 
+	_backdrop_style_row = VBoxContainer.new()
+	_backdrop_style_row.visible = false
+	_backdrop_style_row.add_theme_constant_override("separation", 4)
+	_pieces_block.add_child(_backdrop_style_row)
+	_backdrop_style_row.add_child(_section("Backdrop style"))
+	_backdrop_style_option = OptionButton.new()
+	for pair in [["Brick & copper", 0], ["Teal foundry", 1], ["Riveted bulkhead", 2]]:
+		_backdrop_style_option.add_item(str(pair[0]), int(pair[1]))
+	_backdrop_style_option.item_selected.connect(func(i: int) -> void:
+		if _syncing_backdrop_style or _history_restoring or _selected == null:
+			return
+		_push_undo()
+		_selected.art_style = _backdrop_style_option.get_item_id(i)
+		_selected._rebuild()
+		_selected.set_selected(true)
+	)
+	_backdrop_style_row.add_child(_backdrop_style_option)
+
 	_link_zone_row = VBoxContainer.new()
 	_link_zone_row.visible = false
 	_link_zone_row.add_theme_constant_override("separation", 4)
@@ -713,7 +736,8 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_pieces_block.add_child(add_btn)
 
 	var save_btn := Button.new()
-	save_btn.text = "Save (this browser)"
+	save_btn.text = "Save (this session)"
+	save_btn.tooltip_text = "Keeps edits for playtest in this tab only. Refreshing the page discards them — use Copy Save Code to keep work."
 	save_btn.pressed.connect(_save)
 	col.add_child(save_btn)
 
@@ -907,8 +931,9 @@ func _refresh_sky_preview() -> void:
 const ADD_CATEGORIES := [
 	["Build", [["floor", "Steel floor"], ["prop_platform", "Moving platform"], ["wall", "Wall"], ["prop_door", "Door (switchable)"], ["prop_exit", "Zone door"], ["prop_ladder", "Ladder"], ["prop_pipe", "Pipe / rail"]]],
 	["Lights", [["light", "Lantern"], ["prop_switch", "Lever"]]],
-	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"], ["prop_hatch", "Hatch"], ["prop_breakable", "Glowing jar"]]],
-	["Decor", [["prop_window", "Window"], ["prop_bg_gear", "Background gear"], ["prop_text", "Text label"], ["prop_house", "House facade"], ["prop_tower", "Clockwork tower"]]],
+	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"], ["prop_hatch", "Hatch"], ["prop_breakable", "Glowing jar"], ["prop_valve", "Valve"]]],
+	["Background", [["background", "Brick wall mural"], ["prop_backdrop", "Brick & copper"], ["prop_backdrop_1", "Teal foundry"], ["prop_backdrop_2", "Riveted bulkhead"], ["prop_bg_gear", "Background gear"], ["prop_window", "Window"], ["prop_text", "Text label"]]],
+	["Decor", [["prop_house", "House facade"], ["prop_tower", "Clockwork tower"]]],
 	["People", [["prop_checkpoint", "Checkpoint"], ["prop_npc", "NPC / Shopkeeper"], ["prop_enemy", "Enemy"], ["prop_pickup", "Shadow crystal"]]],
 ]
 
@@ -943,10 +968,23 @@ func _build_add_palette() -> Control:
 			b.button_pressed = kind == _palette_id
 			b.toggled.connect(func(on: bool) -> void:
 				if on:
-					_palette_id = kind
+					_set_palette(kind)
 			)
 			list.add_child(b)
 	return tabs
+
+
+func _set_palette(kind: String) -> void:
+	_palette_id = kind
+	_palette_style = 0
+	if kind.begins_with("prop_backdrop"):
+		_palette_id = "prop_backdrop"
+		if kind == "prop_backdrop_1":
+			_palette_style = 1
+		elif kind == "prop_backdrop_2":
+			_palette_style = 2
+		else:
+			_palette_style = 0
 
 
 ## Small live render of a piece's in-game art for the Add palette.
@@ -1022,6 +1060,21 @@ func _palette_preview(kind: String) -> Texture2D:
 			art.style = 10
 			art.size = Vector2(44, 60)
 			scale = 0.5
+		"background":
+			art = null
+			holder.add_child(_preview_poly([Vector2(-20, -14), Vector2(20, -14), Vector2(20, 14), Vector2(-20, 14)], Color(0.28, 0.18, 0.14)))
+			holder.add_child(_preview_poly([Vector2(-18, -6), Vector2(-2, -6), Vector2(-2, 0), Vector2(-18, 0)], Color(0.35, 0.22, 0.18)))
+			holder.add_child(_preview_poly([Vector2(-1, -6), Vector2(18, -6), Vector2(18, 0), Vector2(-1, 0)], Color(0.32, 0.2, 0.16)))
+		"prop_backdrop", "prop_backdrop_1", "prop_backdrop_2":
+			art.kind = WorldArt.Kind.BACKDROP
+			art.style = 1 if kind == "prop_backdrop_1" else (2 if kind == "prop_backdrop_2" else 0)
+			art.size = Vector2(90, 50)
+			scale = 0.42
+			offset = Vector2(0, 18)
+		"prop_valve":
+			art.kind = WorldArt.Kind.VALVE
+			art.style = 5
+			scale = 0.9
 		"prop_bg_gear":
 			art = null
 			var pts: Array = []
@@ -1235,7 +1288,7 @@ func _load_zone() -> void:
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
 				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
 				"is_shopkeeper", "shop_items", "color", "text", "font_size",
-				"target_zone", "spawn_x", "spawn_y", "caption", "house_id",
+				"target_zone", "spawn_x", "spawn_y", "caption", "house_id", "style",
 			]:
 				if ov.has(key):
 					merged[key] = ov[key]
@@ -1346,6 +1399,16 @@ func _update_inspector() -> void:
 	else:
 		_text_edit.text = ""
 	_syncing_text = false
+	var is_backdrop := _selected != null and _selected.catalog_kind == "prop_backdrop"
+	_backdrop_style_row.visible = is_backdrop
+	_syncing_backdrop_style = true
+	if is_backdrop:
+		var st := clampi(_selected.art_style, 0, 2)
+		for i in _backdrop_style_option.item_count:
+			if _backdrop_style_option.get_item_id(i) == st:
+				_backdrop_style_option.select(i)
+				break
+	_syncing_backdrop_style = false
 	var is_zone_link := _selected != null and _selected.catalog_kind in ["prop_exit", "prop_house", "prop_hatch"]
 	_link_zone_row.visible = is_zone_link
 	_syncing_zone_link = true
@@ -1666,6 +1729,18 @@ func _pretty_palette_name(palette: String) -> String:
 			return "Glowing Jar"
 		"prop_text":
 			return "Text"
+		"background":
+			return "Brick Wall"
+		"prop_backdrop":
+			match _palette_style:
+				1:
+					return "Teal Foundry"
+				2:
+					return "Riveted Bulkhead"
+				_:
+					return "Brick & Copper"
+		"prop_valve":
+			return "Valve"
 		"prop_exit":
 			return "Zone Door"
 		"prop_house":
@@ -1751,6 +1826,13 @@ func _add_piece() -> void:
 		d["text"] = "Text"
 		d["font_size"] = 14
 		d["color"] = "c4b07a"
+	if _palette_id == "background":
+		d["w"] = maxf(float(d.get("w", 320)), 160.0)
+		d["h"] = maxf(float(d.get("h", 180)), 80.0)
+	if _palette_id == "prop_backdrop":
+		d["style"] = _palette_style
+		d["w"] = maxf(float(d.get("w", 360)), 200.0)
+		d["h"] = maxf(float(d.get("h", 200)), 100.0)
 	if _palette_id == "prop_exit":
 		d["target_zone"] = "lantern_village"
 		d["spawn_x"] = 520
@@ -2082,7 +2164,9 @@ func _import_text(raw: String) -> void:
 
 func _save() -> void:
 	var err := LevelData.save_raw(zone_id, _build_data(), false)
-	_status.text = "Saved %s (%d pieces). %s" % [zone_id, _pieces.size(), "ok" if err == OK else str(err)]
+	_status.text = "Session save %s (%d pieces)%s — refresh discards; Copy Save Code to keep." % [
+		zone_id, _pieces.size(), "" if err == OK else (" · " + str(err))
+	]
 
 
 func _playtest() -> void:
