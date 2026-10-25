@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.22 — fix silent SFX: default AudioBusLayout (SFX/Music), AudioManager ALWAYS + web unlock; `index-0_1_22.pck`
 - v0.1.21 — permanent shadow crystal fragments (saved collected_ids); map hint “Tab to close” only
 - v0.1.20 — longer cardinal attack hitboxes to match slash sprite tip (N/E/S/W); `index-0_1_20.pck`
 - v0.1.19 — persist activated hearths (JSON sidecar + web flush); tall unmissable hearth hitbox; restore lit on load

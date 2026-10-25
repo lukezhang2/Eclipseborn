@@ -40,6 +40,8 @@ func _ready() -> void:
 
 
 func _ensure_bus(bus_name: String) -> void:
+	## Prefer buses from default_bus_layout.tres (required for reliable Godot 4.3 web audio).
+	## Only add at runtime if the layout failed to load.
 	if AudioServer.get_bus_index(bus_name) != -1:
 		return
 	AudioServer.add_bus()

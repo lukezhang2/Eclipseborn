@@ -100,6 +100,7 @@ func _add_slider(label: String, min_v: float, max_v: float, setter: Callable) ->
 
 
 func _sync() -> void:
+	## Update labels without re-firing setters (avoids racing volume to 0% on open).
 	var pairs := [
 		[_master_slider, Settings.master_volume],
 		[_music_slider, Settings.music_volume],
@@ -108,8 +109,11 @@ func _sync() -> void:
 	]
 	for pair in pairs:
 		var slider: HSlider = pair[0]
-		slider.set_value_no_signal(roundf(pair[1] * 100))
-		slider.value_changed.emit(slider.value)  # Refresh the % label.
+		var pct := roundf(pair[1] * 100.0)
+		slider.set_value_no_signal(pct)
+		var value_l := slider.get_parent().get_child(2) as Label
+		if value_l:
+			value_l.text = "%d%%" % int(pct)
 	_fullscreen_check.set_pressed_no_signal(Settings.is_fullscreen())
 	_saved_label.text = ""
 
