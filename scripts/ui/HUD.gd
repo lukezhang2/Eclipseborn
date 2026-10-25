@@ -9,6 +9,7 @@ extends CanvasLayer
 var _currency_root: Control
 var _currency_label: Label
 var _health_fill: ColorRect
+var _bag_btn: Button
 
 
 func _ready() -> void:
@@ -18,8 +19,10 @@ func _ready() -> void:
 	GameState.room_entered.connect(_on_room)
 	GameState.currency_changed.connect(_on_currency)
 	GameState.currency_hud_reveal.connect(_reveal_currency)
+	InputMapManager.bindings_changed.connect(_refresh_bag_label)
 	_health_fill = UITheme.style_hud($Root)
 	_build_currency_ui()
+	_build_bag_button()
 	_on_health(GameState.health, GameState.max_health)
 	_on_shade(GameState.shade)
 	_on_currency(GameState.currency)
@@ -52,6 +55,38 @@ func _build_currency_ui() -> void:
 	_currency_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 	_currency_label.text = "0"
 	_currency_root.add_child(_currency_label)
+
+
+func _build_bag_button() -> void:
+	## Top-right Bag button — same inventory as the B key, with shop-style fade.
+	_bag_btn = Button.new()
+	_bag_btn.name = "BagButton"
+	_bag_btn.theme = UITheme.get_theme()
+	_bag_btn.theme_type_variation = "KeyButton"
+	_bag_btn.focus_mode = Control.FOCUS_NONE
+	_bag_btn.anchor_left = 1.0
+	_bag_btn.anchor_right = 1.0
+	_bag_btn.offset_left = -132.0
+	_bag_btn.offset_right = -24.0
+	_bag_btn.offset_top = 20.0
+	_bag_btn.offset_bottom = 52.0
+	_bag_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	_bag_btn.pressed.connect(_on_bag_pressed)
+	$Root.add_child(_bag_btn)
+	_refresh_bag_label()
+
+
+func _refresh_bag_label() -> void:
+	if _bag_btn == null:
+		return
+	var key := InputMapManager.get_slot_text("inventory", 0)
+	_bag_btn.text = "Bag (%s)" % key
+
+
+func _on_bag_pressed() -> void:
+	var menu := get_tree().get_first_node_in_group("inventory_menu")
+	if menu and menu.has_method("toggle"):
+		menu.toggle()
 
 
 func _make_gear_icon() -> ImageTexture:
