@@ -11,6 +11,7 @@ signal broken
 var _broken: bool = false
 var _hurtbox: Hurtbox
 var _visual: Polygon2D
+var _art: WorldArt
 var _prompt: Label
 
 
@@ -35,23 +36,16 @@ func _build() -> void:
 	add_child(cs)
 	_visual = Polygon2D.new()
 	_visual.polygon = poly
-	_visual.color = Color(0.32, 0.28, 0.24)
+	# Invisible until broken; then it becomes the dark opening in the floor.
+	_visual.color = Color(0, 0, 0, 0)
 	add_child(_visual)
-	var rim := Line2D.new()
-	rim.width = 2.0
-	rim.default_color = Color(0.55, 0.4, 0.2)
-	for p in poly:
-		rim.add_point(p)
-	rim.add_point(poly[0])
-	add_child(rim)
-	var handle := Polygon2D.new()
-	handle.color = Color(0.6, 0.45, 0.25)
-	handle.polygon = PackedVector2Array([
-		Vector2(-8, -half.y - 4), Vector2(8, -half.y - 4),
-		Vector2(6, -half.y + 2), Vector2(-6, -half.y + 2),
-	])
-	add_child(handle)
-
+	# Brass cellar doors with a wheel lock; hidden once the hatch is broken open.
+	_art = WorldArt.new()
+	_art.kind = WorldArt.Kind.HATCH
+	_art.style = 12
+	_art.size = hatch_size
+	add_child(_art)
+	_snap_to_floor.call_deferred()
 	_hurtbox = Hurtbox.new()
 	_hurtbox.team = "enemy"
 	_hurtbox.owner_body = self
@@ -90,6 +84,16 @@ func _on_hurt(_amount: int, _from: Node) -> void:
 	_apply_broken(true)
 
 
+## The raised hatch art stands on the floor surface below the hatch's collision box.
+func _snap_to_floor() -> void:
+	await get_tree().physics_frame
+	if not is_instance_valid(self) or _art == null:
+		return
+	var d := WorldArt.floor_distance(self)
+	if d >= 0.0:
+		_art.position.y = d
+
+
 func _apply_broken(persist: bool) -> void:
 	_broken = true
 	broken.emit()
@@ -98,6 +102,8 @@ func _apply_broken(persist: bool) -> void:
 		GameState.mark_broken("cottage_hatch")
 		SaveManager.autosave()
 	_visual.color = Color(0.12, 0.1, 0.09, 0.5)
+	if _art:
+		_art.visible = false
 	for c in get_children():
 		if c is CollisionPolygon2D:
 			c.set_deferred("disabled", true)

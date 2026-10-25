@@ -8,21 +8,12 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var grate := Polygon2D.new()
-	grate.color = Color(0.15, 0.15, 0.16)
-	grate.polygon = PackedVector2Array([
-		Vector2(-18, -4), Vector2(18, -4), Vector2(18, 4), Vector2(-18, 4)
-	])
+	# Riveted iron grate; the steam itself stays particle-based.
+	var grate := WorldArt.new()
+	grate.kind = WorldArt.Kind.VENT
+	grate.style = 1
+	grate.position = Vector2(0, 2)
 	add_child(grate)
-	## Slot lines
-	for i in 3:
-		var slot := Polygon2D.new()
-		slot.color = Color(0.08, 0.08, 0.09)
-		var x0 := -12.0 + i * 10.0
-		slot.polygon = PackedVector2Array([
-			Vector2(x0, -2), Vector2(x0 + 3, -2), Vector2(x0 + 3, 2), Vector2(x0, 2)
-		])
-		add_child(slot)
 
 	var particles := CPUParticles2D.new()
 	particles.emitting = true

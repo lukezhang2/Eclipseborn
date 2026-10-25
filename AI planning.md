@@ -70,6 +70,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.29 — Brass & Rivets UI theme (`UITheme`) + world art restyle (`WorldArt`): platforms, crates, houses, rest posts, caged lanterns, jars, hatch, lever, windows, bench, valve, vents; `index-0_1_29.pck`
 - v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause
 - v0.1.9 — Settings menu (volume, brightness, fullscreen)
 - v0.1.6 — E = Interact for levers / switches / buttons

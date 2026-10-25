@@ -29,7 +29,7 @@ func _ready() -> void:
 	var wire_y := 90.0
 	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)
 	LevelCommon.add_window(self, 360, 220, 44, 60, false)
-	LevelCommon.add_bench(self, Vector2(450, FLOOR_TOP))
+	LevelCommon.add_bench(self, Vector2(660, FLOOR_TOP))
 	LevelCommon.add_steam_vent(self, Vector2(1050, FLOOR_TOP))
 
 	_build_houses()

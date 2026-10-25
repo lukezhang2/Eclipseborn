@@ -14,6 +14,8 @@ class_name LightSource
 var _last_pos: Vector2 = Vector2.ZERO
 var _visual: Node2D
 var _glass: Polygon2D
+## Caged brass lantern art; glass is tinted by light kind (warm, moon blue, ...).
+var _art: WorldArt
 var _ring: Line2D
 var _burn_shape: CircleShape2D
 var _body: AnimatableBody2D
@@ -59,6 +61,8 @@ func set_on(value: bool) -> void:
 	is_enabled = value
 	if _glass:
 		_glass.modulate.a = 1.0 if value else 0.35
+	if _art:
+		_art.on = value
 	if _ring:
 		_ring.visible = value and show_radius_ring
 	ShadowWorld.mark_dirty()
@@ -121,19 +125,16 @@ func _build_visual() -> void:
 	_visual = Node2D.new()
 	add_child(_visual)
 
-	var lamp := Polygon2D.new()
-	lamp.polygon = PackedVector2Array([
-		Vector2(-10, -18), Vector2(10, -18), Vector2(14, 10), Vector2(-14, 10)
-	])
-	lamp.color = Color(0.35, 0.32, 0.28)
-	_visual.add_child(lamp)
-
-	_glass = Polygon2D.new()
-	_glass.polygon = PackedVector2Array([
-		Vector2(-7, -14), Vector2(7, -14), Vector2(6, 4), Vector2(-6, 4)
-	])
-	_glass.color = color_for_kind()
-	_visual.add_child(_glass)
+	_art = WorldArt.new()
+	_art.kind = WorldArt.Kind.LANTERN
+	_art.style = 0
+	_art.on = is_enabled
+	if not (light_kind in [GameState.LightKind.HEARTH, GameState.LightKind.CANDLE]):
+		_art.tint = color_for_kind()
+	_visual.add_child(_art)
+	# Fixed lamps hang from the ceiling on a short chain (wire lanterns bring their own).
+	if not pushable and not has_meta("has_chain"):
+		_hang_chain.call_deferred()
 
 	## Debug/editor ring only — gameplay wash outline comes from ShadowWorld (behind props).
 	_ring = Line2D.new()
@@ -176,6 +177,22 @@ func _build_visual() -> void:
 		])
 		_body.add_child(bpoly)
 		add_child(_body)
+
+
+func _hang_chain() -> void:
+	await get_tree().physics_frame
+	if not is_instance_valid(self):
+		return
+	var top := Vector2(0, -24)
+	var d := WorldArt.ceiling_distance(self, top)
+	if d <= 0.0:
+		return
+	var chain := WorldArt.new()
+	chain.kind = WorldArt.Kind.CHAIN
+	chain.size = Vector2(0, d)
+	chain.position = top
+	chain.z_index = -1
+	_visual.add_child(chain)
 
 
 func _rebuild_ring() -> void:

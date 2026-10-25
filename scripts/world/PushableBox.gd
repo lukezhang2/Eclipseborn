@@ -5,7 +5,7 @@ class_name PushableBox
 @export var box_size: Vector2 = Vector2(58, 58)
 @export var push_speed: float = 120.0
 
-var _visual: Sprite2D
+var _visual: WorldArt
 var _shake_time: float = 0.0
 
 
@@ -36,18 +36,12 @@ func _build() -> void:
 	var cs := CollisionPolygon2D.new()
 	cs.polygon = poly
 	add_child(cs)
-	_visual = Sprite2D.new()
-	_visual.texture = _make_wood_texture(int(box_size.x), int(box_size.y))
-	_visual.centered = true
-	_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Dark-oak X-brace crate with iron corners.
+	_visual = WorldArt.new()
+	_visual.kind = WorldArt.Kind.CRATE
+	_visual.style = 7
+	_visual.size = box_size
 	add_child(_visual)
-	var edge := Line2D.new()
-	edge.width = 2.0
-	edge.default_color = Color(0.05, 0.02, 0.08, 0.95)
-	for p in poly:
-		edge.add_point(p)
-	edge.add_point(poly[0])
-	add_child(edge)
 	var occ := ShadowOccluder.new()
 	occ.local_polygon = poly
 	add_child(occ)
@@ -58,27 +52,6 @@ func rebuild_visual_for_size(size: Vector2) -> void:
 	for c in get_children():
 		c.queue_free()
 	_build()
-
-
-func _make_wood_texture(w: int, h: int) -> ImageTexture:
-	w = maxi(w, 8)
-	h = maxi(h, 8)
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	for y in h:
-		for x in w:
-			var grain := sin(float(x) * 0.35 + float(y) * 0.02) * 0.04
-			var noise := fmod(float(x * 17 + y * 31), 7.0) * 0.008
-			var base := Color(0.42 + grain, 0.30 + grain * 0.5, 0.18 + noise, 1.0)
-			if x < 2 or y < 2 or x >= w - 2 or y >= h - 2:
-				base = Color(0.18, 0.1, 0.05, 1.0)
-			elif y % 10 == 0:
-				base = base.darkened(0.12)
-			img.set_pixel(x, y, base)
-	for p in [Vector2i(5, 5), Vector2i(w - 6, 5), Vector2i(5, h - 6), Vector2i(w - 6, h - 6)]:
-		for oy in range(-1, 2):
-			for ox in range(-1, 2):
-				img.set_pixel(clampi(p.x + ox, 0, w - 1), clampi(p.y + oy, 0, h - 1), Color(0.55, 0.45, 0.28))
-	return ImageTexture.create_from_image(img)
 
 
 func _clamp_x() -> void:

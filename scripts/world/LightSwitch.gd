@@ -1,6 +1,6 @@
 extends Interactable
 class_name LightSwitch
-## Minecraft-style lever. Links to lanterns / doors by catalog id (or node name).
+## Railway-switch lever (light shows green on / red off). Links to lanterns / doors by catalog id (or node name).
 ## Interact (E) flips it; all linked targets get set_on(powered).
 
 
@@ -10,16 +10,14 @@ class_name LightSwitch
 @export var target_light_paths: Array[NodePath] = []
 
 var _on: bool = true
-var _base: Node2D
-var _stick: Node2D
-var _cobble: Polygon2D
+var _art: WorldArt
 
 
 func _ready() -> void:
 	verb = "Flip"
 	super()
 	_on = starts_on
-	_build_minecraft_lever()
+	_build_lever()
 	_apply_visual()
 	call_deferred("_apply_targets")
 
@@ -38,74 +36,29 @@ func is_powered() -> bool:
 	return _on
 
 
-func _build_minecraft_lever() -> void:
-	_base = Node2D.new()
-	_base.name = "LeverBase"
-	add_child(_base)
+func _build_lever() -> void:
+	_art = WorldArt.new()
+	_art.kind = WorldArt.Kind.LEVER
+	_art.style = 1
+	_art.on = _on
+	add_child(_art)
+	_snap_to_floor.call_deferred()
 
-	## Cobble wall plate (Minecraft lever sits on a block face).
-	_cobble = Polygon2D.new()
-	_cobble.color = Color(0.55, 0.55, 0.55)
-	_cobble.polygon = PackedVector2Array([
-		Vector2(-14, 4), Vector2(14, 4), Vector2(14, -22), Vector2(-14, -22)
-	])
-	_base.add_child(_cobble)
-	## Speckle the cobble with darker/lighter chips.
-	for offset in [
-		Vector2(-8, -6), Vector2(4, -14), Vector2(-2, -18), Vector2(6, -4), Vector2(-10, -16)
-	]:
-		var chip := Polygon2D.new()
-		chip.color = Color(0.42, 0.42, 0.44) if int(offset.x) % 2 == 0 else Color(0.68, 0.68, 0.66)
-		chip.polygon = PackedVector2Array([
-			offset + Vector2(-3, -2), offset + Vector2(3, -2),
-			offset + Vector2(3, 2), offset + Vector2(-3, 2)
-		])
-		_base.add_child(chip)
 
-	## Dark mortar lines
-	var line_col := Color(0.32, 0.32, 0.34)
-	for y in [-4.0, -12.0]:
-		var mortar := Polygon2D.new()
-		mortar.color = line_col
-		mortar.polygon = PackedVector2Array([
-			Vector2(-13, y - 0.6), Vector2(13, y - 0.6), Vector2(13, y + 0.6), Vector2(-13, y + 0.6)
-		])
-		_base.add_child(mortar)
-
-	## Pivot mount
-	var mount := Polygon2D.new()
-	mount.color = Color(0.35, 0.35, 0.36)
-	mount.polygon = PackedVector2Array([
-		Vector2(-4, -8), Vector2(4, -8), Vector2(4, -12), Vector2(-4, -12)
-	])
-	_base.add_child(mount)
-
-	## Stick pivots around the mount center.
-	_stick = Node2D.new()
-	_stick.name = "Stick"
-	_stick.position = Vector2(0, -10)
-	_base.add_child(_stick)
-	var shaft := Polygon2D.new()
-	shaft.color = Color(0.55, 0.35, 0.18)
-	shaft.polygon = PackedVector2Array([
-		Vector2(-2.5, 0), Vector2(2.5, 0), Vector2(2.0, -22), Vector2(-2.0, -22)
-	])
-	_stick.add_child(shaft)
-	var tip := Polygon2D.new()
-	tip.color = Color(0.65, 0.42, 0.22)
-	tip.polygon = PackedVector2Array([
-		Vector2(-3.5, -22), Vector2(3.5, -22), Vector2(3.0, -26), Vector2(-3.0, -26)
-	])
-	_stick.add_child(tip)
+## Sit the lever base on whatever floor is below, wherever the editor placed it.
+func _snap_to_floor() -> void:
+	await get_tree().physics_frame
+	if not is_instance_valid(self):
+		return
+	var d := WorldArt.floor_distance(self)
+	if d >= 0.0:
+		_art.position.y = d - 4.0  # Lever base bottom is 4px below the art origin.
 
 
 func _apply_visual() -> void:
-	if _stick == null:
-		return
-	## ON = stick tilted up/back (Minecraft), OFF = tilted forward/down.
-	_stick.rotation_degrees = -40.0 if _on else 40.0
-	if _cobble:
-		_cobble.modulate = Color(1.05, 1.05, 0.95) if _on else Color(0.85, 0.85, 0.9)
+	if _art:
+		_art.on = _on
+		_art.queue_redraw()
 
 
 func _apply_targets() -> void:

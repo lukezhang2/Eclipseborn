@@ -5,8 +5,12 @@ class_name LevelCommon
 const PLAYER_SCENE := preload("res://scenes/player/Player.tscn")
 const UI_SCENE := preload("res://scenes/ui/GameUI.tscn")
 
+## WorldArt platform style for add_steel_floor. A room can set this before building to use
+## a different platform look (e.g. a later zone).
+static var platform_style: int = 2
 
-static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, height: float = 32.0) -> StaticBody2D:
+
+static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, height: float = 32.0, dress: bool = true) -> StaticBody2D:
 	var body := StaticBody2D.new()
 	body.position = Vector2(x, y)
 	body.collision_layer = 1
@@ -15,12 +19,20 @@ static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, he
 	rect.size = Vector2(width, height)
 	cs.shape = rect
 	body.add_child(cs)
-	var spr := Sprite2D.new()
-	spr.texture = _make_metal_texture(mini(int(width), 512), maxi(int(height), 16))
-	spr.centered = true
-	spr.scale = Vector2(width / float(spr.texture.get_width()), height / float(spr.texture.get_height()))
-	spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	body.add_child(spr)
+	if dress:
+		var art := WorldArt.new()
+		art.kind = WorldArt.Kind.PLATFORM
+		art.style = platform_style
+		art.size = Vector2(width, height)
+		body.add_child(art)
+	else:
+		# Plain metal texture; add_cobble_floor tints it and lays stones on top.
+		var spr := Sprite2D.new()
+		spr.texture = _make_metal_texture(mini(int(width), 512), maxi(int(height), 16))
+		spr.centered = true
+		spr.scale = Vector2(width / float(spr.texture.get_width()), height / float(spr.texture.get_height()))
+		spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		body.add_child(spr)
 	# Solid floors/platforms occlude light (backgrounds do not).
 	var hx := width * 0.5
 	var hy := height * 0.5
@@ -57,7 +69,7 @@ static func _make_metal_texture(w: int, h: int) -> ImageTexture:
 
 
 static func add_cobble_floor(parent: Node2D, x: float, y: float, width: float, height: float = 36.0) -> StaticBody2D:
-	var body := add_steel_floor(parent, x, y, width, height)
+	var body := add_steel_floor(parent, x, y, width, height, false)
 	for c in body.get_children():
 		if c is Sprite2D:
 			(c as Sprite2D).modulate = Color(0.85, 0.78, 0.7)
@@ -172,14 +184,23 @@ static func add_bg_gear(parent: Node2D, pos: Vector2, radius: float = 50.0, spee
 	g.z_index = -12
 	g.modulate = Color(1, 1, 1, 0.35)
 	g.set_meta("bg_gear_speed", speed)
+	# Soot-brown gear with a dark hub (brick & copper background set).
 	var disc := Polygon2D.new()
-	disc.color = Color(0.3, 0.28, 0.26)
+	disc.color = Color(0.23, 0.18, 0.13)
 	var pts := PackedVector2Array()
-	for i in 20:
-		var a := TAU * float(i) / 20.0
+	for i in 24:
+		var a := TAU * float(i) / 24.0
 		pts.append(Vector2(cos(a), sin(a)) * radius * (0.85 if i % 2 == 0 else 1.0))
 	disc.polygon = pts
 	g.add_child(disc)
+	var hub := Polygon2D.new()
+	hub.color = Color(0.11, 0.08, 0.06)
+	var hub_pts := PackedVector2Array()
+	for i in 16:
+		var a := TAU * float(i) / 16.0
+		hub_pts.append(Vector2(cos(a), sin(a)) * radius * 0.3)
+	hub.polygon = hub_pts
+	g.add_child(hub)
 	parent.add_child(g)
 	g.set_process(true)
 	g.process_mode = Node.PROCESS_MODE_INHERIT
@@ -202,7 +223,7 @@ static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float
 	bg.polygon = PackedVector2Array([
 		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
 	])
-	bg.color = Color(0.11, 0.09, 0.1)
+	bg.color = Color(0.16, 0.11, 0.1)
 	face.add_child(bg)
 	var row := 0
 	var yy := -hy + 10.0
@@ -217,7 +238,7 @@ static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float
 				Vector2(xx, yy), Vector2(xx + bw - 3, yy),
 				Vector2(xx + bw - 3, yy + bh - 2), Vector2(xx, yy + bh - 2)
 			])
-			brick.color = Color(0.2 + fmod(xx * 0.008, 0.04), 0.13, 0.11, 0.7)
+			brick.color = Color(0.22 + fmod(xx * 0.008, 0.04), 0.14, 0.12, 0.8)
 			face.add_child(brick)
 			xx += bw
 		yy += 13.0
@@ -233,99 +254,62 @@ static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float
 
 
 static func add_window(parent: Node2D, x: float, y: float, w: float = 48.0, h: float = 64.0, moonlit: bool = false) -> void:
-	var frame := Polygon2D.new()
-	frame.position = Vector2(x, y)
-	frame.z_index = -8
-	var hx := w * 0.5
-	var hy := h * 0.5
-	frame.polygon = PackedVector2Array([
-		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
-	])
-	frame.color = Color(0.25, 0.22, 0.18)
-	parent.add_child(frame)
-	var glass := Polygon2D.new()
-	glass.position = Vector2(x, y)
-	glass.z_index = -7
-	glass.polygon = PackedVector2Array([
-		Vector2(-hx + 4, -hy + 4), Vector2(hx - 4, -hy + 4),
-		Vector2(hx - 4, hy - 4), Vector2(-hx + 4, hy - 4)
-	])
-	glass.color = Color(0.35, 0.45, 0.55, 0.35) if moonlit else Color(0.08, 0.1, 0.12, 0.7)
-	parent.add_child(glass)
-	var mullion := Line2D.new()
-	mullion.z_index = -6
-	mullion.width = 3.0
-	mullion.default_color = Color(0.3, 0.26, 0.2)
-	mullion.add_point(Vector2(x, y - hy + 4))
-	mullion.add_point(Vector2(x, y + hy - 4))
-	parent.add_child(mullion)
-
+	## Dark arched iron window. `moonlit` is kept for old callers; all windows are unlit now.
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.WINDOW
+	art.style = 10
+	art.size = Vector2(w, h)
+	art.position = Vector2(x, y)
+	art.z_index = -8
+	parent.add_child(art)
 
 static func add_pipe(parent: Node2D, from: Vector2, to: Vector2, thick: float = 12.0) -> void:
+	## Copper pipe with a highlight and an iron flange at the middle.
 	var line := Line2D.new()
 	line.width = thick
-	line.default_color = Color(0.38, 0.36, 0.33)
+	line.default_color = Color(0.54, 0.35, 0.21)
 	line.add_point(from)
 	line.add_point(to)
 	parent.add_child(line)
 	var shine := Line2D.new()
-	shine.width = thick * 0.35
-	shine.default_color = Color(0.55, 0.5, 0.42, 0.7)
-	shine.add_point(from)
-	shine.add_point(to)
+	shine.width = thick * 0.25
+	shine.default_color = Color(0.69, 0.48, 0.3, 0.8)
+	shine.add_point(from + Vector2(0, -thick * 0.25))
+	shine.add_point(to + Vector2(0, -thick * 0.25))
 	parent.add_child(shine)
-	# Flange joint mid
 	var mid := (from + to) * 0.5
 	var flange := Polygon2D.new()
 	flange.position = mid
-	flange.color = Color(0.45, 0.35, 0.22)
+	flange.color = Color(0.22, 0.2, 0.19)
 	flange.polygon = PackedVector2Array([
-		Vector2(-8, -8), Vector2(8, -8), Vector2(8, 8), Vector2(-8, 8)
+		Vector2(-5, -thick * 0.75), Vector2(5, -thick * 0.75), Vector2(5, thick * 0.75), Vector2(-5, thick * 0.75)
 	])
 	parent.add_child(flange)
 
-
 static func add_valve(parent: Node2D, pos: Vector2) -> void:
-	var wheel := Polygon2D.new()
-	wheel.position = pos
-	wheel.color = Color(0.55, 0.2, 0.15)
-	var pts := PackedVector2Array()
-	for i in 8:
-		var a := TAU * float(i) / 8.0
-		pts.append(Vector2(cos(a), sin(a)) * 10.0)
-	wheel.polygon = pts
-	parent.add_child(wheel)
-
+	## Red spoked wheel mounted flat on the wall.
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.VALVE
+	art.style = 5
+	art.position = pos
+	parent.add_child(art)
 
 static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2(36, 28)) -> void:
-	## Non-interactive scenery crate.
-	var p := Polygon2D.new()
-	p.position = pos
-	var hx := size.x * 0.5
-	var hy := size.y * 0.5
-	p.polygon = PackedVector2Array([
-		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
-	])
-	p.color = Color(0.35, 0.25, 0.16)
-	parent.add_child(p)
-
+	## Non-interactive scenery crate (same dark-oak X-brace look as pushable crates).
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.CRATE
+	art.style = 7
+	art.size = size
+	art.position = pos
+	parent.add_child(art)
 
 static func add_bench(parent: Node2D, pos: Vector2) -> void:
-	var seat := Polygon2D.new()
-	seat.position = pos
-	seat.color = Color(0.2, 0.18, 0.16)
-	seat.polygon = PackedVector2Array([
-		Vector2(-30, -8), Vector2(30, -8), Vector2(30, 0), Vector2(-30, 0)
-	])
-	parent.add_child(seat)
-	var back := Polygon2D.new()
-	back.position = pos + Vector2(0, -18)
-	back.color = Color(0.18, 0.16, 0.14)
-	back.polygon = PackedVector2Array([
-		Vector2(-28, -10), Vector2(28, -10), Vector2(28, 10), Vector2(-28, 10)
-	])
-	parent.add_child(back)
-
+	## Riveted steel bench in mid-dark grey.
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.BENCH
+	art.style = 5
+	art.position = pos
+	parent.add_child(art)
 
 static func add_lamp_post(parent: Node2D, pos: Vector2) -> void:
 	var pole := Polygon2D.new()
@@ -350,7 +334,8 @@ static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float =
 	chain.width = 2.0
 	chain.default_color = Color(0.35, 0.32, 0.28)
 	chain.add_point(wire_pos)
-	chain.add_point(wire_pos + Vector2(0, drop))
+	# Ends at the top ring of the caged lantern the LightSource draws.
+	chain.add_point(wire_pos + Vector2(0, drop - 20))
 	chain.z_index = -1
 	parent.add_child(chain)
 	var hook := Polygon2D.new()
@@ -360,26 +345,13 @@ static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float =
 		Vector2(-4, -3), Vector2(4, -3), Vector2(4, 3), Vector2(-4, 3)
 	])
 	parent.add_child(hook)
-	var cage := Polygon2D.new()
-	cage.position = wire_pos + Vector2(0, drop)
-	cage.color = Color(0.45, 0.35, 0.18)
-	cage.polygon = PackedVector2Array([
-		Vector2(-11, -4), Vector2(11, -4), Vector2(9, 18), Vector2(-9, 18)
-	])
-	parent.add_child(cage)
-	var glow := Polygon2D.new()
-	glow.position = wire_pos + Vector2(0, drop + 6)
-	glow.color = Color(1.0, 0.75, 0.35, 0.55)
-	glow.polygon = PackedVector2Array([
-		Vector2(-6, -6), Vector2(6, -6), Vector2(5, 8), Vector2(-5, 8)
-	])
-	parent.add_child(glow)
 	var lamp := LightSource.new()
 	lamp.position = wire_pos + Vector2(0, drop + 4)
 	lamp.light_kind = GameState.LightKind.CANDLE
 	lamp.radius = radius
 	lamp.shadow_length = radius + 40.0
 	lamp.pushable = false
+	lamp.set_meta("has_chain", true)
 	parent.add_child(lamp)
 
 

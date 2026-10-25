@@ -16,6 +16,12 @@ func _ready() -> void:
 	settings_box = SettingsPanel.new("Back to Game")
 	$Root/Center.add_child(settings_box)
 	settings_box.closed.connect(close)
+	root.theme = UITheme.get_theme()
+	UITheme.style_title($Root/Center/Main/Title, 36)
+	UITheme.style_title($Root/Center/Controls/Label, 22)
+	controls_list.add_theme_constant_override("separation", 3)
+	for panel in [main_box, controls_box, settings_box]:
+		UITheme.add_plate(panel, Vector2(44, 20) if panel == controls_box else Vector2(44, 32))
 	InputMapManager.bindings_changed.connect(_build_controls)
 
 
@@ -82,6 +88,8 @@ func _build_controls() -> void:
 		var key_btn := Button.new()
 		key_btn.text = InputMapManager.get_binding_text(action)
 		key_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+		key_btn.theme_type_variation = "KeyButton"
+		key_btn.custom_minimum_size.x = 150
 		key_btn.pressed.connect(_on_rebind.bind(action, key_btn))
 		row.add_child(key_btn)
 		controls_list.add_child(row)
