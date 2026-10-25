@@ -56,6 +56,10 @@ text = "Play"
 layout_mode = 2
 text = "Controls"
 
+[node name="SettingsButton" type="Button" parent="Center/Main"]
+layout_mode = 2
+text = "Settings"
+
 [node name="PlaySlots" type="VBoxContainer" parent="Center"]
 visible = false
 layout_mode = 2
@@ -96,6 +100,7 @@ text = "Back"
 
 [connection signal="pressed" from="Center/Main/PlayButton" to="." method="_on_play_pressed"]
 [connection signal="pressed" from="Center/Main/ControlsButton" to="." method="_on_controls_pressed"]
+[connection signal="pressed" from="Center/Main/SettingsButton" to="." method="_on_settings_pressed"]
 [connection signal="pressed" from="Center/PlaySlots/BackButton" to="." method="_on_back_pressed"]
 [connection signal="pressed" from="Center/Controls/ResetButton" to="." method="_on_reset_controls"]
 [connection signal="pressed" from="Center/Controls/BackButton" to="." method="_on_back_pressed"]

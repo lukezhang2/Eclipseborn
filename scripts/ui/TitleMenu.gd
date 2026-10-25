@@ -8,6 +8,8 @@ const EDITOR_PASSWORD := "supers3cretadm1n"
 @onready var slots_box: VBoxContainer = $Center/PlaySlots/Slots
 @onready var controls_list: VBoxContainer = $Center/Controls/List
 
+var settings_panel: SettingsPanel
+
 var _confirm_layer: Control = null
 var _pw_layer: Control = null
 
@@ -18,6 +20,9 @@ func _ready() -> void:
 	_ensure_gear_bg()
 	_hide_tagline()
 	_add_version_label()
+	settings_panel = SettingsPanel.new("Back")
+	$Center.add_child(settings_panel)
+	settings_panel.closed.connect(_show_main)
 	_show_main()
 	_build_slots()
 	_build_controls()
@@ -141,12 +146,14 @@ func _show_main() -> void:
 	main_panel.visible = true
 	play_panel.visible = false
 	controls_panel.visible = false
+	settings_panel.visible = false
 
 
 func _show_play() -> void:
 	main_panel.visible = false
 	play_panel.visible = true
 	controls_panel.visible = false
+	settings_panel.visible = false
 	_build_slots()
 
 
@@ -154,6 +161,7 @@ func _show_controls() -> void:
 	main_panel.visible = false
 	play_panel.visible = false
 	controls_panel.visible = true
+	settings_panel.visible = false
 	_build_controls()
 
 
@@ -287,6 +295,13 @@ func _on_play_pressed() -> void:
 
 func _on_controls_pressed() -> void:
 	_show_controls()
+
+
+func _on_settings_pressed() -> void:
+	main_panel.visible = false
+	play_panel.visible = false
+	controls_panel.visible = false
+	settings_panel.open()
 
 
 func _on_back_pressed() -> void:
