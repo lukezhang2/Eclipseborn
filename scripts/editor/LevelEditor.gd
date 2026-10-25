@@ -225,6 +225,10 @@ func _build_sidebar(col: VBoxContainer) -> void:
 			_refresh_list()
 	)
 	sel_row.add_child(_name_edit)
+	var dup := Button.new()
+	dup.text = "Duplicate"
+	dup.pressed.connect(_duplicate_selected)
+	sel_row.add_child(dup)
 	var del := Button.new()
 	del.text = "Delete"
 	del.pressed.connect(_delete_selected)
@@ -447,11 +451,12 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		b.pressed.connect(func() -> void:
 			tool = t
 			_tool_label.text = "Tool: %s" % pair[0]
+			_sync_move_arrows()
 		)
 		tools.add_child(b)
 	_tool_label = Label.new()
 	_tool_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tool_label.text = "Tool: Select — click world or list"
+	_tool_label.text = "Tool: Select — click world or list · Move shows X/Y arrows"
 	col.add_child(_tool_label)
 
 	var snap_btn := CheckButton.new()
@@ -889,9 +894,12 @@ func _on_list_selected(index: int) -> void:
 func _select(piece: EditorPiece) -> void:
 	if _selected and is_instance_valid(_selected):
 		_selected.set_selected(false)
+		_selected.show_move_arrows = false
+		_selected.queue_redraw()
 	_selected = piece
 	if _selected:
 		_selected.set_selected(true)
+	_sync_move_arrows()
 	_refresh_list()
 
 
@@ -912,6 +920,87 @@ func _delete_selected() -> void:
 	_save()
 
 
+func _existing_piece_ids() -> Array:
+	var ids: Array = []
+	for p in _pieces:
+		if p and is_instance_valid(p):
+			ids.append(p.piece_id)
+	for rid in _removed_ids:
+		ids.append(str(rid))
+	return ids
+
+
+func _id_base_for_palette(palette: String) -> String:
+	match palette:
+		"light":
+			return "lantern"
+		"crate":
+			return "crate"
+		"floor":
+			return "floor"
+		"wall":
+			return "wall"
+		"block":
+			return "block"
+		"background":
+			return "background"
+		_:
+			return palette.replace("prop_", "")
+
+
+func _pretty_palette_name(palette: String) -> String:
+	match palette:
+		"light":
+			return "Lantern"
+		"crate":
+			return "Pushable Crate"
+		"prop_platform":
+			return "Moving Platform"
+		"prop_npc":
+			return "Shopkeeper"
+		"prop_checkpoint":
+			return "Rest Hearth"
+		"prop_switch":
+			return "Lever"
+		"prop_vent":
+			return "Steam Vent"
+		"prop_breakable":
+			return "Glowing Jar"
+		_:
+			return palette.replace("prop_", "").replace("_", " ").capitalize()
+
+
+func _duplicate_selected() -> void:
+	if _selected == null:
+		return
+	var d: Dictionary = _selected.to_dict().duplicate(true)
+	d["builtin"] = false
+	var base := PieceSpecs.id_base(str(d.get("id", _selected.catalog_kind)))
+	var new_id := PieceSpecs.alloc_numbered_id(base, _existing_piece_ids())
+	var num := int(new_id.get_slice("_", new_id.get_slice_count("_") - 1))
+	d["id"] = new_id
+	d["name"] = PieceSpecs.number_display_name(str(d.get("name", base)), num)
+	d["x"] = float(d.get("x", _selected.position.x)) + 28.0
+	d["y"] = float(d.get("y", _selected.position.y)) - 28.0
+	_spawn_piece_dict(d)
+	_select(_pieces.back())
+	tool = Tool.MOVE
+	_tool_label.text = "Tool: Move"
+	_sync_move_arrows()
+	_refresh_world_extent()
+	_status.text = "Duplicated → %s" % new_id
+	_save()
+
+
+func _sync_move_arrows() -> void:
+	for p in _pieces:
+		if p and is_instance_valid(p):
+			var on := tool == Tool.MOVE and p == _selected
+			if p.show_move_arrows != on:
+				p.show_move_arrows = on
+				p.queue_redraw()
+
+
 func _add_piece() -> void:
 	var sz := PieceSpecs.default_size(_palette_id)
 	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
@@ -921,9 +1010,13 @@ func _add_piece() -> void:
 		y = PieceSpecs.sit_on_floor_y(_palette_id, floor_top, sz)
 	elif _palette_id == "prop_platform":
 		y = floor_top - 90.0
+	var base := _id_base_for_palette(_palette_id)
+	var new_id := PieceSpecs.alloc_numbered_id(base, _existing_piece_ids())
+	var num := int(new_id.get_slice("_", new_id.get_slice_count("_") - 1))
+	var pretty := _pretty_palette_name(_palette_id)
 	var d := {
-		"id": "%s_%d" % [_palette_id, Time.get_ticks_msec()],
-		"name": _palette_id.replace("prop_", "").capitalize(),
+		"id": new_id,
+		"name": PieceSpecs.number_display_name(pretty, num),
 		"kind": _palette_id,
 		"x": _cam.position.x + 40.0,
 		"y": y,
@@ -933,26 +1026,19 @@ func _add_piece() -> void:
 		"builtin": false,
 	}
 	if _palette_id == "light":
-		d["name"] = "Lantern"
 		d["radius"] = 280
 		d["intensity"] = 1.0
 		d["pushable"] = true
 	if _palette_id == "prop_npc":
-		d["name"] = "Shopkeeper"
 		d["is_shopkeeper"] = true
 		d["shop_items"] = ShopCatalog.default_shop_stock()
 		d["lines"] = []
 	if _palette_id == "prop_switch":
-		d["name"] = "Lever"
 		d["starts_on"] = true
 		d["target_ids"] = []
 	if _palette_id == "prop_door":
-		d["name"] = "Door"
 		d["starts_open"] = false
-	if _palette_id == "prop_checkpoint":
-		d["name"] = "Rest Hearth"
 	if _palette_id == "prop_platform":
-		d["name"] = "Moving Platform"
 		d["move_amplitude"] = 90
 		d["move_speed"] = 0.65
 		d["vertical"] = false
@@ -961,8 +1047,6 @@ func _add_piece() -> void:
 		d["rotate_speed"] = 1.0
 		d["rotate_platform"] = false
 		d["with_gear"] = true
-	if _palette_id == "prop_vent":
-		d["name"] = "Steam Vent"
 	d["blocks_light"] = PieceSpecs.default_blocks_light(_palette_id)
 	d["layer"] = PieceSpecs.default_draw_layer(_palette_id)
 	d["rotation"] = 0
@@ -970,7 +1054,9 @@ func _add_piece() -> void:
 	_select(_pieces.back())
 	tool = Tool.MOVE
 	_tool_label.text = "Tool: Move"
+	_sync_move_arrows()
 	_refresh_world_extent()
+	_save()
 
 
 func _build_data() -> Dictionary:
@@ -1187,9 +1273,10 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			var delta_deg := rad_to_deg(ang - _rotate_start_angle)
 			_selected.set_rotation_deg(_rotate_piece_start + delta_deg)
 			_update_inspector()
-		elif tool == Tool.MOVE or _selected._dragging:
+		elif tool == Tool.MOVE or _selected._dragging or _selected._axis_drag != "":
 			_selected.drag_to(world)
-			if snap_enabled:
+			## Axis arrows stay precise — skip edge snap while locking one axis.
+			if snap_enabled and _selected._axis_drag == "":
 				_snap_selected_to_edges()
 			_refresh_world_extent()
 		elif tool == Tool.RESIZE or _selected._resizing:
@@ -1202,6 +1289,10 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 		if event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE:
 			if _selected:
 				_delete_selected()
+				_vp_container.accept_event()
+		elif event.keycode == KEY_D and event.ctrl_pressed:
+			if _selected:
+				_duplicate_selected()
 				_vp_container.accept_event()
 
 
@@ -1274,6 +1365,12 @@ func _vp_to_world(local_pos: Vector2) -> Vector2:
 
 
 func _on_click(world: Vector2) -> void:
+	## Axis tips sit outside the piece AABB — hit-test the selection first.
+	if _selected and is_instance_valid(_selected) and tool == Tool.MOVE:
+		var axis_sel := _selected.axis_handle_at(_selected.to_local(world))
+		if axis_sel != "":
+			_selected.begin_axis_drag(axis_sel, world)
+			return
 	if _selected and tool == Tool.RESIZE:
 		var corner := _selected.handle_at(_selected.to_local(world))
 		if corner >= 0:
@@ -1290,7 +1387,12 @@ func _on_click(world: Vector2) -> void:
 			if tool == Tool.SELECT or tool == Tool.MOVE:
 				tool = Tool.MOVE
 				_tool_label.text = "Tool: Move"
-				p.begin_drag(world)
+				_sync_move_arrows()
+				var axis := p.axis_handle_at(p.to_local(world))
+				if axis != "":
+					p.begin_axis_drag(axis, world)
+				else:
+					p.begin_drag(world)
 			elif tool == Tool.RESIZE:
 				var c := p.handle_at(p.to_local(world))
 				if c >= 0:

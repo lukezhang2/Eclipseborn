@@ -52,6 +52,14 @@ var _dragging: bool = false
 var _resizing: bool = false
 var _resize_corner: int = -1
 var _drag_off: Vector2 = Vector2.ZERO
+## "" | "x" | "y" — constrained move via axis arrows (Move tool).
+var _axis_drag: String = ""
+var _axis_start_pos: Vector2 = Vector2.ZERO
+var _axis_start_mouse: Vector2 = Vector2.ZERO
+## When true (Move tool + selected), draw/drag X/Y arrows.
+var show_move_arrows: bool = false
+const AXIS_LEN := 52.0
+const AXIS_HIT := 16.0
 var is_selected: bool = false
 
 
@@ -264,37 +272,84 @@ func set_selected(on: bool) -> void:
 
 
 func _draw() -> void:
+	if not is_selected:
+		return
 	## Travel path ghost when a moving platform is selected.
-	if not is_selected or not PieceSpecs.is_platform_kind(catalog_kind):
-		return
-	var amp := move_amplitude
-	var wobble := path_y_amplitude
-	if amp <= 0.0 and wobble <= 0.0:
-		return
-	var prev := Vector2.ZERO
-	var first := true
-	for i in 49:
-		var t := float(i) / 48.0 * TAU
-		var sx := sin(t)
-		var cx := cos(t)
-		var ox := 0.0
-		var oy := 0.0
-		if move_vertical:
-			oy = sx * amp
-			ox = cx * wobble
-		else:
-			ox = sx * amp
-			oy = cx * wobble
-		var pt := Vector2(ox, oy)
-		if not first:
-			draw_line(prev, pt, Color(0.45, 0.8, 1.0, 0.75), 2.0)
-		prev = pt
-		first = false
-	## Endpoints of the main axis.
-	var a := Vector2(0, -amp) if move_vertical else Vector2(-amp, 0)
-	var b := Vector2(0, amp) if move_vertical else Vector2(amp, 0)
-	draw_circle(a, 4.0, Color(0.95, 0.85, 0.35, 0.95))
-	draw_circle(b, 4.0, Color(0.95, 0.85, 0.35, 0.95))
+	if PieceSpecs.is_platform_kind(catalog_kind):
+		var amp := move_amplitude
+		var wobble := path_y_amplitude
+		if amp > 0.0 or wobble > 0.0:
+			var prev := Vector2.ZERO
+			var first := true
+			for i in 49:
+				var t := float(i) / 48.0 * TAU
+				var sx := sin(t)
+				var cx := cos(t)
+				var ox := 0.0
+				var oy := 0.0
+				if move_vertical:
+					oy = sx * amp
+					ox = cx * wobble
+				else:
+					ox = sx * amp
+					oy = cx * wobble
+				var pt := Vector2(ox, oy)
+				if not first:
+					draw_line(prev, pt, Color(0.45, 0.8, 1.0, 0.75), 2.0)
+				prev = pt
+				first = false
+			var a := Vector2(0, -amp) if move_vertical else Vector2(-amp, 0)
+			var b := Vector2(0, amp) if move_vertical else Vector2(amp, 0)
+			draw_circle(a, 4.0, Color(0.95, 0.85, 0.35, 0.95))
+			draw_circle(b, 4.0, Color(0.95, 0.85, 0.35, 0.95))
+	## Move-tool axis arrows (precise one-direction drag).
+	if show_move_arrows:
+		_draw_axis_arrows()
+
+
+func _axis_origin() -> Vector2:
+	## Arrows sit at the visual center of the piece.
+	return _local_origin_offset()
+
+
+func _draw_axis_arrows() -> void:
+	var o := _axis_origin()
+	var x_tip := o + Vector2(AXIS_LEN, 0)
+	var y_tip := o + Vector2(0, -AXIS_LEN)
+	## X (right) — amber
+	draw_line(o, x_tip, Color(0.95, 0.75, 0.25, 0.95), 3.0)
+	draw_colored_polygon(PackedVector2Array([
+		x_tip,
+		x_tip + Vector2(-10, -6),
+		x_tip + Vector2(-10, 6),
+	]), Color(0.95, 0.75, 0.25, 1.0))
+	## Y (up) — cyan
+	draw_line(o, y_tip, Color(0.35, 0.85, 0.95, 0.95), 3.0)
+	draw_colored_polygon(PackedVector2Array([
+		y_tip,
+		y_tip + Vector2(-6, 10),
+		y_tip + Vector2(6, 10),
+	]), Color(0.35, 0.85, 0.95, 1.0))
+	draw_circle(o, 4.0, Color(0.95, 0.95, 0.9, 0.95))
+
+
+func axis_handle_at(local_pt: Vector2) -> String:
+	## Returns "x" / "y" if the cursor is on a move arrow tip, else "".
+	if not show_move_arrows:
+		return ""
+	var o := _axis_origin()
+	var x_tip := o + Vector2(AXIS_LEN, 0)
+	var y_tip := o + Vector2(0, -AXIS_LEN)
+	if local_pt.distance_to(x_tip) <= AXIS_HIT:
+		return "x"
+	if local_pt.distance_to(y_tip) <= AXIS_HIT:
+		return "y"
+	## Also allow grabbing along the shaft.
+	if absf(local_pt.y - o.y) <= 8.0 and local_pt.x >= o.x - 4.0 and local_pt.x <= o.x + AXIS_LEN + 4.0:
+		return "x"
+	if absf(local_pt.x - o.x) <= 8.0 and local_pt.y <= o.y + 4.0 and local_pt.y >= o.y - AXIS_LEN - 4.0:
+		return "y"
+	return ""
 
 
 func _local_origin_offset() -> Vector2:
@@ -580,7 +635,15 @@ func handle_at(local_pt: Vector2) -> int:
 
 func begin_drag(world: Vector2) -> void:
 	_dragging = true
+	_axis_drag = ""
 	_drag_off = position - world
+
+
+func begin_axis_drag(axis: String, world: Vector2) -> void:
+	_axis_drag = axis
+	_dragging = false
+	_axis_start_pos = position
+	_axis_start_mouse = world
 
 
 func begin_resize(corner: int) -> void:
@@ -592,10 +655,15 @@ func end_interact() -> void:
 	_dragging = false
 	_resizing = false
 	_resize_corner = -1
+	_axis_drag = ""
 
 
 func drag_to(world: Vector2) -> void:
-	if _dragging:
+	if _axis_drag == "x":
+		position = Vector2(_axis_start_pos.x + (world.x - _axis_start_mouse.x), _axis_start_pos.y)
+	elif _axis_drag == "y":
+		position = Vector2(_axis_start_pos.x, _axis_start_pos.y + (world.y - _axis_start_mouse.y))
+	elif _dragging:
 		position = world + _drag_off
 
 

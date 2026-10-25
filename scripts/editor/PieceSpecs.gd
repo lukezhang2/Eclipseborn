@@ -14,6 +14,89 @@ const SCHEMA_VERSION := 1
 const CRATE_COTTAGE := Vector2(58, 58)
 const CRATE_VILLAGE := Vector2(67, 67)
 
+## Piece id / display naming uses numbers (window_1), not letters (window_a).
+
+
+static func _letter_index(ch: String) -> int:
+	## a→1 … z→26; else 0.
+	if ch.length() != 1:
+		return 0
+	var code := ch.to_lower().unicode_at(0)
+	var a := "a".unicode_at(0)
+	var z := "z".unicode_at(0)
+	if code < a or code > z:
+		return 0
+	return code - a + 1
+
+
+static func id_base(piece_id: String) -> String:
+	## "window_3" / "window_a" / "prop_vent_12" → base without trailing index.
+	var id := piece_id.strip_edges()
+	if id == "":
+		return "piece"
+	var parts := id.split("_")
+	if parts.is_empty():
+		return id
+	var tail := str(parts[parts.size() - 1])
+	if tail.is_valid_int() or _letter_index(tail) > 0:
+		parts.remove_at(parts.size() - 1)
+		if parts.is_empty():
+			return id
+		return "_".join(parts)
+	return id
+
+
+static func letter_suffix_to_number(piece_id: String) -> String:
+	## Convert trailing _a…_z to _1…_26. Leaves already-numbered / unlettered ids alone.
+	var id := piece_id.strip_edges()
+	if id == "":
+		return id
+	var parts := id.split("_")
+	if parts.is_empty():
+		return id
+	var n := _letter_index(str(parts[parts.size() - 1]))
+	if n > 0:
+		parts[parts.size() - 1] = str(n)
+		return "_".join(parts)
+	return id
+
+
+static func number_display_name(name: String, number: int) -> String:
+	## "Window A" / "Window 2" / "Steam Vent" → "Window N" (or "Steam Vent N").
+	var n := name.strip_edges()
+	if n == "":
+		return "Piece %d" % number
+	var parts := n.split(" ")
+	if parts.size() >= 2:
+		var last := str(parts[parts.size() - 1])
+		if last.is_valid_int() or _letter_index(last) > 0:
+			parts[parts.size() - 1] = str(number)
+			return " ".join(parts)
+	return "%s %d" % [n, number]
+
+
+static func next_number_for_base(base: String, existing_ids: Array) -> int:
+	## Highest trailing number for this base among existing ids, plus one (min 1).
+	var best := 0
+	var prefix := base + "_"
+	for raw in existing_ids:
+		var id := str(raw)
+		if not id.begins_with(prefix):
+			continue
+		var tail := id.substr(prefix.length())
+		if tail.is_valid_int():
+			best = maxi(best, int(tail))
+		else:
+			best = maxi(best, _letter_index(tail))
+	return best + 1
+
+
+static func alloc_numbered_id(base: String, existing_ids: Array) -> String:
+	var b := base.strip_edges()
+	if b == "":
+		b = "piece"
+	return "%s_%d" % [b, next_number_for_base(b, existing_ids)]
+
 ## Draw layer the live Player uses (CharacterBody2D default z_index).
 const PLAYER_DRAW_LAYER := 0
 ## Physics layer bit used only for light rays (not player collision). See ShadowWorld.

@@ -34,30 +34,30 @@ static func _cottage() -> Array:
 	out.append(_p("border_left", "wall", "Border Left", 24, 340, 48, 360))
 	out.append(_p("border_right", "wall", "Border Right", 3976, 340, 48, 360))
 	out.append(_p("pipe_main", "prop_pipe", "Ceiling Pipe", 2000, 238, 3900, 12))
-	out.append(_p("valve_a", "prop_valve", "Valve", 220, 308, 24, 24))
-	out.append(_p("window_a", "prop_window", "Window A", 180, 318, 48, 56))
-	out.append(_p("window_b", "prop_window", "Window B", 980, 318, 48, 56))
-	out.append(_p("window_c", "prop_window", "Window C", 1780, 318, 48, 56))
-	out.append(_p("window_d", "prop_window", "Window D", 2580, 318, 52, 56))
-	out.append(_p("window_e", "prop_window", "Window E", 3380, 318, 48, 56))
-	out.append(_p("bench_a", "prop_bench", "Bench", 300, FLOOR_TOP - 4, 60, 20))
-	out.append(_p("vent_a", "prop_vent", "Steam Vent", 860, FLOOR_TOP - 4, 36, 16))
-	out.append(_p("decor_crate_a", "prop_crate", "Decor Crate A", 520, FLOOR_TOP - 14, 36, 28))
-	out.append(_p("decor_crate_b", "prop_crate", "Decor Crate B", 2920, FLOOR_TOP - 15, 40, 30))
+	out.append(_p("valve_1", "prop_valve", "Valve", 220, 308, 24, 24))
+	out.append(_p("window_1", "prop_window", "Window 1", 180, 318, 48, 56))
+	out.append(_p("window_2", "prop_window", "Window 2", 980, 318, 48, 56))
+	out.append(_p("window_3", "prop_window", "Window 3", 1780, 318, 48, 56))
+	out.append(_p("window_4", "prop_window", "Window 4", 2580, 318, 52, 56))
+	out.append(_p("window_5", "prop_window", "Window 5", 3380, 318, 48, 56))
+	out.append(_p("bench_1", "prop_bench", "Bench", 300, FLOOR_TOP - 4, 60, 20))
+	out.append(_p("vent_1", "prop_vent", "Steam Vent", 860, FLOOR_TOP - 4, 36, 16))
+	out.append(_p("decor_crate_1", "prop_crate", "Decor Crate 1", 520, FLOOR_TOP - 14, 36, 28))
+	out.append(_p("decor_crate_2", "prop_crate", "Decor Crate 2", 2920, FLOOR_TOP - 15, 40, 30))
 	## Pushable crates: 58×58 sitting on FLOOR_TOP (center ≈ FLOOR_TOP - 29).
-	out.append(_p("box_push_a", "crate", "Pushable Crate (lamp room)", 1222.13659667969, 452.331481933594, crate.x, crate.y))
-	out.append(_p("box_pull_a", "crate", "Pushable Crate (pull puzzle)", 1901.41931152344, 452.577880859375, crate.x, crate.y))
+	out.append(_p("box_push_1", "crate", "Pushable Crate (lamp room)", 1222.13659667969, 452.331481933594, crate.x, crate.y))
+	out.append(_p("box_pull_1", "crate", "Pushable Crate (pull puzzle)", 1901.41931152344, 452.577880859375, crate.x, crate.y))
 	out.append(_p("wall_tall", "wall", "Tall Pull Wall", 2080, FLOOR_TOP - 50, 32, 100))
 	out.append(_p("wall_backstop", "wall", "Pull Backstop", 1854.39147949219, 457.149475097656, 33.0551719665527, 49.701171875))
 	out.append(_p("platform_crate_room", "floor", "Cover Platform", 1120, FLOOR_TOP - 100, 180, 22))
-	out.append(_p("ledge_a", "floor", "Jump Ledge A", 2700, FLOOR_TOP - 55, 140, 22))
-	out.append(_p("ledge_b", "floor", "Jump Ledge B", 2840, FLOOR_TOP - 100, 100, 22))
+	out.append(_p("ledge_1", "floor", "Jump Ledge 1", 2700, FLOOR_TOP - 55, 140, 22))
+	out.append(_p("ledge_2", "floor", "Jump Ledge 2", 2840, FLOOR_TOP - 100, 100, 22))
 	out.append(_plight("lamp_crate", "Hearth Lamp (crate room)", 1120, FLOOR_TOP - 170, 240))
 	out.append(_plight("lamp_moon", "Moon Lamp", 400, 258, 140))
-	out.append(_p("jar_a", "prop_breakable", "Glowing Jar A", 420, FLOOR_TOP - 18, 28, 36))
-	out.append(_p("jar_b", "prop_breakable", "Glowing Jar B", 1480, FLOOR_TOP - 18, 28, 36))
-	out.append(_p("jar_c", "prop_breakable", "Glowing Jar C", 2400, FLOOR_TOP - 18, 28, 36))
-	out.append(_p("chest_a", "prop_breakable", "Glowing Chest", 3100, FLOOR_TOP - 16, 40, 32))
+	out.append(_p("jar_1", "prop_breakable", "Glowing Jar 1", 420, FLOOR_TOP - 18, 28, 36))
+	out.append(_p("jar_2", "prop_breakable", "Glowing Jar 2", 1480, FLOOR_TOP - 18, 28, 36))
+	out.append(_p("jar_3", "prop_breakable", "Glowing Jar 3", 2400, FLOOR_TOP - 18, 28, 36))
+	out.append(_p("chest_1", "prop_breakable", "Glowing Chest", 3100, FLOOR_TOP - 16, 40, 32))
 	out.append(_p("hatch_exit", "prop_hatch", "Exit Hatch", 3480, FLOOR_TOP - 2, 64, 16))
 	out.append(_p("wall_end", "wall", "End Wall", 3720, FLOOR_TOP - 90, 80, 180))
 	out.append(_p("checkpoint_hatch", "prop_checkpoint", "Checkpoint (cottage hatch)", 3300, FLOOR_TOP - 4, 56, 24))
@@ -66,18 +66,18 @@ static func _cottage() -> Array:
 
 static func _village() -> Array:
 	var FLOOR_TOP := PieceSpecs.floor_top_for_zone("lantern_village")
-	var MAP_W := 3200.0
+	var MAP_23 := 3200.0
 	var out: Array = []
-	out.append(_p("floor_main", "floor", "Cobble Floor", MAP_W * 0.5, 520, MAP_W, 40))
+	out.append(_p("floor_main", "floor", "Cobble Floor", MAP_23 * 0.5, 520, MAP_23, 40))
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
-	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
-	out.append(_p("pipe_wire", "prop_pipe", "Overhead Wire", MAP_W * 0.5, 90, MAP_W - 120, 12))
-	out.append(_plight("lantern_a", "Hanging Lantern A", 280, 160, 120))
-	out.append(_plight("lantern_b", "Hanging Lantern B", 720, 160, 120))
-	out.append(_plight("lantern_c", "Hanging Lantern C", 1600, 160, 120))
-	out.append(_p("window_a", "prop_window", "Window", 360, 220, 44, 60))
-	out.append(_p("bench_a", "prop_bench", "Bench", 455, FLOOR_TOP, 60, 20))
-	out.append(_p("vent_a", "prop_vent", "Steam Vent", 1053, FLOOR_TOP, 36, 16))
+	out.append(_p("border_right", "wall", "Border Right", MAP_23 - 24, 330, 48, 360))
+	out.append(_p("pipe_wire", "prop_pipe", "Overhead Wire", MAP_23 * 0.5, 90, MAP_23 - 120, 12))
+	out.append(_plight("lantern_1", "Hanging Lantern 1", 280, 160, 120))
+	out.append(_plight("lantern_2", "Hanging Lantern 2", 720, 160, 120))
+	out.append(_plight("lantern_3", "Hanging Lantern 3", 1600, 160, 120))
+	out.append(_p("window_1", "prop_window", "Window", 360, 220, 44, 60))
+	out.append(_p("bench_1", "prop_bench", "Bench", 455, FLOOR_TOP, 60, 20))
+	out.append(_p("vent_1", "prop_vent", "Steam Vent", 1053, FLOOR_TOP, 36, 16))
 	out.append(_p("house_keep", "prop_house", "House: Lantern Keep", 520, FLOOR_TOP, 130, 100))
 	out.append(_p("house_gear", "prop_house", "House: Gearwright", 980, FLOOR_TOP, 110, 88))
 	out.append(_p("house_inn", "prop_house", "House: Shade Inn", 1780, FLOOR_TOP, 140, 110))
@@ -90,23 +90,23 @@ static func _village() -> Array:
 	sw["starts_on"] = true
 	sw["target_ids"] = ["lamp_street", "lamp_square"]
 	out.append(sw)
-	out.append(_pplat("platform_gear_a", "Moving Platform A", 1278, 414, 140, 20, {
+	out.append(_pplat("platform_gear_1", "Moving Platform 1", 1278, 414, 140, 20, {
 		"move_amplitude": 200.0, "move_speed": 0.65, "vertical": false,
 		"path_y_amplitude": 0.0, "rotate_while_moving": true, "rotate_speed": 1.0,
 		"rotate_platform": false, "with_gear": true,
 		"gear_dx": -94.0, "gear_dy": -110.0, "gear_radius": 55.0,
 	}))
-	out.append(_pplat("platform_gear_b", "Moving Platform B", 2305.59130859375, FLOOR_TOP - 130, 120, 20, {
+	out.append(_pplat("platform_gear_2", "Moving Platform 2", 2305.59130859375, FLOOR_TOP - 130, 120, 20, {
 		"move_amplitude": 70.0, "move_speed": 0.55, "vertical": true,
 		"path_y_amplitude": 0.0, "rotate_while_moving": true, "rotate_speed": 1.2,
 		"rotate_platform": false, "with_gear": true,
 		"gear_dx": -100.0, "gear_dy": -110.0, "gear_radius": 70.0,
 	}))
-	out.append(_p("bg_gear_a", "prop_bg_gear", "BG Gear A", 1450, 300, 110, 110))
-	out.append(_p("bg_gear_b", "prop_bg_gear", "BG Gear B", 2200, 260, 140, 140))
-	out.append(_p("enemy_a", "prop_enemy", "Wander Enemy A", 1500, FLOOR_TOP - 20, 28, 36))
-	out.append(_p("enemy_b", "prop_enemy", "Wander Enemy B", 2050, FLOOR_TOP - 20, 28, 36))
-	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_W - 200, FLOOR_TOP, 160, 280))
+	out.append(_p("bg_gear_1", "prop_bg_gear", "BG Gear 1", 1450, 300, 110, 110))
+	out.append(_p("bg_gear_2", "prop_bg_gear", "BG Gear 2", 2200, 260, 140, 140))
+	out.append(_p("enemy_1", "prop_enemy", "Wander Enemy 1", 1500, FLOOR_TOP - 20, 28, 36))
+	out.append(_p("enemy_2", "prop_enemy", "Wander Enemy 2", 2050, FLOOR_TOP - 20, 28, 36))
+	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_23 - 200, FLOOR_TOP, 160, 280))
 	out.append(_p("shade_heart", "prop_pickup", "Shade Heart", 2407.53247070312, 256, 28, 28))
 	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate) — the … hearth", 200, FLOOR_TOP, 56, 24))
 	return out
@@ -115,20 +115,20 @@ static func _village() -> Array:
 static func _house_interior(house_id: String) -> Array:
 	var profile := HouseProfiles.get_profile(house_id)
 	var FLOOR_TOP := 500.0
-	var MAP_W := 720.0
+	var MAP_23 := 720.0
 	var out: Array = []
-	out.append(_p("floor_main", "floor", "Shop Floor", MAP_W * 0.5, FLOOR_TOP + 20.0, MAP_W, 40))
-	out.append(_p("roof_main", "wall", "Shop Roof", MAP_W * 0.5, 180.0, MAP_W, 36))
+	out.append(_p("floor_main", "floor", "Shop Floor", MAP_23 * 0.5, FLOOR_TOP + 20.0, MAP_23, 40))
+	out.append(_p("roof_main", "wall", "Shop Roof", MAP_23 * 0.5, 180.0, MAP_23, 36))
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
-	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
-	out.append(_p("desk", "prop_desk", "Shop Desk", MAP_W * 0.5, FLOOR_TOP - 8, 200, 28))
+	out.append(_p("border_right", "wall", "Border Right", MAP_23 - 24, 330, 48, 360))
+	out.append(_p("desk", "prop_desk", "Shop Desk", MAP_23 * 0.5, FLOOR_TOP - 8, 200, 28))
 	out.append(_p("exit_door", "prop_exit", "Exit Door", 80, FLOOR_TOP, 40, 50))
-	out.append(_plight("lamp_moon", "Moon Lamp", MAP_W - 100, 260, 140))
+	out.append(_plight("lamp_moon", "Moon Lamp", MAP_23 - 100, 260, 140))
 	out.append(_pnpc(
 		str(profile.get("npc_id", "npc_shop")),
 		str(profile.get("keeper_name", "Keeper")),
-		MAP_W * 0.5,
-		float(profile.get("npc_y", FLOOR_TOP - 40)),
+		MAP_23 * 0.5,
+		float(profile.get("npc_25", FLOOR_TOP - 40)),
 		profile.get("lines", []),
 		profile.get("shop_items", ShopCatalog.default_shop_stock())
 	))

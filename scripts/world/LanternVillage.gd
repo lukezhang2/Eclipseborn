@@ -3,31 +3,31 @@ extends Node2D
 
 
 const FLOOR_CENTER := 520.0
-const FLOOR_H := 40.0
-const FLOOR_TOP := FLOOR_CENTER - FLOOR_H * 0.5  # 500
+const FLOOR_8 := 40.0
+const FLOOR_TOP := FLOOR_CENTER - FLOOR_8 * 0.5  # 500
 const ROOF_TOP := 160.0
-const MAP_W := 3200.0
+const MAP_23 := 3200.0
 const HATCH_SPAWN := Vector2(160, 460)
 
 
 func _ready() -> void:
 	GameState.current_zone_id = "lantern_village"
-	GameState.map_min_x = 40.0
-	GameState.map_max_x = MAP_W - 80.0
+	GameState.map_min_24 = 40.0
+	GameState.map_max_24 = MAP_23 - 80.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_TOP)
-	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_CENTER + FLOOR_H * 0.5)
+	LevelCommon.add_backdrop(self, MAP_23, 780, FLOOR_TOP, ROOF_TOP)
+	LevelCommon.add_underfloor_fill(self, MAP_23, FLOOR_CENTER + FLOOR_8 * 0.5)
 
-	LevelCommon.add_cobble_floor(self, MAP_W * 0.5, FLOOR_CENTER, MAP_W, FLOOR_H)
-	LevelCommon.add_border_walls(self, MAP_W, FLOOR_TOP, ROOF_TOP)
+	LevelCommon.add_cobble_floor(self, MAP_23 * 0.5, FLOOR_CENTER, MAP_23, FLOOR_8)
+	LevelCommon.add_border_walls(self, MAP_23, FLOOR_TOP, ROOF_TOP)
 
 	LevelCommon.add_brick_wall_face(self, 400, 280, 900, 360)
 	LevelCommon.add_brick_wall_face(self, 1500, 280, 900, 360)
 	LevelCommon.add_brick_wall_face(self, 2500, 280, 800, 360)
 
-	var wire_y := 90.0
-	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)
+	var wire_25 := 90.0
+	LevelCommon.add_pipe(self, Vector2(40, wire_25), Vector2(MAP_23 - 80, wire_25), 12.0)
 	LevelCommon.add_window(self, 360, 220, 44, 60, false)
 	LevelCommon.add_bench(self, Vector2(455, FLOOR_TOP))
 	LevelCommon.add_steam_vent(self, Vector2(1053, FLOOR_TOP))
@@ -69,7 +69,7 @@ func _ready() -> void:
 
 	var spawn := _resolve_spawn()
 	var player := LevelCommon.spawn_player(self, spawn)
-	LevelCommon.configure_camera(player, ROOF_TOP, FLOOR_CENTER + FLOOR_H * 0.5 + 40.0, GameState.map_min_x, GameState.map_max_x)
+	LevelCommon.configure_camera(player, ROOF_TOP, FLOOR_CENTER + FLOOR_8 * 0.5 + 40.0, GameState.map_min_24, GameState.map_max_24)
 	GameState.enter_room("lantern_village", "gate")
 	if not GameState.editor_playtesting:
 		SaveManager.autosave()
@@ -85,13 +85,13 @@ func _resolve_spawn() -> Vector2:
 	elif GameState.last_position != Vector2.ZERO:
 		## Continue / logout position — death still uses checkpoint_position (hearth).
 		var lx := GameState.last_position.x
-		if lx >= 40.0 and lx <= MAP_W - 80.0:
+		if lx >= 40.0 and lx <= MAP_23 - 80.0:
 			spawn.x = lx
 	elif GameState.checkpoint_position != Vector2.ZERO:
 		var cx := GameState.checkpoint_position.x
-		if cx >= 40.0 and cx <= MAP_W - 80.0:
+		if cx >= 40.0 and cx <= MAP_23 - 80.0:
 			spawn.x = cx
-	spawn.x = clampf(spawn.x, GameState.map_min_x + 40.0, MAP_W - 80.0)
+	spawn.x = clampf(spawn.x, GameState.map_min_24 + 40.0, MAP_23 - 80.0)
 	spawn.y = FLOOR_TOP - 40.0
 	GameState.last_position = spawn
 	## Never overwrite a real rest hearth with the continue spawn point.
@@ -102,10 +102,10 @@ func _resolve_spawn() -> Vector2:
 
 func _build_all_lights() -> void:
 	## Rebuild every village lantern so washes + burn share the new occluder path.
-	var wire_y := 90.0
+	var wire_25 := 90.0
 	## Hanging candles along the wire (burn, short reach).
 	for x in [280.0, 720.0, 1180.0, 1600.0, 2100.0, 2600.0]:
-		LevelCommon.add_hanging_lantern(self, Vector2(x, wire_y), 70.0, 150.0)
+		LevelCommon.add_hanging_lantern(self, Vector2(x, wire_25), 70.0, 150.0)
 
 	## Street hearth by Lantern Keep — houses must actually cover this wash.
 	var street_lamp := _make_hearth_lamp("lamp_street", Vector2(748, 312), 250.0)
@@ -124,7 +124,7 @@ func _build_all_lights() -> void:
 	switch.target_ids = PackedStringArray(["lamp_street", "lamp_square"])
 	LevelData.tag(switch, "switch_street")
 	add_child(switch)
-	## door_street_a removed in editor — kept out of play via removed_ids.
+	## door_street_1 removed in editor — kept out of play via removed_ids.
 
 
 func _build_houses() -> void:
@@ -157,12 +157,12 @@ func _spawn_house(id: String, title: String, pos: Vector2, w: float, h: float) -
 	add_child(house)
 
 
-func _make_hearth_lamp(catalog_id: String, fallback_pos: Vector2, fallback_r: float) -> LightSource:
+func _make_hearth_lamp(catalog_id: String, fallback_pos: Vector2, fallback_18: float) -> LightSource:
 	var lamp := LightSource.new()
 	lamp.position = fallback_pos
 	lamp.light_kind = GameState.LightKind.HEARTH
-	lamp.radius = fallback_r
-	lamp.shadow_length = fallback_r + 50.0
+	lamp.radius = fallback_18
+	lamp.shadow_length = fallback_18 + 50.0
 	lamp.pushable = false
 	var saved := LevelData.merged_piece("lantern_village", catalog_id)
 	if not saved.is_empty():
@@ -188,7 +188,7 @@ func _build_light_puzzle() -> void:
 
 
 func _build_bg_gears_and_platforms() -> void:
-	_spawn_catalog_platform("platform_gear_a", Vector2(1278, 414), Vector2(140, 20), {
+	_spawn_catalog_platform("platform_gear_1", Vector2(1278, 414), Vector2(140, 20), {
 		"move_amplitude": 200.0,
 		"move_speed": 0.65,
 		"vertical": false,
@@ -201,7 +201,7 @@ func _build_bg_gears_and_platforms() -> void:
 		"gear_dy": -110.0,
 		"gear_radius": 55.0,
 	})
-	_spawn_catalog_platform("platform_gear_b", Vector2(2305.59130859375, FLOOR_TOP - 130), Vector2(120, 20), {
+	_spawn_catalog_platform("platform_gear_2", Vector2(2305.59130859375, FLOOR_TOP - 130), Vector2(120, 20), {
 		"move_amplitude": 70.0,
 		"move_speed": 0.55,
 		"vertical": true,
@@ -216,16 +216,16 @@ func _build_bg_gears_and_platforms() -> void:
 	})
 	LevelCommon.add_bg_gear(self, Vector2(800, 240), 40.0, 10.0)
 	LevelCommon.add_bg_gear(self, Vector2(2600, 220), 48.0, -8.0)
-	_spawn_catalog_bg_gear("bg_gear_a", Vector2(1450, 300), 55.0, 6.0)
-	_spawn_catalog_bg_gear("bg_gear_b", Vector2(2200, 260), 70.0, -5.0)
+	_spawn_catalog_bg_gear("bg_gear_1", Vector2(1450, 300), 55.0, 6.0)
+	_spawn_catalog_bg_gear("bg_gear_2", Vector2(2200, 260), 70.0, -5.0)
 
 
-func _spawn_catalog_bg_gear(catalog_id: String, fallback_pos: Vector2, fallback_r: float, spin: float) -> void:
+func _spawn_catalog_bg_gear(catalog_id: String, fallback_pos: Vector2, fallback_18: float, spin: float) -> void:
 	if LevelData.is_removed("lantern_village", catalog_id):
 		return
 	var saved := LevelData.merged_piece("lantern_village", catalog_id)
 	var pos := fallback_pos
-	var r := fallback_r
+	var r := fallback_18
 	if not saved.is_empty():
 		pos = Vector2(float(saved.get("x", pos.x)), float(saved.get("y", pos.y)))
 		r = maxf(float(saved.get("w", r * 2.0)), float(saved.get("h", r * 2.0))) * 0.5
@@ -264,7 +264,7 @@ func _build_wander_enemies() -> void:
 
 func _build_clockwork_tower() -> void:
 	var tower := ClockworkTower.new()
-	tower.position = Vector2(MAP_W - 200, FLOOR_TOP)
+	tower.position = Vector2(MAP_23 - 200, FLOOR_TOP)
 	add_child(tower)
 
 

@@ -17,7 +17,11 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 | Live rooms (authoritative gameplay) | `scripts/world/CursedCottage.gd`, `LanternVillage.gd`, `HouseInterior.gd` |
 | Build version (title menu) | `project.godot` → `application/config/version` (bump patch each change) |
 
-### NPC dialogue
+### Piece IDs (numbered)
+
+New and duplicated pieces use numeric suffixes (`window_1`, `lantern_12`), not letters. **Duplicate** offsets the copy up-right and allocates the next free number. **Move** tool shows X/Y arrows for single-axis drags.
+
+### NPC / shopkeeper
 
 Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/−1 or a count) when Shopkeeper is on; otherwise a dialogue box. Stored as `"is_shopkeeper": true` and `"shop_items": [{"id","stock"},…]`. House interiors read `npc_shop` via `LevelData.merged_piece`.
 
@@ -25,7 +29,7 @@ Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/�
 
 - Add **Lever** (`prop_switch`) or **Door (switchable)** (`prop_door`) from the palette.
 - Select a lever → **Lever links** list: multi-select lanterns and doors it should power.
-- Saved as `"target_ids": ["lamp_street", "door_street_a"]` plus optional `"starts_on"`.
+- Saved as `"target_ids": ["lamp_street", "door_street_1"]` plus optional `"starts_on"`.
 - Doors respond to `set_on` (open when powered). Checkpoints: Interact to rest and open **Fast Travel**.
 
 ### Moving platforms & rotate
@@ -63,7 +67,7 @@ Browser **Save** only writes `user://` (local to that browser). It does **not** 
   "removed_ids": ["optional_catalog_id"],
   "pieces": [
     {
-      "id": "box_push_a",
+      "id": "box_push_1",
       "kind": "crate",
       "name": "Pushable Crate",
       "x": 980,

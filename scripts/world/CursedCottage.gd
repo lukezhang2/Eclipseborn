@@ -4,33 +4,33 @@ extends Node2D
 
 ## Camera zoom ~1.35 → visible height ≈ 533. Floor near bottom, roof near top.
 const FLOOR_CENTER := 500.0
-const FLOOR_H := 36.0
-const FLOOR_TOP := FLOOR_CENTER - FLOOR_H * 0.5  # 482
+const FLOOR_8 := 36.0
+const FLOOR_TOP := FLOOR_CENTER - FLOOR_8 * 0.5  # 482
 const ROOF_CENTER := 200.0
-const ROOF_H := 36.0
-const ROOF_BOTTOM := ROOF_CENTER + ROOF_H * 0.5  # 218
-const MAP_W := 4000.0
+const ROOF_8 := 36.0
+const ROOF_BOTTOM := ROOF_CENTER + ROOF_8 * 0.5  # 218
+const MAP_23 := 4000.0
 
 
 func _ready() -> void:
-	GameState.map_min_x = 40.0
-	GameState.map_max_x = MAP_W - 100.0
+	GameState.map_min_24 = 40.0
+	GameState.map_max_24 = MAP_23 - 100.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5)
-	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_CENTER + FLOOR_H * 0.5)
+	LevelCommon.add_backdrop(self, MAP_23, 780, FLOOR_TOP, ROOF_CENTER - ROOF_8 * 0.5)
+	LevelCommon.add_underfloor_fill(self, MAP_23, FLOOR_CENTER + FLOOR_8 * 0.5)
 
-	LevelCommon.add_steel_floor(self, MAP_W * 0.5, FLOOR_CENTER, MAP_W, FLOOR_H)
-	LevelCommon.add_border_walls(self, MAP_W, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5)
+	LevelCommon.add_steel_floor(self, MAP_23 * 0.5, FLOOR_CENTER, MAP_23, FLOOR_8)
+	LevelCommon.add_border_walls(self, MAP_23, FLOOR_TOP, ROOF_CENTER - ROOF_8 * 0.5)
 	# Roof — sits at top of player vision
-	LevelCommon.add_wall(self, MAP_W * 0.5, ROOF_CENTER, MAP_W, ROOF_H)
+	LevelCommon.add_wall(self, MAP_23 * 0.5, ROOF_CENTER, MAP_23, ROOF_8)
 
 	for i in 5:
-		var face_h := FLOOR_TOP - ROOF_BOTTOM - 10.0
-		var face_y := ROOF_BOTTOM + face_h * 0.5
-		LevelCommon.add_brick_wall_face(self, 400.0 + i * 800.0, face_y, 800.0, face_h)
+		var face_8 := FLOOR_TOP - ROOF_BOTTOM - 10.0
+		var face_25 := ROOF_BOTTOM + face_8 * 0.5
+		LevelCommon.add_brick_wall_face(self, 400.0 + i * 800.0, face_25, 800.0, face_8)
 
-	LevelCommon.add_pipe(self, Vector2(40, ROOF_BOTTOM + 20), Vector2(MAP_W - 100, ROOF_BOTTOM + 20), 12.0)
+	LevelCommon.add_pipe(self, Vector2(40, ROOF_BOTTOM + 20), Vector2(MAP_23 - 100, ROOF_BOTTOM + 20), 12.0)
 	LevelCommon.add_valve(self, Vector2(220, ROOF_BOTTOM + 90))
 	LevelCommon.add_window(self, 180, ROOF_BOTTOM + 100, 48, 56, true)
 	LevelCommon.add_window(self, 980, ROOF_BOTTOM + 100, 48, 56, true)
@@ -61,19 +61,19 @@ func _ready() -> void:
 	elif GameState.editor_playtesting:
 		spawn = Vector2(120, FLOOR_TOP - 40)
 	elif not GameState.needs_intro_cutscene and GameState.current_zone_id == "cursed_cottage":
-		if GameState.last_position != Vector2.ZERO and GameState.last_position.x < MAP_W:
+		if GameState.last_position != Vector2.ZERO and GameState.last_position.x < MAP_23:
 			spawn = Vector2(GameState.last_position.x, FLOOR_TOP - 40)
 		elif GameState.checkpoint_position != Vector2.ZERO:
 			spawn = Vector2(GameState.checkpoint_position.x, FLOOR_TOP - 40)
 	var player := LevelCommon.spawn_player(self, spawn)
-	LevelCommon.configure_camera(player, ROOF_CENTER - ROOF_H * 0.5, FLOOR_CENTER + FLOOR_H * 0.5 + 40.0, GameState.map_min_x, GameState.map_max_x)
+	LevelCommon.configure_camera(player, ROOF_CENTER - ROOF_8 * 0.5, FLOOR_CENTER + FLOOR_8 * 0.5 + 40.0, GameState.map_min_24, GameState.map_max_24)
 	GameState.enter_room("cursed_cottage", "hall")
 	if not GameState.editor_playtesting:
 		SaveManager.autosave()
 
 
-func _box_y(size_y: float = 58.0) -> float:
-	return FLOOR_TOP - size_y * 0.5
+func _box_y(size_25: float = 58.0) -> float:
+	return FLOOR_TOP - size_25 * 0.5
 
 
 func _build_room_triggers() -> void:
@@ -87,10 +87,10 @@ func _build_room_triggers() -> void:
 
 func _build_crate_room() -> void:
 	## Lamp above floating platform — platform occludes light so standing under it is safe.
-	var platform_y := FLOOR_TOP - 100.0
-	LevelCommon.add_steel_floor(self, 1120, platform_y, 180, 22)
+	var platform_25 := FLOOR_TOP - 100.0
+	LevelCommon.add_steel_floor(self, 1120, platform_25, 180, 22)
 	var lamp := LightSource.new()
-	lamp.position = Vector2(1120, platform_y - 70.0)
+	lamp.position = Vector2(1120, platform_25 - 70.0)
 	lamp.light_kind = GameState.LightKind.HEARTH
 	lamp.radius = 240.0
 	lamp.shadow_length = 300.0
@@ -99,26 +99,26 @@ func _build_crate_room() -> void:
 	var box := PushableBox.new()
 	box.box_size = Vector2(58, 58)  # ~1.2× of 48 — matches PieceSpecs.CRATE_COTTAGE
 	box.position = Vector2(1222.13659667969, _box_y(box.box_size.y))
-	LevelData.tag(box, "box_push_a")
+	LevelData.tag(box, "box_push_1")
 	add_child(box)
 
 
 func _build_pull_room() -> void:
 	## Tall wall blocks the path. Crate starts against a left backstop — pull, climb, clear.
-	var tall_h := 100.0
-	var tall_x := 2080.0
-	LevelCommon.add_wall(self, tall_x, FLOOR_TOP - tall_h * 0.5, 32, tall_h)
+	var tall_8 := 100.0
+	var tall_24 := 2080.0
+	LevelCommon.add_wall(self, tall_24, FLOOR_TOP - tall_8 * 0.5, 32, tall_8)
 
-	var backstop_h := 49.701171875
-	var backstop_w := 33.0551719665527
-	var backstop_x := 1854.39147949219
-	LevelCommon.add_wall(self, backstop_x, FLOOR_TOP - backstop_h * 0.5, backstop_w, backstop_h)
+	var backstop_8 := 49.701171875
+	var backstop_23 := 33.0551719665527
+	var backstop_24 := 1854.39147949219
+	LevelCommon.add_wall(self, backstop_24, FLOOR_TOP - backstop_8 * 0.5, backstop_23, backstop_8)
 
 	var box := PushableBox.new()
 	box.box_size = Vector2(58, 58)
 	box.position = Vector2(1901.41931152344, _box_y(box.box_size.y))
 	box.name = "PullCrate"
-	LevelData.tag(box, "box_pull_a")
+	LevelData.tag(box, "box_pull_1")
 	add_child(box)
 
 
@@ -167,30 +167,30 @@ func _build_ambient_lamps() -> void:
 	moon.name = "HallMoon"
 	add_child(moon)
 
-	var hearth_b := LightSource.new()
-	hearth_b.position = Vector2(2000, ROOF_BOTTOM + 50)
-	hearth_b.light_kind = GameState.LightKind.HEARTH
-	hearth_b.radius = 220.0
-	hearth_b.shadow_length = 280.0
-	hearth_b.pushable = false
-	hearth_b.name = "PullHearth"
-	add_child(hearth_b)
+	var hearth_2 := LightSource.new()
+	hearth_2.position = Vector2(2000, ROOF_BOTTOM + 50)
+	hearth_2.light_kind = GameState.LightKind.HEARTH
+	hearth_2.radius = 220.0
+	hearth_2.shadow_length = 280.0
+	hearth_2.pushable = false
+	hearth_2.name = "PullHearth"
+	add_child(hearth_2)
 
-	var hearth_c := LightSource.new()
-	hearth_c.position = Vector2(3200, ROOF_BOTTOM + 50)
-	hearth_c.light_kind = GameState.LightKind.CANDLE
-	hearth_c.radius = 180.0
-	hearth_c.shadow_length = 220.0
-	hearth_c.pushable = false
-	hearth_c.name = "HatchCandle"
-	add_child(hearth_c)
+	var hearth_3 := LightSource.new()
+	hearth_3.position = Vector2(3200, ROOF_BOTTOM + 50)
+	hearth_3.light_kind = GameState.LightKind.CANDLE
+	hearth_3.radius = 180.0
+	hearth_3.shadow_length = 220.0
+	hearth_3.pushable = false
+	hearth_3.name = "HatchCandle"
+	add_child(hearth_3)
 
 
 func _build_currency_breakables() -> void:
 	# First glowing jar early so the new F-hint is useful right away.
-	_spawn_breakable("cottage_jar_a", Vector2(420, FLOOR_TOP - 18), 2)
-	_spawn_breakable("cottage_jar_b", Vector2(1480, FLOOR_TOP - 18), 3)
-	_spawn_breakable("cottage_jar_c", Vector2(2400, FLOOR_TOP - 18), 2)
+	_spawn_breakable("cottage_jar_1", Vector2(420, FLOOR_TOP - 18), 2)
+	_spawn_breakable("cottage_jar_2", Vector2(1480, FLOOR_TOP - 18), 3)
+	_spawn_breakable("cottage_jar_3", Vector2(2400, FLOOR_TOP - 18), 2)
 	_spawn_breakable("cottage_chest", Vector2(3100, FLOOR_TOP - 16), 5, Vector2(40, 32))
 
 
