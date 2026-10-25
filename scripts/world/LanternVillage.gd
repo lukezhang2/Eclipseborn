@@ -94,21 +94,14 @@ func _build_all_lights() -> void:
 
 	## Street hearth by Lantern Keep — houses must actually cover this wash.
 	var street_lamp := LightSource.new()
-	street_lamp.position = Vector2(700, 280)
+	street_lamp.position = Vector2(748, 312)
 	street_lamp.light_kind = GameState.LightKind.HEARTH
-	street_lamp.radius = 300.0
-	street_lamp.shadow_length = 360.0
+	street_lamp.radius = 250.0
+	street_lamp.shadow_length = 300.0
 	street_lamp.pushable = false
 	street_lamp.name = "StreetLamp"
 	LevelData.tag(street_lamp, "lamp_street")
 	add_child(street_lamp)
-
-	var switch := LightSwitch.new()
-	switch.position = Vector2(372, FLOOR_TOP - 12)
-	switch.name = "StreetLampSwitch"
-	switch.starts_on = true
-	LevelData.tag(switch, "switch_street")
-	add_child(switch)
 
 	## Square hearth near the inn / tower approach.
 	var square_lamp := LightSource.new()
@@ -121,16 +114,14 @@ func _build_all_lights() -> void:
 	LevelData.tag(square_lamp, "lamp_square")
 	add_child(square_lamp)
 
-	## Demo door past the gearwright — lever opens it (also linkable in editor).
-	var gate := SwitchDoor.new()
-	gate.position = Vector2(1100, FLOOR_TOP)
-	gate.door_id = "door_street_a"
-	gate.height = 100.0
-	gate.width = 28.0
-	gate.starts_open = false
-	LevelData.tag(gate, "door_street_a")
-	add_child(gate)
-	switch.target_ids = PackedStringArray(["lamp_street", "lamp_square", "door_street_a"])
+	var switch := LightSwitch.new()
+	switch.position = Vector2(372, 488)
+	switch.name = "StreetLampSwitch"
+	switch.starts_on = true
+	switch.target_ids = PackedStringArray(["lamp_street", "lamp_square"])
+	LevelData.tag(switch, "switch_street")
+	add_child(switch)
+	## door_street_a removed in editor — kept out of play via removed_ids.
 
 
 func _build_houses() -> void:
@@ -167,9 +158,10 @@ func _build_light_puzzle() -> void:
 	var lamp := LightSource.new()
 	lamp.position = Vector2(1292, 238)
 	lamp.light_kind = GameState.LightKind.HEARTH
-	lamp.radius = 380.0
-	lamp.shadow_length = 460.0
+	lamp.radius = 250.0
+	lamp.shadow_length = 300.0
 	lamp.pushable = false
+	LevelData.tag(lamp, "lamp_puzzle")
 	add_child(lamp)
 
 	var crate := PushableBox.new()
