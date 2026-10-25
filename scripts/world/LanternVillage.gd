@@ -57,7 +57,7 @@ func _ready() -> void:
 	add_child(street_lamp)
 
 	var switch := LightSwitch.new()
-	switch.position = Vector2(800, FLOOR_TOP - 20)
+	switch.position = Vector2(372, 488)
 	add_child(switch)
 	switch.target_light_paths = [NodePath("../StreetLamp")]
 
@@ -132,15 +132,15 @@ func _spawn_house(id: String, title: String, pos: Vector2, w: float, h: float) -
 
 func _build_light_puzzle() -> void:
 	var lamp := LightSource.new()
-	lamp.position = Vector2(1300, 240)
+	lamp.position = Vector2(1292, 238)
 	lamp.light_kind = GameState.LightKind.HEARTH
 	lamp.radius = 380.0
 	lamp.shadow_length = 460.0
-	lamp.pushable = true
+	lamp.pushable = false
 	add_child(lamp)
 
 	var crate := PushableBox.new()
-	crate.box_size = Vector2(67, 67)  # ~1.2× of 56 — matches PieceSpecs.CRATE_VILLAGE
+	crate.box_size = Vector2(56, 56)  # editor save size for this puzzle crate
 	crate.position = Vector2(1250, FLOOR_TOP - crate.box_size.y * 0.5)
 	LevelData.tag(crate, "crate_puzzle")
 	add_child(crate)
@@ -148,7 +148,7 @@ func _build_light_puzzle() -> void:
 
 func _build_bg_gears_and_platforms() -> void:
 	var bg1 := LevelCommon.add_bg_gear(self, Vector2(1450, 300), 55.0, 18.0)
-	var plat1 := LevelCommon.add_steel_floor(self, 1550, FLOOR_TOP - 90, 140, 20)
+	var plat1 := LevelCommon.add_steel_floor(self, 1544, 410, 140, 20)
 	var d1 := PlatformDriver.new()
 	d1.position = Vector2(1450, 300)
 	d1.move_amplitude = 90.0

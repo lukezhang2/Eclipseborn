@@ -67,7 +67,6 @@ static func _cottage() -> Array:
 static func _village() -> Array:
 	var FLOOR_TOP := PieceSpecs.floor_top_for_zone("lantern_village")
 	var MAP_W := 3200.0
-	var crate := PieceSpecs.CRATE_VILLAGE
 	var out: Array = []
 	out.append(_p("floor_main", "floor", "Cobble Floor", MAP_W * 0.5, 520, MAP_W, 40))
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
@@ -77,24 +76,25 @@ static func _village() -> Array:
 	out.append(_plight("lantern_b", "Hanging Lantern B", 720, 160, 120))
 	out.append(_plight("lantern_c", "Hanging Lantern C", 1600, 160, 120))
 	out.append(_p("window_a", "prop_window", "Window", 360, 220, 44, 60))
-	out.append(_p("bench_a", "prop_bench", "Bench", 450, FLOOR_TOP, 60, 28))
+	out.append(_p("bench_a", "prop_bench", "Bench", 450, FLOOR_TOP, 60, 20))
 	out.append(_p("vent_a", "prop_vent", "Steam Vent", 1050, FLOOR_TOP, 36, 16))
 	out.append(_p("house_keep", "prop_house", "House: Lantern Keep", 520, FLOOR_TOP, 130, 100))
 	out.append(_p("house_gear", "prop_house", "House: Gearwright", 980, FLOOR_TOP, 110, 88))
 	out.append(_p("house_inn", "prop_house", "House: Shade Inn", 1780, FLOOR_TOP, 140, 110))
-	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, PieceSpecs.sit_on_floor_y("crate", FLOOR_TOP, crate), crate.x, crate.y))
-	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1300, 240, 380))
+	## Editor save uses 56×56 for this puzzle crate (sits at y=472 on FLOOR_TOP 500).
+	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, 472, 56, 56))
+	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1292, 238, 380))
 	out.append(_plight("lamp_street", "Street Lamp", 700, 280, 280))
-	out.append(_p("switch_street", "prop_switch", "Light Switch", 800, FLOOR_TOP - 20, 24, 40))
-	out.append(_p("platform_gear_a", "floor", "Moving Platform A", 1550, FLOOR_TOP - 90, 140, 20))
-	out.append(_p("platform_gear_b", "floor", "Moving Platform B", 2300, FLOOR_TOP - 130, 120, 20))
+	out.append(_p("switch_street", "prop_switch", "Light Switch", 372, 488, 24, 40))
+	out.append(_p("platform_gear_a", "floor", "Moving Platform A", 1544, 410, 140, 20))
+	out.append(_p("platform_gear_b", "floor", "Moving Platform B", 2300, 370, 120, 20))
 	out.append(_p("bg_gear_a", "prop_bg_gear", "BG Gear A", 1450, 300, 110, 110))
 	out.append(_p("bg_gear_b", "prop_bg_gear", "BG Gear B", 2200, 260, 140, 140))
 	out.append(_p("enemy_a", "prop_enemy", "Wander Enemy A", 1500, FLOOR_TOP - 20, 28, 36))
 	out.append(_p("enemy_b", "prop_enemy", "Wander Enemy B", 2050, FLOOR_TOP - 20, 28, 36))
 	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_W - 200, FLOOR_TOP, 160, 280))
 	out.append(_p("shade_heart", "prop_pickup", "Shade Heart", 2100, FLOOR_TOP - 100, 28, 28))
-	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate)", 200, FLOOR_TOP, 56, 28))
+	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate) — the … hearth", 200, FLOOR_TOP, 56, 24))
 	return out
 
 

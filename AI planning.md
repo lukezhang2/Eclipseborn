@@ -21,6 +21,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.10 — sync lantern_village from editor save (switch/lamp/crate/platform); `index-0_1_10.pck`
 - v0.1.8 — corner-aware lantern rays + safer umbra (closes random light gaps); `index-0_1_8.pck`
 - v0.1.7 — default `blocks_light` ON for most piece kinds
 - v0.1.5 — Godot export scripts + cache-busted Pages packs
