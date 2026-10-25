@@ -22,7 +22,7 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 - Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
 
 ### Active / claimed
-_(none)_
+- Ship player hitbox diagram fix as v0.1.18 (rebase onto remote v0.1.17, re-export, push main)
 
 ### Queue
 _(none)_

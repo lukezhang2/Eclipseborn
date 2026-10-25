@@ -18,7 +18,8 @@ var _attacking: bool = false
 
 func _ready() -> void:
 	hp = max_hp
-	collision_layer = 1
+	# Layer 0: stand on world via mask, but do not body-block the player (damage via hit/hurt Areas).
+	collision_layer = 0
 	collision_mask = 1 | 4
 	hurtbox.team = "enemy"
 	hurtbox.owner_body = self

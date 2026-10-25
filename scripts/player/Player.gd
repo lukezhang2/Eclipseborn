@@ -40,7 +40,8 @@ var _control_locked: bool = false
 func _ready() -> void:
 	GameState.player = self
 	collision_layer = 2
-	## 1=world, 4=?, 8=crates (light occluders), 16=pushable lamp bodies (not light-occluding)
+	## Green world collider: walls/crates/lamps only — enemies stay off these layers so we pass through them.
+	## 1=world, 4=shadow_ground, 8=crates, 16=pushable lamp bodies
 	collision_mask = 1 | 4 | 8 | 16
 	hurtbox.team = "player"
 	hurtbox.owner_body = self
@@ -61,16 +62,19 @@ func _ready() -> void:
 		var hshape := hitbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
 		if hshape and hshape.shape:
 			hshape.shape = hshape.shape.duplicate()
+			# All attack offset lives on Hitbox; local shape must stay at origin (no gap).
+			hshape.position = Vector2.ZERO
+	if hurtbox:
+		var hcs := hurtbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if hcs and hcs.shape:
+			hcs.shape = hcs.shape.duplicate()
 	sprite.sprite_frames = SpiritSprites.build_frames()
 	sprite.play("idle")
 	sprite.centered = true
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	# Godot 4 capsule height includes hemispheres. Plant feet on the floor, not in it.
 	_apply_standing_collision()
-	if hurtbox:
-		var hcs := hurtbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
-		if hcs:
-			hcs.position.y = -24.0
+	_sync_hurtbox()
 	if GameState.checkpoint_position == Vector2.ZERO:
 		GameState.set_checkpoint(global_position)
 	add_to_group("player")
@@ -156,8 +160,9 @@ func _physics_process(delta: float) -> void:
 	if dir != 0.0 or Input.is_action_pressed("pull"):
 		_try_move_boxes(dir if dir != 0.0 else facing, delta)
 	_update_visual(dir)
-	_sync_hitbox()
 	_update_crouch_collision()
+	_sync_hurtbox()
+	_sync_hitbox()
 	_try_enter_hatch()
 
 
@@ -330,28 +335,67 @@ func _update_attack(delta: float) -> void:
 			hitbox.deactivate()
 
 
+func _body_half_extents() -> Vector2:
+	## Green world collider AABB (capsule ≈ width 2r × height).
+	if body_shape and body_shape.shape is CapsuleShape2D:
+		var cap := body_shape.shape as CapsuleShape2D
+		return Vector2(cap.radius, cap.height * 0.5)
+	return Vector2(10.0, 18.0)
+
+
+func _sync_hurtbox() -> void:
+	## Yellow: inset damage volume inside green. No physics vs enemies (Area2D only).
+	if hurtbox == null:
+		return
+	var hcs := hurtbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if hcs == null or not (hcs.shape is RectangleShape2D):
+		return
+	var half := _body_half_extents()
+	var body_h := half.y * 2.0
+	var body_w := half.x * 2.0
+	var body_top := body_shape.position.y - half.y
+	# Diagram ratios vs green: ~55% wide, ~62% tall, top inset ~29%.
+	var hurt_w := body_w * 0.55
+	var hurt_h := body_h * 0.62
+	var top_inset := body_h * 0.29
+	var rect := hcs.shape as RectangleShape2D
+	rect.size = Vector2(hurt_w, hurt_h)
+	hcs.position = Vector2(0.0, body_top + top_inset + hurt_h * 0.5)
+
+
 func _sync_hitbox() -> void:
-	## Volume covers from beside the body through the reach so close pots still get hit.
+	## Red cardinal attack boxes flush against green (inner edge touches body, no gap).
 	var shape := hitbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if shape and shape.shape is RectangleShape2D:
+	if shape == null:
+		return
+	shape.position = Vector2.ZERO
+	var half := _body_half_extents()
+	var body_w := half.x * 2.0
+	var body_h := half.y * 2.0
+	var body_cx := body_shape.position.x
+	var body_cy := body_shape.position.y
+	var body_top := body_cy - half.y
+	var body_bottom := body_cy + half.y
+	if shape.shape is RectangleShape2D:
 		var rect := shape.shape as RectangleShape2D
 		if aim_dir == Vector2.UP:
-			rect.size = Vector2(28, 44)
-			hitbox.position = Vector2(0, -40)
+			# ~1.37× green width, ~0.61× green height; bottom edge on body top.
+			rect.size = Vector2(body_w * 1.37, body_h * 0.61)
+			hitbox.position = Vector2(body_cx, body_top - rect.size.y * 0.5)
 		elif aim_dir == Vector2.DOWN:
-			rect.size = Vector2(30, 36)
-			hitbox.position = Vector2(0, 6)
+			rect.size = Vector2(body_w * 1.37, body_h * 0.61)
+			hitbox.position = Vector2(body_cx, body_bottom + rect.size.y * 0.5)
 		else:
-			rect.size = Vector2(44, 36)
-			# Center sits just ahead of the torso so overlapping props register.
-			hitbox.position = Vector2(22.0 * facing, -18)
+			# ~1.22× green width, ~1.07× green height; inner edge on body side.
+			rect.size = Vector2(body_w * 1.22, body_h * 1.07)
+			hitbox.position = Vector2(body_cx + facing * (half.x + rect.size.x * 0.5), body_cy)
 	else:
 		if aim_dir == Vector2.UP:
-			hitbox.position = Vector2(0, -40)
+			hitbox.position = Vector2(0, body_top - 11.0)
 		elif aim_dir == Vector2.DOWN:
-			hitbox.position = Vector2(0, 6)
+			hitbox.position = Vector2(0, body_bottom + 11.0)
 		else:
-			hitbox.position = Vector2(22.0 * facing, -18)
+			hitbox.position = Vector2(facing * (half.x + 12.0), body_cy)
 	hitbox.rotation = 0
 	hitbox.scale = Vector2.ONE
 

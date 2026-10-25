@@ -1,5 +1,5 @@
 extends Node
-## Hold J + K + L + ; together to show real hurtboxes (green), hitboxes (red), body (blue).
+## Hold J + K + L + ; together to show body/world collider (green), hurtboxes (yellow), hitboxes (red).
 
 
 var _on: bool = false
