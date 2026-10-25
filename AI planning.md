@@ -48,7 +48,7 @@ _(none)_
 _(none)_
 
 ### Done recently
-- v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause (not web-exported yet)
+- v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause; `index-0_1_11.pck`
 - v0.1.9 — pause menu Settings: volume (master/music/SFX), brightness, fullscreen; `Settings` autoload
 - v0.1.6 — E = Interact (`interact` action, `Interactable` base); `LightSwitch` flips on E
 - Claude rules added (no game change)
