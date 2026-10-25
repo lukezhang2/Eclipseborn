@@ -1,249 +1,328 @@
 extends Control
-## Continuous side-view zone picture with a live player icon.
+## Whole-zone side view. Every editor piece, uniform scale, letterboxed into this control.
 
+
+const PAD := 14.0
 
 var zone_id: String = ""
-var discovered: Array = []
-var world_x_range: Vector2 = Vector2(0, 4000)
-var world_y_range: Vector2 = Vector2(160, 520)
-var landmarks: Array = [] ## {id, x, y?, kind, label}
-var rooms: Array = [] ## {id, x0, x1} for fog
 var player_world: Vector2 = Vector2.ZERO
 var has_player: bool = false
 
+var _cache_zone: String = ""
+var _pieces: Array = []
+var _bounds: Rect2 = Rect2(0, 160, 800, 360)
+var _scale: float = 1.0
+var _origin: Vector2 = Vector2.ZERO
 
-func set_picture_data(
-	p_zone: String,
-	p_discovered: Array,
-	p_x_range: Vector2,
-	p_y_range: Vector2,
-	p_landmarks: Array,
-	p_rooms: Array,
-	p_player: Vector2,
-	p_has_player: bool
-) -> void:
-	zone_id = p_zone
-	discovered = p_discovered
-	world_x_range = p_x_range
-	world_y_range = p_y_range
-	landmarks = p_landmarks
-	rooms = p_rooms
+
+func set_zone_map(zone: String, p_player: Vector2, p_has_player: bool) -> void:
+	zone_id = zone
 	player_world = p_player
 	has_player = p_has_player
+	if zone != _cache_zone:
+		_cache_zone = zone
+		_pieces = MapAtlas.pieces_for(zone)
+		_bounds = MapAtlas.content_bounds(_pieces)
 	queue_redraw()
 
 
-func _world_to_map(world: Vector2) -> Vector2:
-	var wr := size
-	if wr.x < 8.0 or wr.y < 8.0:
-		return Vector2.ZERO
-	var pad := Vector2(28, 36)
-	var inner := wr - pad * 2.0
-	var nx := 0.0
-	var ny := 0.5
-	if world_x_range.y > world_x_range.x:
-		nx = clampf((world.x - world_x_range.x) / (world_x_range.y - world_x_range.x), 0.0, 1.0)
-	if world_y_range.y > world_y_range.x:
-		ny = clampf((world.y - world_y_range.x) / (world_y_range.y - world_y_range.x), 0.0, 1.0)
-	return pad + Vector2(nx * inner.x, ny * inner.y)
+func _fit() -> void:
+	var inner := size - Vector2(PAD * 2.0, PAD * 2.0)
+	if _bounds.size.x < 1.0 or _bounds.size.y < 1.0 or inner.x < 8.0 or inner.y < 8.0:
+		_scale = 1.0
+		_origin = Vector2(PAD, PAD)
+		return
+	_scale = minf(inner.x / _bounds.size.x, inner.y / _bounds.size.y)
+	var drawn := _bounds.size * _scale
+	_origin = Vector2(PAD, PAD) + (inner - drawn) * 0.5 - _bounds.position * _scale
 
 
-func _room_known(id: String) -> bool:
-	return discovered.has(id)
+func _to_map(world: Vector2) -> Vector2:
+	return _origin + world * _scale
 
 
-func _x_discovered(world_x: float) -> bool:
-	## A vertical strip is known if any discovered room covers that x.
-	if rooms.is_empty():
-		return true
-	for room in rooms:
-		if not _room_known(str(room.get("id", ""))):
-			continue
-		if world_x >= float(room.get("x0", 0)) and world_x <= float(room.get("x1", 0)):
-			return true
-	return false
+func _map_rect(world_rect: Rect2) -> Rect2:
+	return Rect2(_to_map(world_rect.position), world_rect.size * _scale)
 
 
 func _draw() -> void:
 	var wr := size
 	if wr.x < 8.0 or wr.y < 8.0:
 		return
-	_draw_parchment(wr)
-	_draw_continuous_ground(wr)
-	## Silhouettes first so the whole zone reads as one picture under fog.
-	_draw_landmarks(false)
-	_draw_fog(wr)
-	## Known landmarks + labels on top of the veil.
-	_draw_landmarks(true)
+	_fit()
+	draw_rect(Rect2(Vector2.ZERO, wr), Color(0.05, 0.03, 0.07, 1.0), true)
+	if _pieces.is_empty():
+		draw_string(
+			ThemeDB.fallback_font,
+			Vector2(PAD, wr.y * 0.5),
+			"No map for this zone",
+			HORIZONTAL_ALIGNMENT_LEFT,
+			wr.x - PAD * 2.0,
+			18,
+			WorldArt.BRASS_HI
+		)
+		_draw_frame(wr)
+		return
+	var fitted := Rect2(_to_map(_bounds.position), _bounds.size * _scale)
+	draw_rect(fitted, Color(0.11, 0.045, 0.145, 1.0), true)
+	var band_h := clampf(fitted.size.y * 0.07, 6.0, 28.0)
+	draw_rect(Rect2(fitted.position, Vector2(fitted.size.x, band_h)), Color(WorldArt.EMBER.r, WorldArt.EMBER.g, WorldArt.EMBER.b, 0.45), true)
+	_draw_washes()
+	for piece in _pieces:
+		if typeof(piece) == TYPE_DICTIONARY:
+			_draw_piece(piece)
 	_draw_frame(wr)
 	if has_player:
-		_draw_player_icon(_world_to_map(player_world))
+		_draw_player_icon(_to_map(player_world))
 
 
-func _draw_parchment(wr: Vector2) -> void:
-	## Warm parchment so the side-view picture reads even under fog.
-	draw_rect(Rect2(Vector2.ZERO, wr), Color(0.22, 0.18, 0.14, 0.96), true)
-	draw_rect(Rect2(0, 0, wr.x, 18), Color(0.12, 0.1, 0.08, 0.4), true)
-	draw_rect(Rect2(0, wr.y - 22, wr.x, 22), Color(0.12, 0.1, 0.08, 0.4), true)
-	var col := Color(0.4, 0.32, 0.22, 0.14)
-	var x := 40.0
-	while x < wr.x - 20.0:
-		draw_line(Vector2(x, 24), Vector2(x, wr.y - 28), col, 1.0)
-		x += 80.0
-
-
-func _draw_continuous_ground(wr: Vector2) -> void:
-	## One unbroken floor ribbon across the zone picture.
-	var left := _world_to_map(Vector2(world_x_range.x, world_y_range.y))
-	var right := _world_to_map(Vector2(world_x_range.y, world_y_range.y))
-	var roof_l := _world_to_map(Vector2(world_x_range.x, world_y_range.x))
-	var floor_y := left.y
-	var roof_y := roof_l.y
-	var span_w := right.x - left.x
-	## Air / far wall wash — light enough to stay visible under fog
-	draw_rect(
-		Rect2(Vector2(left.x, roof_y), Vector2(span_w, floor_y - roof_y)),
-		Color(0.32, 0.28, 0.3, 0.85),
-		true
-	)
-	## Wall band
-	var mid_y := lerpf(roof_y, floor_y, 0.35)
-	draw_rect(
-		Rect2(Vector2(left.x, mid_y), Vector2(span_w, floor_y - mid_y)),
-		Color(0.38, 0.32, 0.26, 0.7),
-		true
-	)
-	## Floor band
-	var floor_h := maxf(14.0, wr.y - floor_y - 28.0)
-	draw_rect(
-		Rect2(Vector2(left.x, floor_y), Vector2(span_w, floor_h)),
-		Color(0.42, 0.36, 0.28, 0.98),
-		true
-	)
-	draw_line(Vector2(left.x, floor_y), Vector2(right.x, floor_y), Color(0.82, 0.68, 0.42, 0.95), 3.0)
-	draw_line(Vector2(left.x, roof_y), Vector2(right.x, roof_y), Color(0.55, 0.45, 0.32, 0.65), 2.0)
-	## Path ticks
-	var tick_col := Color(0.65, 0.52, 0.32, 0.45)
-	var wx := world_x_range.x
-	var step := 200.0
-	while wx <= world_x_range.y + 0.1:
-		var tx := _world_to_map(Vector2(wx, world_y_range.y)).x
-		draw_line(Vector2(tx, floor_y), Vector2(tx, floor_y + 10.0), tick_col, 1.5)
-		wx += step
-	## Soft room dividers so the continuous strip still reads as a mapped path
-	for room in rooms:
-		var x0 := _world_to_map(Vector2(float(room.get("x0", 0)), world_y_range.y)).x
-		draw_line(Vector2(x0, roof_y + 4.0), Vector2(x0, floor_y), Color(0.5, 0.4, 0.28, 0.28), 1.0)
-
-
-func _draw_landmarks(known_only: bool) -> void:
-	for lm in landmarks:
-		var id := str(lm.get("id", ""))
-		## Fog/detail keyed by containing room when provided (houses share a street room).
-		var room_key := str(lm.get("room", id))
-		var known := _room_known(room_key) if room_key != "" else true
-		if known_only and not known:
+func _draw_washes() -> void:
+	for piece in _pieces:
+		if typeof(piece) != TYPE_DICTIONARY:
 			continue
-		if not known_only and known:
-			## Known marks are drawn in the second pass (above fog).
+		var kind := str(piece.get("kind", ""))
+		if kind != "light" and kind != "prop_lantern":
 			continue
-		var wx := float(lm.get("x", 0))
-		var wy := float(lm.get("y", world_y_range.y))
-		var p := _world_to_map(Vector2(wx, wy))
-		var kind := str(lm.get("kind", "mark"))
-		## Unknown silhouettes stay bold enough to read through soft fog.
-		var alpha := 1.0 if known else 0.75
-		match kind:
-			"house":
-				_draw_house_mark(p, alpha)
-			"hatch":
-				_draw_hatch_mark(p, alpha)
-			"tower":
-				_draw_tower_mark(p, alpha)
-			"lamp":
-				_draw_lamp_mark(p, alpha)
-			"platform":
-				_draw_platform_mark(p, alpha)
-			_:
-				_draw_generic_mark(p, alpha)
-		if known:
-			var label := str(lm.get("label", id))
-			if label != "":
-				draw_string(
-					ThemeDB.fallback_font,
-					p + Vector2(-24, -46),
-					label,
-					HORIZONTAL_ALIGNMENT_LEFT,
-					-1,
-					13,
-					Color(0.88, 0.8, 0.62, 0.95)
-				)
+		var radius := float(piece.get("radius", 0.0))
+		if radius <= 1.0:
+			continue
+		var center := _to_map(Vector2(float(piece.get("x", 0.0)), float(piece.get("y", 0.0))))
+		draw_circle(center, radius * _scale, Color(WorldArt.LAMP.r, WorldArt.LAMP.g, WorldArt.LAMP.b, 0.07))
 
 
-func _draw_house_mark(p: Vector2, a: float) -> void:
-	var wall := PackedVector2Array([
-		p + Vector2(-18, 0), p + Vector2(18, 0), p + Vector2(18, -28), p + Vector2(-18, -28)
-	])
-	draw_colored_polygon(wall, Color(0.48, 0.38, 0.3, a))
-	var roof := PackedVector2Array([
-		p + Vector2(-22, -28), p + Vector2(22, -28), p + Vector2(0, -44)
-	])
-	draw_colored_polygon(roof, Color(0.62, 0.3, 0.22, a))
+func _draw_piece(piece: Dictionary) -> void:
+	var kind := str(piece.get("kind", ""))
+	var rect := _map_rect(MapAtlas.world_rect(piece))
+	match kind:
+		"floor", "block":
+			_draw_floor(piece, rect)
+		"wall", "background":
+			_draw_brick(rect)
+		"prop_platform":
+			_draw_floor(piece, rect)
+			_draw_platform_gear(piece)
+		"prop_house":
+			_draw_house(piece, rect)
+		"prop_tower":
+			_draw_tower(rect)
+		"prop_bg_gear":
+			_draw_gear(rect.get_center(), minf(rect.size.x, rect.size.y) * 0.42, WorldArt.BRASS)
+		"crate", "prop_crate":
+			_draw_crate(rect)
+		"light", "prop_lantern":
+			_draw_lantern(piece, rect)
+		"prop_window":
+			_draw_window(rect)
+		"prop_bench":
+			_draw_bench(rect)
+		"prop_vent":
+			_draw_vent(rect)
+		"prop_checkpoint":
+			_draw_checkpoint(rect)
+		"prop_switch":
+			_draw_lever(rect)
+		"prop_pipe":
+			draw_rect(rect, WorldArt.IRON_MID, true)
+			draw_rect(rect, WorldArt.BRASS_LO, false, 1.0)
+		"prop_pickup":
+			_draw_crystal(rect)
+		"prop_enemy", "prop_npc":
+			_draw_figure(rect, kind == "prop_enemy")
+		"prop_hatch", "prop_exit":
+			draw_rect(rect, WorldArt.WOOD, true)
+			draw_line(rect.position + Vector2(0, rect.size.y * 0.5), rect.position + Vector2(rect.size.x, rect.size.y * 0.5), WorldArt.BRASS_HI, 1.5)
+		"prop_breakable":
+			_draw_jar(rect)
+		"prop_door":
+			draw_rect(rect, WorldArt.WOOD, true)
+			draw_circle(rect.position + Vector2(rect.size.x * 0.78, rect.size.y * 0.55), maxf(1.5, rect.size.x * 0.12), WorldArt.BRASS)
+		"prop_valve":
+			_draw_gear(rect.get_center(), minf(rect.size.x, rect.size.y) * 0.45, WorldArt.BRASS)
+		"prop_ladder":
+			_draw_ladder(rect)
+		"prop_desk":
+			draw_rect(rect, WorldArt.WOOD, true)
+			draw_rect(Rect2(rect.position, Vector2(rect.size.x, maxf(2.0, rect.size.y * 0.25))), WorldArt.WOOD_HI, true)
+		_:
+			draw_rect(rect, WorldArt.IRON, true)
 
 
-func _draw_hatch_mark(p: Vector2, a: float) -> void:
-	draw_rect(Rect2(p + Vector2(-18, -6), Vector2(36, 10)), Color(0.55, 0.45, 0.32, a), true)
-	draw_line(p + Vector2(-18, 0), p + Vector2(18, 0), Color(0.85, 0.65, 0.35, a), 2.5)
-
-
-func _draw_tower_mark(p: Vector2, a: float) -> void:
-	draw_rect(Rect2(p + Vector2(-14, -78), Vector2(28, 78)), Color(0.45, 0.4, 0.36, a), true)
-	draw_circle(p + Vector2(0, -86), 12.0, Color(0.65, 0.52, 0.32, a))
-
-
-func _draw_lamp_mark(p: Vector2, a: float) -> void:
-	draw_circle(p + Vector2(0, -14), 8.0, Color(1.0, 0.78, 0.35, a * 0.9))
-	draw_line(p + Vector2(0, -6), p + Vector2(0, 0), Color(0.6, 0.5, 0.35, a), 2.5)
-
-
-func _draw_platform_mark(p: Vector2, a: float) -> void:
-	draw_rect(Rect2(p + Vector2(-24, -10), Vector2(48, 10)), Color(0.55, 0.48, 0.4, a), true)
-	draw_rect(Rect2(p + Vector2(-20, -28), Vector2(8, 18)), Color(0.45, 0.4, 0.35, a * 0.85), true)
-	draw_rect(Rect2(p + Vector2(12, -28), Vector2(8, 18)), Color(0.45, 0.4, 0.35, a * 0.85), true)
-
-
-func _draw_generic_mark(p: Vector2, a: float) -> void:
-	## Tall wall / obstacle silhouette
-	draw_rect(Rect2(p + Vector2(-8, -40), Vector2(16, 40)), Color(0.5, 0.42, 0.34, a), true)
-	draw_circle(p + Vector2(0, -8), 6.0, Color(0.62, 0.52, 0.4, a))
-
-
-func _draw_fog(wr: Vector2) -> void:
-	## Soft veil on undiscovered spans — panorama + silhouettes stay readable underneath.
-	if rooms.is_empty():
+func _draw_floor(piece: Dictionary, rect: Rect2) -> void:
+	var cobble := zone_id == "lantern_village" and str(piece.get("kind", "")) == "floor"
+	draw_rect(rect, WorldArt.STONE if cobble else WorldArt.IRON_MID, true)
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, maxf(1.0, rect.size.y * 0.18))), WorldArt.STONE_HI if cobble else WorldArt.IRON_HI, true)
+	var step := 46.0 * _scale
+	if step < 3.0:
 		return
-	var pad := 28.0
-	for room in rooms:
-		var id := str(room.get("id", ""))
-		if _room_known(id):
-			continue
-		var x0 := _world_to_map(Vector2(float(room.get("x0", 0)), world_y_range.y)).x
-		var x1 := _world_to_map(Vector2(float(room.get("x1", 0)), world_y_range.y)).x
-		var w := maxf(4.0, x1 - x0)
-		draw_rect(
-			Rect2(Vector2(x0, pad), Vector2(w, wr.y - pad * 2.0)),
-			Color(0.08, 0.06, 0.05, 0.22),
-			true
+	var x := rect.position.x + step
+	var seam := Color(WorldArt.STONE_LO.r, WorldArt.STONE_LO.g, WorldArt.STONE_LO.b, 0.65)
+	while x < rect.end.x:
+		draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), seam, 1.0)
+		x += step
+
+
+func _draw_brick(rect: Rect2) -> void:
+	draw_rect(rect, WorldArt.BRICK, true)
+	var course := maxf(3.0, 10.0 * _scale)
+	var y := rect.position.y + course
+	var mortar := Color(WorldArt.BRICK_HI.r, WorldArt.BRICK_HI.g, WorldArt.BRICK_HI.b, 0.7)
+	while y < rect.end.y:
+		draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), mortar, 1.0)
+		y += course
+
+
+func _draw_house(piece: Dictionary, rect: Rect2) -> void:
+	var roof_h := rect.size.y * 0.28
+	var roof := Rect2(rect.position, Vector2(rect.size.x, roof_h))
+	var walls := Rect2(rect.position + Vector2(rect.size.x * 0.06, roof_h), Vector2(rect.size.x * 0.88, rect.size.y - roof_h))
+	draw_rect(walls, WorldArt.BRICK, true)
+	var peak := PackedVector2Array([
+		roof.position + Vector2(-2, roof.size.y),
+		roof.position + Vector2(roof.size.x + 2, roof.size.y),
+		roof.position + Vector2(roof.size.x * 0.5, 0),
+	])
+	draw_colored_polygon(peak, WorldArt.SLATE)
+	var door := Rect2(walls.position + Vector2(walls.size.x * 0.38, walls.size.y * 0.45), Vector2(walls.size.x * 0.24, walls.size.y * 0.55))
+	draw_rect(door, WorldArt.BRASS_LO, true)
+	var window := Rect2(walls.position + Vector2(walls.size.x * 0.12, walls.size.y * 0.18), Vector2(walls.size.x * 0.22, walls.size.y * 0.22))
+	draw_rect(window, WorldArt.LAMP, true)
+	var label := str(piece.get("name", "")).replace("House: ", "")
+	if label != "" and walls.size.x >= 36.0:
+		draw_string(
+			ThemeDB.fallback_font,
+			Vector2(walls.position.x, walls.position.y + 12.0),
+			label,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			walls.size.x,
+			11,
+			WorldArt.BRASS_HI
 		)
 
 
+func _draw_tower(rect: Rect2) -> void:
+	draw_rect(rect, WorldArt.BRICK, true)
+	var clock_r := minf(rect.size.x, rect.size.y) * 0.18
+	var clock_c := rect.position + Vector2(rect.size.x * 0.5, rect.size.y * 0.16)
+	draw_circle(clock_c, clock_r, WorldArt.BRASS)
+	draw_circle(clock_c, clock_r * 0.72, WorldArt.IRON)
+	var win_w := maxf(2.0, rect.size.x * 0.16)
+	var win_h := maxf(3.0, rect.size.y * 0.05)
+	var y := rect.position.y + rect.size.y * 0.32
+	while y < rect.end.y - win_h:
+		draw_rect(Rect2(rect.position.x + rect.size.x * 0.22, y, win_w, win_h), WorldArt.LAMP, true)
+		draw_rect(Rect2(rect.position.x + rect.size.x * 0.62, y, win_w, win_h), WorldArt.LAMP, true)
+		y += win_h * 2.4
+
+
+func _draw_platform_gear(piece: Dictionary) -> void:
+	if not bool(piece.get("with_gear", true)):
+		return
+	var center := _to_map(Vector2(
+		float(piece.get("x", 0.0)) + float(piece.get("gear_dx", -70.0)),
+		float(piece.get("y", 0.0)) + float(piece.get("gear_dy", -50.0))
+	))
+	_draw_gear(center, 28.0 * _scale, WorldArt.BRASS)
+
+
+func _draw_gear(center: Vector2, radius: float, color: Color) -> void:
+	if radius < 1.5:
+		draw_circle(center, maxf(radius, 1.0), color)
+		return
+	draw_circle(center, radius, color)
+	draw_circle(center, radius * 0.45, WorldArt.IRON)
+	var tooth := radius * 0.28
+	for i in 8:
+		var ang := TAU * float(i) / 8.0
+		var dir := Vector2.from_angle(ang)
+		draw_line(center + dir * radius * 0.72, center + dir * (radius + tooth), color, maxf(1.0, radius * 0.22))
+
+
+func _draw_crate(rect: Rect2) -> void:
+	draw_rect(rect, WorldArt.WOOD, true)
+	draw_rect(Rect2(rect.position.x, rect.position.y + rect.size.y * 0.28, rect.size.x, maxf(1.0, rect.size.y * 0.12)), WorldArt.IRON_HI, true)
+	draw_rect(Rect2(rect.position.x, rect.position.y + rect.size.y * 0.64, rect.size.x, maxf(1.0, rect.size.y * 0.12)), WorldArt.IRON_HI, true)
+
+
+func _draw_lantern(piece: Dictionary, rect: Rect2) -> void:
+	var chain_top := _to_map(Vector2(float(piece.get("x", 0.0)), float(piece.get("y", 0.0)) - 40.0))
+	var cage := rect
+	draw_line(chain_top, cage.get_center() + Vector2(0, -cage.size.y * 0.4), WorldArt.BRASS_LO, 1.0)
+	draw_rect(cage, WorldArt.BRASS, true)
+	draw_rect(cage.grow(-maxf(1.0, cage.size.x * 0.18)), WorldArt.LAMP_CORE, true)
+
+
+func _draw_window(rect: Rect2) -> void:
+	draw_rect(rect, WorldArt.SLATE, true)
+	draw_rect(rect.grow(-maxf(1.0, rect.size.x * 0.16)), WorldArt.LAMP, true)
+
+
+func _draw_bench(rect: Rect2) -> void:
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, maxf(2.0, rect.size.y * 0.35))), WorldArt.WOOD, true)
+	draw_rect(Rect2(rect.position + Vector2(rect.size.x * 0.08, rect.size.y * 0.35), Vector2(maxf(2.0, rect.size.x * 0.1), rect.size.y * 0.65)), WorldArt.WOOD_HI, true)
+	draw_rect(Rect2(rect.position + Vector2(rect.size.x * 0.82, rect.size.y * 0.35), Vector2(maxf(2.0, rect.size.x * 0.1), rect.size.y * 0.65)), WorldArt.WOOD_HI, true)
+
+
+func _draw_vent(rect: Rect2) -> void:
+	draw_rect(rect, WorldArt.IRON, true)
+	var slit := maxf(2.0, rect.size.x / 4.0)
+	var x := rect.position.x + slit * 0.4
+	while x < rect.end.x:
+		draw_line(Vector2(x, rect.position.y + 1.0), Vector2(x, rect.end.y - 1.0), WorldArt.IRON_HI, 1.0)
+		x += slit
+
+
+func _draw_checkpoint(rect: Rect2) -> void:
+	var post_w := maxf(2.0, rect.size.x * 0.12)
+	draw_rect(Rect2(rect.position.x, rect.position.y, post_w, rect.size.y), WorldArt.IRON_HI, true)
+	draw_rect(Rect2(rect.end.x - post_w, rect.position.y, post_w, rect.size.y), WorldArt.IRON_HI, true)
+	draw_circle(rect.get_center(), maxf(2.0, minf(rect.size.x, rect.size.y) * 0.28), WorldArt.EMBER)
+
+
+func _draw_lever(rect: Rect2) -> void:
+	draw_rect(Rect2(rect.position + Vector2(0, rect.size.y * 0.72), Vector2(rect.size.x, rect.size.y * 0.28)), WorldArt.WOOD, true)
+	draw_line(rect.get_center() + Vector2(0, rect.size.y * 0.2), rect.position + Vector2(rect.size.x * 0.72, rect.size.y * 0.15), WorldArt.BRASS_HI, maxf(1.5, rect.size.x * 0.12))
+
+
+func _draw_crystal(rect: Rect2) -> void:
+	var c := rect.get_center()
+	var diamond := PackedVector2Array([
+		c + Vector2(0, -rect.size.y * 0.5),
+		c + Vector2(rect.size.x * 0.5, 0),
+		c + Vector2(0, rect.size.y * 0.5),
+		c + Vector2(-rect.size.x * 0.5, 0),
+	])
+	draw_colored_polygon(diamond, WorldArt.EMBER)
+
+
+func _draw_figure(rect: Rect2, hostile: bool) -> void:
+	draw_rect(rect, Color(0.08, 0.05, 0.08) if hostile else WorldArt.INK, true)
+	draw_circle(rect.position + Vector2(rect.size.x * 0.35, rect.size.y * 0.28), maxf(1.0, rect.size.x * 0.08), WorldArt.BRASS_HI)
+	draw_circle(rect.position + Vector2(rect.size.x * 0.65, rect.size.y * 0.28), maxf(1.0, rect.size.x * 0.08), WorldArt.BRASS_HI)
+
+
+func _draw_jar(rect: Rect2) -> void:
+	draw_rect(rect, Color(WorldArt.INK_HI.r, WorldArt.INK_HI.g, WorldArt.INK_HI.b, 0.85), true)
+	draw_circle(rect.get_center(), maxf(1.5, minf(rect.size.x, rect.size.y) * 0.22), WorldArt.LAMP_CORE)
+
+
+func _draw_ladder(rect: Rect2) -> void:
+	var rail := maxf(1.5, rect.size.x * 0.16)
+	draw_rect(Rect2(rect.position, Vector2(rail, rect.size.y)), WorldArt.WOOD, true)
+	draw_rect(Rect2(Vector2(rect.end.x - rail, rect.position.y), Vector2(rail, rect.size.y)), WorldArt.WOOD, true)
+	var step := maxf(4.0, 18.0 * _scale)
+	var y := rect.position.y + step
+	while y < rect.end.y:
+		draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), WorldArt.WOOD_HI, 1.5)
+		y += step
+
+
 func _draw_frame(wr: Vector2) -> void:
-	draw_rect(Rect2(Vector2.ZERO, wr), Color(0.55, 0.45, 0.28, 0.9), false, 3.0)
-	draw_rect(Rect2(Vector2(6, 6), wr - Vector2(12, 12)), Color(0.35, 0.28, 0.18, 0.5), false, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, wr), WorldArt.BRASS, false, 3.0)
+	draw_rect(Rect2(Vector2(5, 5), wr - Vector2(10, 10)), WorldArt.BRASS_LO, false, 1.0)
 
 
 func _draw_player_icon(p: Vector2) -> void:
-	## Shadow spirit: dark body + pale eyes (matches in-game silhouette).
+	draw_arc(p + Vector2(0, -8), 16.0, 0.0, TAU, 24, Color(WorldArt.LAMP.r, WorldArt.LAMP.g, WorldArt.LAMP.b, 0.45), 1.5)
 	var body := PackedVector2Array([
 		p + Vector2(0, -22),
 		p + Vector2(9, -10),
@@ -254,5 +333,3 @@ func _draw_player_icon(p: Vector2) -> void:
 	draw_colored_polygon(body, Color(0.04, 0.03, 0.06, 1.0))
 	draw_circle(p + Vector2(-3.5, -14), 2.2, Color(0.98, 0.96, 0.9))
 	draw_circle(p + Vector2(3.5, -14), 2.2, Color(0.98, 0.96, 0.9))
-	## Soft halo so it reads on dark fog
-	draw_arc(p + Vector2(0, -8), 16.0, 0.0, TAU, 24, Color(0.95, 0.85, 0.55, 0.35), 1.5)

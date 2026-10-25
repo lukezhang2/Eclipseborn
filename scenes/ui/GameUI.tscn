@@ -202,31 +202,47 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.6)
+color = Color(0, 0, 0, 0.35)
 
 [node name="Title" type="Label" parent="ZoneMap/Root"]
 layout_mode = 0
 offset_left = 40.0
 offset_top = 30.0
 offset_right = 600.0
-offset_bottom = 70.0
+offset_bottom = 60.0
 theme_override_font_sizes/font_size = 28
 text = "Zone Map"
 
 [node name="Hint" type="Label" parent="ZoneMap/Root"]
 layout_mode = 0
-offset_left = 40.0
-offset_top = 660.0
-offset_right = 500.0
-offset_bottom = 690.0
+offset_left = 720.0
+offset_top = 32.0
+offset_right = 1248.0
+offset_bottom = 68.0
+theme_override_font_sizes/font_size = 18
 text = "Tab to close"
+horizontal_alignment = 2
 
-[node name="MapArea" type="Control" parent="ZoneMap/Root"]
+[node name="Subtitle" type="Label" parent="ZoneMap/Root"]
 layout_mode = 0
 offset_left = 40.0
-offset_top = 80.0
-offset_right = 1240.0
-offset_bottom = 640.0
+offset_top = 64.0
+offset_right = 1100.0
+offset_bottom = 86.0
+theme_override_font_sizes/font_size = 14
+text = "Whole-zone side view fitted into the map panel. Live player icon; does not pause the game."
+
+[node name="MapArea" type="Control" parent="ZoneMap/Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 92.0
+offset_right = -28.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="TutorialHint" type="CanvasLayer" parent="."]
 layer = 5
