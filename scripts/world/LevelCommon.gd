@@ -441,12 +441,13 @@ static func add_backdrop(
 ) -> BlackFireSky:
 	## Black-fire sky is the real backdrop. Optional city silhouettes for older rooms.
 	if with_city:
+		## Match the universal void; silhouettes sit on top of the fire-sky.
 		var bg := Polygon2D.new()
 		bg.polygon = PackedVector2Array([
 			Vector2(0, roof_top), Vector2(width, roof_top), Vector2(width, height), Vector2(0, height)
 		])
-		bg.color = Color(0.05, 0.04, 0.06)
-		bg.z_index = -18
+		bg.color = Color("0d020f")
+		bg.z_index = -26
 		parent.add_child(bg)
 		var x := 40.0
 		while x < width:

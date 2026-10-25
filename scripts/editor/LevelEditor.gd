@@ -704,12 +704,12 @@ func _bg_color_spin(parent: Control, label: String, on_change: Callable) -> Spin
 
 
 func _set_void_channel(idx: int, v: float) -> void:
-	var raw: Variant = _backdrop.get("void_color", [0.11, 0.045, 0.145, 1.0])
+	var raw: Variant = _backdrop.get("void_color", LevelData.VOID_PURPLE)
 	var arr: Array = []
 	if raw is Array:
 		arr = (raw as Array).duplicate()
 	else:
-		arr = [0.11, 0.045, 0.145, 1.0]
+		arr = LevelData.VOID_PURPLE.duplicate()
 	while arr.size() < 4:
 		arr.append(1.0 if arr.size() == 3 else 0.0)
 	arr[idx] = v
@@ -775,11 +775,11 @@ func _sync_backdrop_inspector() -> void:
 	_bg_enabled.button_pressed = enabled
 	_bg_offset_spin.value = float(_backdrop.get("flame_band_offset", 18.0))
 	_bg_count_spin.value = float(_backdrop.get("flame_count", 48))
-	var raw: Variant = _backdrop.get("void_color", [0.11, 0.045, 0.145, 1.0])
-	var arr: Array = raw if raw is Array else [0.11, 0.045, 0.145, 1.0]
-	_bg_r.value = float(arr[0]) if arr.size() > 0 else 0.11
-	_bg_g.value = float(arr[1]) if arr.size() > 1 else 0.045
-	_bg_b.value = float(arr[2]) if arr.size() > 2 else 0.145
+	var raw: Variant = _backdrop.get("void_color", LevelData.VOID_PURPLE)
+	var arr: Array = raw if raw is Array else LevelData.VOID_PURPLE.duplicate()
+	_bg_r.value = float(arr[0]) if arr.size() > 0 else float(LevelData.VOID_PURPLE[0])
+	_bg_g.value = float(arr[1]) if arr.size() > 1 else float(LevelData.VOID_PURPLE[1])
+	_bg_b.value = float(arr[2]) if arr.size() > 2 else float(LevelData.VOID_PURPLE[2])
 	_syncing_backdrop = false
 
 

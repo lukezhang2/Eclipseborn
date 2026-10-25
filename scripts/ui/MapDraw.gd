@@ -64,7 +64,7 @@ func _draw() -> void:
 		_draw_frame(wr)
 		return
 	var fitted := Rect2(_to_map(_bounds.position), _bounds.size * _scale)
-	draw_rect(fitted, Color(0.11, 0.045, 0.145, 1.0), true)
+	draw_rect(fitted, Color("0d020f"), true)
 	var band_h := clampf(fitted.size.y * 0.07, 6.0, 28.0)
 	draw_rect(Rect2(fitted.position, Vector2(fitted.size.x, band_h)), Color(WorldArt.EMBER.r, WorldArt.EMBER.g, WorldArt.EMBER.b, 0.45), true)
 	_draw_washes()

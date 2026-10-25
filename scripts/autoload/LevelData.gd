@@ -43,30 +43,30 @@ static func load_raw(zone_id: String) -> Dictionary:
 	return parsed
 
 
+## Standard void #0d020f (r,g,b in 0–1).
+const VOID_PURPLE := [13.0 / 255.0, 2.0 / 255.0, 15.0 / 255.0, 1.0]
+
+
 static func default_backdrop(zone_id: String) -> Dictionary:
-	## Purple full-field void + top-only black-fire fringe (village / fire-sky rooms).
+	## Universal standard: #0d020f void + top black-fire fringe.
+	## Zones may cover it with brick/city art; JSON can override or disable.
+	var base := {
+		"kind": "black_fire",
+		"enabled": true,
+		"flame_band_offset": 12.0,
+		"flame_count": 48,
+		"void_color": VOID_PURPLE.duplicate(),
+	}
 	match zone_id:
-		"lantern_village":
-			return {
-				"kind": "black_fire",
-				"enabled": true,
-				"flame_band_offset": 12.0,
-				"flame_count": 48,
-				"void_color": [0.11, 0.045, 0.145, 1.0],
-			}
 		"cursed_cottage", "house_keep", "house_gear", "house_inn":
-			return {
-				"kind": "black_fire",
-				"enabled": true,
-				"flame_band_offset": 22.0,
-				"flame_count": 40,
-				"void_color": [0.11, 0.045, 0.145, 1.0],
-			}
+			base["flame_band_offset"] = 22.0
+			base["flame_count"] = 40
+		"clockwork_tower":
+			base["flame_band_offset"] = 16.0
+			base["flame_count"] = 36
 		_:
-			return {
-				"kind": "none",
-				"enabled": false,
-			}
+			pass
+	return base
 
 
 static func backdrop_for(zone_id: String) -> Dictionary:

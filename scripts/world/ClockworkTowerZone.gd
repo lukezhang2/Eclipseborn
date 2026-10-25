@@ -127,14 +127,11 @@ func _configure_tower_camera(player: Node2D) -> void:
 
 
 func _build_shell() -> void:
-	var bg := Polygon2D.new()
-	bg.z_index = -20
-	bg.color = Color(0.09, 0.08, 0.1)
-	bg.polygon = PackedVector2Array([
-		Vector2(0, ROOF_TOP - 40), Vector2(MAP_W, ROOF_TOP - 40),
-		Vector2(MAP_W, LOBBY_FLOOR + 200), Vector2(0, LOBBY_FLOOR + 200)
-	])
-	add_child(bg)
+	## Universal #0d020f fire-sky; brick faces cover it where the shaft is built.
+	LevelCommon.add_backdrop(
+		self, MAP_W, LOBBY_FLOOR + 200.0, LOBBY_TOP, ROOF_TOP, false,
+		LevelData.backdrop_for("clockwork_tower")
+	)
 	## Dense brick faces — fills the tall void so the shaft reads as a built tower.
 	var y := LOBBY_TOP - 80.0
 	while y > ROOF_TOP + 40.0:

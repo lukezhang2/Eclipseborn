@@ -8,7 +8,7 @@ func _ready() -> void:
 	GameState.map_max_x = 1560.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, 1600, 720)
+	LevelCommon.add_backdrop(self, 1600, 720, 500.0, 180.0, true, LevelData.backdrop_for("prototype"))
 
 	LevelCommon.add_steel_floor(self, 800, 520, 1600, 40)
 	LevelCommon.add_wall(self, -20, 300, 40, 480)

@@ -3,7 +3,8 @@ class_name BlackFireSky
 ## Full-field purple void; animated black-fire tongues only along the TOP of the playfield.
 
 
-const DEFAULT_VOID := Color(0.11, 0.045, 0.145, 1.0)
+## Standard world void — #0d020f. Zones layer other art on top when needed.
+const DEFAULT_VOID := Color("0d020f")
 const DEFAULT_FLAME_BAND_OFFSET := 12.0 ## World Y = roof_top + offset (smaller → higher).
 
 var floor_top: float = 500.0
@@ -24,6 +25,7 @@ func setup(width: float, floor_y_top: float, roof_y_top: float = 180.0, settings
 	floor_top = floor_y_top
 	roof_top = roof_y_top
 	apply_settings(settings)
+	## Above the optional city fill plate (−26), under brick/silhouette props (−17).
 	z_index = -25
 	_rebuild()
 
