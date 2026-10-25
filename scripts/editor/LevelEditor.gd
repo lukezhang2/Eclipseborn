@@ -360,6 +360,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_radius_spin.step = 10
 	_radius_spin.value = 280
 	_radius_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_commit_spin_on_enter(_radius_spin)
 	_radius_spin.value_changed.connect(func(v: float) -> void:
 		if _syncing_light or _history_restoring:
 			return
@@ -383,6 +384,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_intensity_spin.value = 1.0
 	_intensity_spin.tooltip_text = "Wash brightness + shade/HP burn speed (1.0 = normal)"
 	_intensity_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_commit_spin_on_enter(_intensity_spin)
 	_intensity_spin.value_changed.connect(func(v: float) -> void:
 		if _syncing_light or _history_restoring:
 			return
@@ -866,6 +868,7 @@ func _bg_spin_row(parent: Control, label: String, mn: float, mx: float, step: fl
 	spin.step = step
 	spin.value = val
 	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_commit_spin_on_enter(spin)
 	spin.value_changed.connect(func(v: float) -> void:
 		if _syncing_backdrop or _history_restoring:
 			return
@@ -888,6 +891,7 @@ func _bg_color_spin(parent: Control, label: String, on_change: Callable) -> Spin
 	spin.step = 0.01
 	spin.value = 0.1
 	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_commit_spin_on_enter(spin)
 	spin.value_changed.connect(func(v: float) -> void:
 		if _syncing_backdrop or _history_restoring:
 			return
@@ -1198,6 +1202,32 @@ func _section(t: String) -> Label:
 	return l
 
 
+## Typed numbers stay draft text until Enter. Clicking away restores the spin
+## so a focus loss cannot write the previous field onto the next piece.
+func _commit_spin_on_enter(spin: SpinBox) -> void:
+	var le := spin.get_line_edit()
+	for conn in le.focus_exited.get_connections():
+		le.focus_exited.disconnect(conn["callable"])
+	le.focus_exited.connect(func() -> void:
+		_revert_spin_text(spin)
+	, CONNECT_DEFERRED)
+
+
+func _revert_spin_text(spin: SpinBox) -> void:
+	if spin == null or not is_instance_valid(spin):
+		return
+	var le := spin.get_line_edit()
+	if le == null:
+		return
+	var decimals := 0
+	var step_text := String.num(spin.step)
+	var dot := step_text.find(".")
+	if dot >= 0:
+		decimals = step_text.length() - dot - 1
+	le.text = String.num(spin.value, decimals)
+	le.caret_column = le.text.length()
+
+
 func _spin_row(parent: Control, label: String, mn: float, mx: float, step: float, val: float) -> SpinBox:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
@@ -1208,6 +1238,7 @@ func _spin_row(parent: Control, label: String, mn: float, mx: float, step: float
 	spin.step = step
 	spin.value = val
 	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_commit_spin_on_enter(spin)
 	row.add_child(spin)
 	return spin
 
@@ -1702,6 +1733,7 @@ func _rebuild_shop_list() -> void:
 		spin.value = 1 if (not enabled or stock < 0) else float(stock)
 		spin.editable = enabled and not inf.button_pressed
 		spin.custom_minimum_size.x = 72
+		_commit_spin_on_enter(spin)
 		bottom.add_child(spin)
 		var stock_l := Label.new()
 		stock_l.text = "stock"
@@ -1723,6 +1755,7 @@ func _rebuild_shop_list() -> void:
 		price_spin.value = float(item_price)
 		price_spin.editable = enabled
 		price_spin.custom_minimum_size.x = 90
+		_commit_spin_on_enter(price_spin)
 		price_row.add_child(price_spin)
 		var gears_l := Label.new()
 		gears_l.text = "gears"
