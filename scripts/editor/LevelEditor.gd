@@ -10,6 +10,7 @@ const OVERSCROLL := 960.0 ## How far past the rightmost piece you can pan to kee
 const MIN_WORLD_RIGHT := 1600.0
 const CAM_Y := 360.0
 const SNAP_DIST := 12.0
+const HISTORY_MAX := 80
 
 
 var zone_id: String = "cursed_cottage"
@@ -64,7 +65,18 @@ var _rotate_piece_start: float = 0.0
 var _syncing_list: bool = false
 var _syncing_scrub: bool = false
 var _syncing_dialogue: bool = false
+var _syncing_light: bool = false
 var _world_right: float = MIN_WORLD_RIGHT
+## Undo / redo: snapshots of zone JSON + selected piece id.
+var _undo_stack: Array = []
+var _redo_stack: Array = []
+var _history_restoring: bool = false
+var _undo_btn: Button
+var _redo_btn: Button
+var _gesture_snap: Dictionary = {}
+var _gesture_active: bool = false
+## Collapse rapid inspector spinbox tweaks into one undo step.
+var _coalesce_inspector: bool = false
 
 
 func _ready() -> void:
@@ -218,11 +230,13 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_name_edit.placeholder_text = "Name"
 	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_edit.text_submitted.connect(func(t: String) -> void:
-		if _selected:
+		if _selected and _selected.display_name != t:
+			_push_undo()
 			_selected.display_name = t
 			_selected._rebuild()
 			_selected.set_selected(true)
 			_refresh_list()
+			_save()
 	)
 	sel_row.add_child(_name_edit)
 	var dup := Button.new()
@@ -245,7 +259,10 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_radius_spin.value = 280
 	_radius_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_radius_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_light or _history_restoring:
+			return
 		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
+			_push_undo_inspector()
 			_selected.light_radius = v
 			_selected._rebuild()
 			_selected.set_selected(true)
@@ -265,7 +282,10 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_intensity_spin.tooltip_text = "Wash brightness + shade/HP burn speed (1.0 = normal)"
 	_intensity_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_intensity_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_light or _history_restoring:
+			return
 		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
+			_push_undo_inspector()
 			_selected.light_intensity = v
 			_selected._rebuild()
 			_selected.set_selected(true)
@@ -349,35 +369,40 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_platform_row.add_child(plat_hint)
 	_plat_amp = _spin_row(_platform_row, "Path distance", 10, 400, 5, 90)
 	_plat_amp.value_changed.connect(func(v: float) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo_inspector()
 		_selected.move_amplitude = v
 		_selected.queue_redraw()
 	)
 	_plat_speed = _spin_row(_platform_row, "Move speed", 0.05, 4.0, 0.05, 0.65)
 	_plat_speed.value_changed.connect(func(v: float) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo_inspector()
 		_selected.move_speed = v
 	)
 	_plat_path_y = _spin_row(_platform_row, "Side path (wobble)", 0, 200, 5, 0)
 	_plat_path_y.value_changed.connect(func(v: float) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo_inspector()
 		_selected.path_y_amplitude = v
 		_selected.queue_redraw()
 	)
 	_plat_rot_speed = _spin_row(_platform_row, "Rotate speed", 0, 4.0, 0.05, 1.0)
 	_plat_rot_speed.value_changed.connect(func(v: float) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo_inspector()
 		_selected.rotate_speed = v
 	)
 	_plat_vertical = CheckButton.new()
 	_plat_vertical.text = "Vertical path (else horizontal)"
 	_plat_vertical.toggled.connect(func(on: bool) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo()
 		_selected.move_vertical = on
 		_selected.queue_redraw()
 	)
@@ -385,16 +410,18 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_plat_rotate = CheckButton.new()
 	_plat_rotate.text = "Rotate gear while moving"
 	_plat_rotate.toggled.connect(func(on: bool) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo()
 		_selected.rotate_while_moving = on
 	)
 	_platform_row.add_child(_plat_rotate)
 	_plat_rotate_body = CheckButton.new()
 	_plat_rotate_body.text = "Rotate platform body"
 	_plat_rotate_body.toggled.connect(func(on: bool) -> void:
-		if _syncing_platform or _selected == null:
+		if _syncing_platform or _history_restoring or _selected == null:
 			return
+		_push_undo()
 		_selected.rotate_platform = on
 	)
 	_platform_row.add_child(_plat_rotate_body)
@@ -405,9 +432,11 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_blocks_light_btn.tooltip_text = "Occludes lantern washes without solid player collision (layer 128)"
 	_blocks_light_btn.disabled = true
 	_blocks_light_btn.toggled.connect(func(on: bool) -> void:
-		if _selected:
-			_selected.blocks_light = on
-			_status.text = "Blocks light: %s" % ("ON" if on else "OFF")
+		if _history_restoring or _selected == null:
+			return
+		_push_undo()
+		_selected.blocks_light = on
+		_status.text = "Blocks light: %s" % ("ON" if on else "OFF")
 	)
 	col.add_child(_blocks_light_btn)
 
@@ -419,6 +448,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	layer_down.tooltip_text = "Move selected piece one draw layer down (behind)"
 	layer_down.pressed.connect(func() -> void:
 		if _selected:
+			_push_undo()
 			_selected.set_draw_layer(_selected.draw_layer - 1)
 			_update_inspector()
 	)
@@ -428,6 +458,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	layer_up.tooltip_text = "Move selected piece one draw layer up (in front)"
 	layer_up.pressed.connect(func() -> void:
 		if _selected:
+			_push_undo()
 			_selected.set_draw_layer(_selected.draw_layer + 1)
 			_update_inspector()
 	)
@@ -458,6 +489,24 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_tool_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_tool_label.text = "Tool: Select — click world or list · Move shows X/Y arrows"
 	col.add_child(_tool_label)
+
+	var hist := HBoxContainer.new()
+	hist.add_theme_constant_override("separation", 8)
+	col.add_child(hist)
+	_undo_btn = Button.new()
+	_undo_btn.text = "Undo"
+	_undo_btn.tooltip_text = "Undo (Ctrl+Z)"
+	_undo_btn.disabled = true
+	_undo_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_undo_btn.pressed.connect(_undo)
+	hist.add_child(_undo_btn)
+	_redo_btn = Button.new()
+	_redo_btn.text = "Redo"
+	_redo_btn.tooltip_text = "Redo (Ctrl+Y / Ctrl+Shift+Z)"
+	_redo_btn.disabled = true
+	_redo_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_redo_btn.pressed.connect(_redo)
+	hist.add_child(_redo_btn)
 
 	var snap_btn := CheckButton.new()
 	snap_btn.text = "Snap to edges"
@@ -678,6 +727,7 @@ func _load_zone() -> void:
 	_cam.zoom = Vector2.ONE
 	_refresh_list()
 	_refresh_world_extent()
+	_clear_history()
 	_status.text = "Loaded %s — %d pieces." % [zone_id, _pieces.size()]
 
 
@@ -715,8 +765,10 @@ func _update_inspector() -> void:
 	_radius_row.visible = is_light
 	_intensity_row.visible = is_light
 	if is_light:
+		_syncing_light = true
 		_radius_spin.value = _selected.light_radius
 		_intensity_spin.value = _selected.light_intensity
+		_syncing_light = false
 	var is_npc := _selected != null and _selected.is_npc()
 	_shop_row.visible = is_npc
 	_syncing_shop = true
@@ -787,8 +839,9 @@ func _refresh_link_list() -> void:
 
 
 func _on_links_changed() -> void:
-	if _syncing_links or _selected == null or not PieceSpecs.is_switch_kind(_selected.catalog_kind):
+	if _syncing_links or _history_restoring or _selected == null or not PieceSpecs.is_switch_kind(_selected.catalog_kind):
 		return
+	_push_undo_inspector()
 	var ids := PackedStringArray()
 	for idx in _link_list.get_selected_items():
 		ids.append(str(_link_list.get_item_metadata(idx)))
@@ -797,14 +850,16 @@ func _on_links_changed() -> void:
 
 
 func _on_dialogue_changed() -> void:
-	if _syncing_dialogue or _selected == null or not _selected.is_npc():
+	if _syncing_dialogue or _history_restoring or _selected == null or not _selected.is_npc():
 		return
+	_push_undo_inspector()
 	_selected.set_dialogue_text(_dialogue_edit.text)
 
 
 func _on_shopkeeper_toggled(on: bool) -> void:
-	if _syncing_shop or _selected == null or not _selected.is_npc():
+	if _syncing_shop or _history_restoring or _selected == null or not _selected.is_npc():
 		return
+	_push_undo()
 	_selected.is_shopkeeper = on
 	if on and _selected.shop_items.is_empty():
 		_selected.shop_items = ShopCatalog.default_shop_stock()
@@ -861,23 +916,26 @@ func _rebuild_shop_list() -> void:
 		stock_l.add_theme_color_override("font_color", Color(0.55, 0.5, 0.45))
 		bottom.add_child(stock_l)
 		sell.toggled.connect(func(on: bool) -> void:
-			if _syncing_shop or _selected == null:
+			if _syncing_shop or _history_restoring or _selected == null:
 				return
+			_push_undo()
 			inf.disabled = not on
 			spin.editable = on and not inf.button_pressed
 			var s := -1 if inf.button_pressed else int(spin.value)
 			_selected.set_shop_item_stock(item_id, s, on)
 		)
 		inf.toggled.connect(func(on: bool) -> void:
-			if _syncing_shop or _selected == null or not sell.button_pressed:
+			if _syncing_shop or _history_restoring or _selected == null or not sell.button_pressed:
 				return
+			_push_undo()
 			spin.editable = not on
 			var s := -1 if on else int(spin.value)
 			_selected.set_shop_item_stock(item_id, s, true)
 		)
 		spin.value_changed.connect(func(v: float) -> void:
-			if _syncing_shop or _selected == null or not sell.button_pressed or inf.button_pressed:
+			if _syncing_shop or _history_restoring or _selected == null or not sell.button_pressed or inf.button_pressed:
 				return
+			_push_undo_inspector()
 			_selected.set_shop_item_stock(item_id, int(v), true)
 		)
 		_shop_list.add_child(row)
@@ -892,6 +950,8 @@ func _on_list_selected(index: int) -> void:
 
 
 func _select(piece: EditorPiece) -> void:
+	if piece != _selected:
+		_break_undo_coalesce()
 	if _selected and is_instance_valid(_selected):
 		_selected.set_selected(false)
 		_selected.show_move_arrows = false
@@ -906,6 +966,7 @@ func _select(piece: EditorPiece) -> void:
 func _delete_selected() -> void:
 	if _selected == null:
 		return
+	_push_undo()
 	var doomed := _selected
 	var id := doomed.piece_id
 	_selected = null
@@ -973,6 +1034,7 @@ func _pretty_palette_name(palette: String) -> String:
 func _duplicate_selected() -> void:
 	if _selected == null:
 		return
+	_push_undo()
 	var d: Dictionary = _selected.to_dict().duplicate(true)
 	d["builtin"] = false
 	var base := PieceSpecs.id_base(str(d.get("id", _selected.catalog_kind)))
@@ -1002,6 +1064,7 @@ func _sync_move_arrows() -> void:
 
 
 func _add_piece() -> void:
+	_push_undo()
 	var sz := PieceSpecs.default_size(_palette_id)
 	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
 	var y := _cam.position.y + 20.0
@@ -1067,8 +1130,153 @@ func _build_data() -> Dictionary:
 		"schema": PieceSpecs.SCHEMA_VERSION,
 		"zone": zone_id,
 		"pieces": pieces,
-		"removed_ids": _removed_ids,
+		"removed_ids": _removed_ids.duplicate(),
 	}
+
+
+func _capture_snapshot() -> Dictionary:
+	return {
+		"data": _build_data().duplicate(true),
+		"selected_id": _selected.piece_id if _selected and is_instance_valid(_selected) else "",
+	}
+
+
+func _snapshot_equal(a: Dictionary, b: Dictionary) -> bool:
+	if str(a.get("selected_id", "")) != str(b.get("selected_id", "")):
+		return false
+	return JSON.stringify(a.get("data", {})) == JSON.stringify(b.get("data", {}))
+
+
+func _clear_history() -> void:
+	_undo_stack.clear()
+	_redo_stack.clear()
+	_gesture_active = false
+	_gesture_snap = {}
+	_coalesce_inspector = false
+	_update_history_buttons()
+
+
+func _break_undo_coalesce() -> void:
+	_coalesce_inspector = false
+
+
+func _update_history_buttons() -> void:
+	if _undo_btn:
+		_undo_btn.disabled = _undo_stack.is_empty()
+	if _redo_btn:
+		_redo_btn.disabled = _redo_stack.is_empty()
+
+
+func _push_undo() -> void:
+	## Capture current state before a mutation.
+	if _history_restoring:
+		return
+	_break_undo_coalesce()
+	var snap := _capture_snapshot()
+	if not _undo_stack.is_empty() and _snapshot_equal(_undo_stack.back(), snap):
+		_update_history_buttons()
+		return
+	_undo_stack.append(snap)
+	while _undo_stack.size() > HISTORY_MAX:
+		_undo_stack.pop_front()
+	_redo_stack.clear()
+	_update_history_buttons()
+
+
+func _push_undo_inspector() -> void:
+	## Coalesce rapid spinbox/inspector tweaks into one undo step.
+	if _history_restoring:
+		return
+	if _coalesce_inspector:
+		return
+	_push_undo()
+	_coalesce_inspector = true
+
+
+func _begin_gesture() -> void:
+	## Start of move / resize / rotate drag — remember pre-gesture state.
+	if _history_restoring or _gesture_active:
+		return
+	_break_undo_coalesce()
+	_gesture_snap = _capture_snapshot()
+	_gesture_active = true
+
+
+func _end_gesture() -> void:
+	if not _gesture_active:
+		return
+	_gesture_active = false
+	var after := _capture_snapshot()
+	if _snapshot_equal(_gesture_snap, after):
+		_gesture_snap = {}
+		return
+	_undo_stack.append(_gesture_snap)
+	while _undo_stack.size() > HISTORY_MAX:
+		_undo_stack.pop_front()
+	_redo_stack.clear()
+	_gesture_snap = {}
+	_update_history_buttons()
+	_save()
+
+
+func _apply_snapshot(snap: Dictionary) -> void:
+	_history_restoring = true
+	_gesture_active = false
+	_gesture_snap = {}
+	_coalesce_inspector = false
+	var data: Dictionary = snap.get("data", {})
+	if typeof(data) != TYPE_DICTIONARY:
+		data = {}
+	var z := str(data.get("zone", zone_id))
+	if z != "" and z != zone_id:
+		zone_id = z
+		for i in _zone_option.item_count:
+			if _zone_option.get_item_text(i) == zone_id:
+				_zone_option.select(i)
+				break
+	_clear_pieces()
+	_removed_ids = data.get("removed_ids", []).duplicate()
+	if typeof(_removed_ids) != TYPE_ARRAY:
+		_removed_ids = []
+	var pieces: Array = data.get("pieces", [])
+	for raw_p in pieces:
+		if typeof(raw_p) == TYPE_DICTIONARY:
+			_spawn_piece_dict(raw_p)
+	_refresh_list()
+	_refresh_world_extent()
+	var want := str(snap.get("selected_id", ""))
+	var found: EditorPiece = null
+	if want != "":
+		for p in _pieces:
+			if p.piece_id == want:
+				found = p
+				break
+	_select(found)
+	_history_restoring = false
+	_save()
+	_update_history_buttons()
+
+
+func _undo() -> void:
+	if _undo_stack.is_empty() or _history_restoring:
+		return
+	_redo_stack.append(_capture_snapshot())
+	while _redo_stack.size() > HISTORY_MAX:
+		_redo_stack.pop_front()
+	var snap: Dictionary = _undo_stack.pop_back()
+	_apply_snapshot(snap)
+	_status.text = "Undo (%d left)" % _undo_stack.size()
+
+
+func _redo() -> void:
+	if _redo_stack.is_empty() or _history_restoring:
+		return
+	_undo_stack.append(_capture_snapshot())
+	while _undo_stack.size() > HISTORY_MAX:
+		_undo_stack.pop_front()
+	var snap: Dictionary = _redo_stack.pop_back()
+	_apply_snapshot(snap)
+	_status.text = "Redo (%d left)" % _redo_stack.size()
 
 
 func _export_text() -> String:
@@ -1173,6 +1381,7 @@ func _import_text(raw: String) -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		_status.text = "Import failed: not a JSON object."
 		return
+	_push_undo()
 	var data: Dictionary = parsed
 	var z := str(data.get("zone", zone_id))
 	if z != "":
@@ -1256,6 +1465,7 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 				if _selected and tool != Tool.DELETE:
 					_selected.end_interact()
 					_refresh_world_extent()
+				_end_gesture()
 			_vp_container.accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -1294,6 +1504,30 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			if _selected:
 				_duplicate_selected()
 				_vp_container.accept_event()
+		elif event.keycode == KEY_Z and event.ctrl_pressed and event.shift_pressed:
+			_redo()
+			_vp_container.accept_event()
+		elif event.keycode == KEY_Z and event.ctrl_pressed:
+			_undo()
+			_vp_container.accept_event()
+		elif event.keycode == KEY_Y and event.ctrl_pressed:
+			_redo()
+			_vp_container.accept_event()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	## Shortcuts when focus is on the sidebar (viewport gui_input won't see them).
+	if not (event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed):
+		return
+	if event.keycode == KEY_Z and event.shift_pressed:
+		_redo()
+		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_Z:
+		_undo()
+		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_Y:
+		_redo()
+		get_viewport().set_input_as_handled()
 
 
 func _snap_selected_to_edges() -> void:
@@ -1369,11 +1603,13 @@ func _on_click(world: Vector2) -> void:
 	if _selected and is_instance_valid(_selected) and tool == Tool.MOVE:
 		var axis_sel := _selected.axis_handle_at(_selected.to_local(world))
 		if axis_sel != "":
+			_begin_gesture()
 			_selected.begin_axis_drag(axis_sel, world)
 			return
 	if _selected and tool == Tool.RESIZE:
 		var corner := _selected.handle_at(_selected.to_local(world))
 		if corner >= 0:
+			_begin_gesture()
 			_selected.begin_resize(corner)
 			return
 	for i in range(_pieces.size() - 1, -1, -1):
@@ -1389,6 +1625,7 @@ func _on_click(world: Vector2) -> void:
 				_tool_label.text = "Tool: Move"
 				_sync_move_arrows()
 				var axis := p.axis_handle_at(p.to_local(world))
+				_begin_gesture()
 				if axis != "":
 					p.begin_axis_drag(axis, world)
 				else:
@@ -1396,8 +1633,10 @@ func _on_click(world: Vector2) -> void:
 			elif tool == Tool.RESIZE:
 				var c := p.handle_at(p.to_local(world))
 				if c >= 0:
+					_begin_gesture()
 					p.begin_resize(c)
 			elif tool == Tool.ROTATE:
+				_begin_gesture()
 				_rotating = true
 				_rotate_start_angle = (world - p.position).angle()
 				_rotate_piece_start = p.rotation_deg
