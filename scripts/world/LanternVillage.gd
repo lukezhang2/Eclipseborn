@@ -94,21 +94,14 @@ func _build_all_lights() -> void:
 
 	## Street hearth by Lantern Keep — houses must actually cover this wash.
 	var street_lamp := LightSource.new()
-	street_lamp.position = Vector2(700, 280)
+	street_lamp.position = Vector2(748, 312)
 	street_lamp.light_kind = GameState.LightKind.HEARTH
-	street_lamp.radius = 300.0
-	street_lamp.shadow_length = 360.0
+	street_lamp.radius = 250.0
+	street_lamp.shadow_length = 300.0
 	street_lamp.pushable = false
 	street_lamp.name = "StreetLamp"
 	LevelData.tag(street_lamp, "lamp_street")
 	add_child(street_lamp)
-
-	var switch := LightSwitch.new()
-	switch.position = Vector2(372, FLOOR_TOP - 12)
-	switch.name = "StreetLampSwitch"
-	switch.starts_on = true
-	LevelData.tag(switch, "switch_street")
-	add_child(switch)
 
 	## Square hearth near the inn / tower approach.
 	var square_lamp := LightSource.new()
@@ -121,16 +114,14 @@ func _build_all_lights() -> void:
 	LevelData.tag(square_lamp, "lamp_square")
 	add_child(square_lamp)
 
-	## Demo door past the gearwright — lever opens it (also linkable in editor).
-	var gate := SwitchDoor.new()
-	gate.position = Vector2(1100, FLOOR_TOP)
-	gate.door_id = "door_street_a"
-	gate.height = 100.0
-	gate.width = 28.0
-	gate.starts_open = false
-	LevelData.tag(gate, "door_street_a")
-	add_child(gate)
-	switch.target_ids = PackedStringArray(["lamp_street", "lamp_square", "door_street_a"])
+	var switch := LightSwitch.new()
+	switch.position = Vector2(372, 488)
+	switch.name = "StreetLampSwitch"
+	switch.starts_on = true
+	switch.target_ids = PackedStringArray(["lamp_street", "lamp_square"])
+	LevelData.tag(switch, "switch_street")
+	add_child(switch)
+	## door_street_a removed in editor — kept out of play via removed_ids.
 
 
 func _build_houses() -> void:
@@ -167,9 +158,10 @@ func _build_light_puzzle() -> void:
 	var lamp := LightSource.new()
 	lamp.position = Vector2(1292, 238)
 	lamp.light_kind = GameState.LightKind.HEARTH
-	lamp.radius = 380.0
-	lamp.shadow_length = 460.0
+	lamp.radius = 250.0
+	lamp.shadow_length = 300.0
 	lamp.pushable = false
+	LevelData.tag(lamp, "lamp_puzzle")
 	add_child(lamp)
 
 	var crate := PushableBox.new()
@@ -180,25 +172,26 @@ func _build_light_puzzle() -> void:
 
 
 func _build_bg_gears_and_platforms() -> void:
-	var bg1 := LevelCommon.add_bg_gear(self, Vector2(1450, 300), 55.0, 18.0)
-	var plat1 := LevelCommon.add_steel_floor(self, 1544, 410, 140, 20)
-	var d1 := PlatformDriver.new()
-	d1.position = Vector2(1450, 300)
-	d1.move_amplitude = 90.0
-	d1.move_speed = 0.65
-	add_child(d1)
-	d1.bind(plat1, bg1)
-
-	var bg2 := LevelCommon.add_bg_gear(self, Vector2(2200, 260), 70.0, -14.0)
-	var plat2 := LevelCommon.add_steel_floor(self, 2300, FLOOR_TOP - 130, 120, 20)
-	var d2 := PlatformDriver.new()
-	d2.position = Vector2(2200, 260)
-	d2.move_amplitude = 70.0
-	d2.move_speed = 0.55
-	d2.vertical = true
-	add_child(d2)
-	d2.bind(plat2, bg2)
-
+	LevelCommon.add_moving_platform(self, Vector2(1544, 410), Vector2(140, 20), {
+		"move_amplitude": 90.0,
+		"move_speed": 0.65,
+		"vertical": false,
+		"rotate_while_moving": true,
+		"rotate_speed": 1.0,
+		"gear_dx": -94.0,
+		"gear_dy": -110.0,
+		"gear_radius": 55.0,
+	})
+	LevelCommon.add_moving_platform(self, Vector2(2300, FLOOR_TOP - 130), Vector2(120, 20), {
+		"move_amplitude": 70.0,
+		"move_speed": 0.55,
+		"vertical": true,
+		"rotate_while_moving": true,
+		"rotate_speed": 1.2,
+		"gear_dx": -100.0,
+		"gear_dy": -110.0,
+		"gear_radius": 70.0,
+	})
 	LevelCommon.add_bg_gear(self, Vector2(800, 240), 40.0, 10.0)
 	LevelCommon.add_bg_gear(self, Vector2(2600, 220), 48.0, -8.0)
 

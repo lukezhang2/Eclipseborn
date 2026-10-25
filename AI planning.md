@@ -14,6 +14,13 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 
 ## Cursor
 
+**Cursor rules (every prompt):**
+- Read this file (and Claude’s **Done recently**) before planning or implementing.
+- If the request is already claimed by Claude, or already listed under **Done recently** in either section, **stop** and tell the user.
+- Write the plan under **Active / claimed** before implementing.
+- On every update: bump `config/version` to **one patch above the highest** of Cursor Done / Claude Done / `origin/main`; run `bash tools/export-web.sh`; commit; push the branch **and** `main` (Pages).
+- Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
+
 ### Active / claimed
 _(none)_
 
@@ -21,6 +28,9 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.17 — Cursor workflow: always export+push main; sync version past Claude Done history
+- v0.1.16 — house fade + interact lock; editor platform path/spin + rotate tool; steam vents (includes village lamp sync)
+- v0.1.15 — sync lantern_village: remove door_street_a, lever→street+square only, lamp radii/pos; `index-0_1_15.pck`
 - v0.1.14 — Minecraft lever; editor lever→lantern/door links; switchable doors; checkpoint fast travel
 - v0.1.13 — geometry house cover (burns + washes), left exit door (Interact/walk), rebuilt village/cottage lights
 - v0.1.12 — house light occlusion (layer 128 burns), left Interact exit, rebuilt lantern washes, continuous zone map

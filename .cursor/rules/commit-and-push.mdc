@@ -10,8 +10,10 @@ After each completed change in this repo, commit the relevant files and push the
 - Do this when the change is finished, not after every keystroke.
 - Commit only the files that belong to that change.
 - The message should say why the change was made.
-- **Bump `application/config/version` in `project.godot` by one patch increment** (e.g. `0.1.1` → `0.1.2`) on every completed change so the title-menu version shows what build is live.
+- **Before bumping version:** `git fetch origin main`, read `AI planning.md` **Claude → Done recently** and the live `config/version` on `origin/main`. If Claude (or anyone) already shipped a version ≥ yours, set `application/config/version` to **one patch above the highest** of: your planned bump, Claude’s latest Done line, and `origin/main`’s `project.godot` version.
+- **Bump `application/config/version` in `project.godot` by one patch increment** (e.g. `0.1.1` → `0.1.2`) on every completed change so the title-menu version shows what build is live. Log the new version in **Cursor → Done recently**.
 - **Re-export the Web build** with `bash tools/export-web.sh` before pushing (installs Godot if needed; writes cache-busted `index-<ver>.pck`). A version bump without a new pack leaves GitHub Pages stuck on the old build.
+- **Push the feature branch and push the same tip to `main`** so GitHub Pages (source: `main`) updates after every prompt.
 - Never commit secrets (`.env`, credentials, keys).
 - Never force-push, skip hooks, or change git config.
 - If pushing to the protected branch needs approval, ask for it and finish the push.

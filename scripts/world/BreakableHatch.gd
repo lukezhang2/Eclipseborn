@@ -129,9 +129,5 @@ func _begin_transition() -> void:
 	GameState.last_position = spawn_in_next
 	GameState.checkpoint_position = spawn_in_next
 	GameState.pending_spawn = spawn_in_next
-	var tree := get_tree()
-	ZoneTransition.clear_stale(tree)
-	var fx := ZoneTransition.new()
-	tree.root.add_child(fx)
-	# Do not await here — this hatch is freed with the cottage scene.
-	fx.begin_scene_change(next_scene)
+	# Transition lives on the root so awaits survive this hatch freeing with the cottage.
+	ZoneTransition.go(get_tree(), next_scene, "Leaving the cottage…")

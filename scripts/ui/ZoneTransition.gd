@@ -19,17 +19,34 @@ func _process(delta: float) -> void:
 		_spin_gear.rotation_degrees += 48.0 * delta
 
 
+var _caption: String = ""
+
+
 ## Owned by this node (root child) so awaits survive change_scene_to_file.
-func begin_scene_change(scene_path: String) -> void:
+func begin_scene_change(scene_path: String, caption: String = "") -> void:
 	name = FX_NAME
+	_caption = caption
+	GameState.lock_interact(1.25)
 	await play_out()
 	var tree := get_tree()
 	if tree == null:
 		return
+	## Lock again across the load so held Interact can't fire in the new room.
+	GameState.lock_interact(1.0)
 	tree.change_scene_to_file(scene_path)
 	await tree.process_frame
 	await tree.process_frame
+	GameState.lock_interact(0.75)
 	await play_in()
+
+
+static func go(tree: SceneTree, scene_path: String, caption: String = "") -> void:
+	if tree == null:
+		return
+	clear_stale(tree)
+	var fx := ZoneTransition.new()
+	tree.root.add_child(fx)
+	fx.begin_scene_change(scene_path, caption)
 
 
 func play_out() -> void:
@@ -38,7 +55,7 @@ func play_out() -> void:
 	dim.name = "Dim"
 	dim.color = Color(0, 0, 0, 0)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
 	# Gear BEHIND the words — title-menu brass gear, translucent, keeps spinning.
@@ -51,7 +68,7 @@ func play_out() -> void:
 
 	var label := Label.new()
 	label.name = "Caption"
-	label.text = "Into Lantern Village…"
+	label.text = _caption if _caption != "" else "…"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_preset(Control.PRESET_CENTER)
@@ -70,12 +87,12 @@ func play_out() -> void:
 	_spinning = true
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(dim, "color:a", 1.0, 0.75)
-	tw.tween_property(_spin_gear, "modulate:a", 0.28, 0.5)
-	tw.tween_property(label, "modulate:a", 1.0, 0.45)
+	tw.tween_property(dim, "color:a", 1.0, 0.55)
+	tw.tween_property(_spin_gear, "modulate:a", 0.28, 0.4)
+	tw.tween_property(label, "modulate:a", 1.0, 0.35)
 	await tw.finished
 	# Hold a beat so the spinning gear reads while the zone loads.
-	await get_tree().create_timer(0.35).timeout
+	await get_tree().create_timer(0.3).timeout
 
 
 func play_in() -> void:

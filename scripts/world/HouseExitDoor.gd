@@ -1,6 +1,10 @@
 extends Interactable
 class_name HouseExitDoor
-## Door on the LEFT wall of a house interior — Interact (or walk up) to leave.
+## Door on the LEFT wall of a house interior — Interact to leave (fade + interact lock).
+
+
+var _walk_armed: bool = false
+var _player_inside: bool = false
 
 
 func _ready() -> void:
@@ -10,7 +14,7 @@ func _ready() -> void:
 	prompt_offset = Vector2(-40, -70)
 	_build_visual()
 	super._ready()
-	## Also leave by walking into the doorway (Area2D), in case Interact is rebound.
+	## Walk-exit only arms AFTER the player leaves the doorway once (spawn is inside it).
 	var area := Area2D.new()
 	area.name = "WalkExit"
 	area.collision_layer = 0
@@ -24,6 +28,16 @@ func _ready() -> void:
 	area.add_child(cs)
 	add_child(area)
 	area.body_entered.connect(_on_walk_enter)
+	area.body_exited.connect(_on_walk_exit)
+	## Delay arming so spawn overlap never auto-leaves.
+	call_deferred("_boot_guard")
+
+
+func _boot_guard() -> void:
+	await get_tree().create_timer(0.9).timeout
+	## Still require leaving the pad once if the player spawned on it.
+	if not _player_inside:
+		_walk_armed = true
 
 
 func _build_visual() -> void:
@@ -60,11 +74,22 @@ func _build_visual() -> void:
 
 
 func _on_walk_enter(body: Node) -> void:
-	if body is Player or (body and body.is_in_group("player")):
+	if not (body is Player or (body and body.is_in_group("player"))):
+		return
+	_player_inside = true
+	if _walk_armed and GameState.can_interact():
 		interact()
 
 
+func _on_walk_exit(body: Node) -> void:
+	if body is Player or (body and body.is_in_group("player")):
+		_player_inside = false
+		_walk_armed = true
+
+
 func interact() -> void:
+	if not GameState.can_interact():
+		return
 	var parent := get_parent()
 	var spawn := Vector2(520, 460)
 	if parent and "return_spawn" in parent:
@@ -72,4 +97,5 @@ func interact() -> void:
 	GameState.pending_spawn = spawn
 	GameState.current_zone_id = "lantern_village"
 	GameState.last_position = spawn
-	get_tree().change_scene_to_file("res://scenes/rooms/LanternVillage.tscn")
+	GameState.lock_interact(1.25)
+	ZoneTransition.go(get_tree(), "res://scenes/rooms/LanternVillage.tscn", "Back to the street…")

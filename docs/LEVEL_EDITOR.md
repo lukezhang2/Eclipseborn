@@ -28,6 +28,18 @@ Select a `prop_npc` piece → **NPC dialogue** box (one line per entry). Stored 
 - Saved as `"target_ids": ["lamp_street", "door_street_a"]` plus optional `"starts_on"`.
 - Doors respond to `set_on` (open when powered). Checkpoints: Interact to rest and open **Fast Travel**.
 
+### Moving platforms & rotate
+
+- Add **Moving platform** (`prop_platform`). Inspector fields:
+  - `move_amplitude` — how far along the main axis
+  - `move_speed` — travel rate
+  - `vertical` — move on Y instead of X
+  - `path_y_amplitude` — side wobble (elliptical path)
+  - `rotate_while_moving` / `rotate_speed` — spin the bg gear
+  - `rotate_platform` — spin the floor body itself
+- **Rotate** tool: click a piece and drag to set `"rotation"` (degrees).
+- **Steam vent** (`prop_vent`): transparent rising steam particles.
+
 ## Sharing a level with an AI
 
 1. Open the Level Editor (title → bottom-right hotspot → password).

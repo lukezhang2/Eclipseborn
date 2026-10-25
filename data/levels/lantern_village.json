@@ -202,7 +202,7 @@
 			"light_kind": 0,
 			"name": "Pushable Hearth Lamp",
 			"pushable": false,
-			"radius": 380,
+			"radius": 250,
 			"w": 28,
 			"x": 1292,
 			"y": 238
@@ -218,39 +218,44 @@
 			"light_kind": 0,
 			"name": "Street Lamp",
 			"pushable": false,
-			"radius": 280,
+			"radius": 250,
 			"w": 28,
-			"x": 700,
-			"y": 280
+			"x": 748,
+			"y": 312
 		},
 		{
-			"anchor": "bottom",
+			"anchor": "center",
 			"blocks_light": false,
 			"builtin": true,
-			"h": 40,
-			"id": "switch_street",
-			"kind": "prop_switch",
-			"layer": 1,
-			"name": "Lever",
-			"starts_on": true,
-			"target_ids": ["lamp_street", "lamp_square", "door_street_a"],
+			"h": 36,
+			"id": "lamp_square",
+			"kind": "light",
+			"layer": 2,
+			"light_kind": 0,
+			"name": "Square Lamp",
+			"pushable": false,
+			"radius": 260,
 			"w": 28,
-			"x": 372,
-			"y": 488
+			"x": 2000,
+			"y": 300
 		},
 		{
 			"anchor": "bottom",
 			"blocks_light": true,
 			"builtin": true,
-			"h": 100,
-			"id": "door_street_a",
-			"kind": "prop_door",
+			"h": 40,
+			"id": "switch_street",
+			"kind": "prop_switch",
 			"layer": 1,
-			"name": "Street Door",
-			"starts_open": false,
-			"w": 28,
-			"x": 1100,
-			"y": 500
+			"name": "Light Switch",
+			"starts_on": true,
+			"target_ids": [
+				"lamp_street",
+				"lamp_square"
+			],
+			"w": 24,
+			"x": 372,
+			"y": 488
 		},
 		{
 			"anchor": "center",
@@ -370,7 +375,9 @@
 			"y": 500
 		}
 	],
-	"removed_ids": [],
+	"removed_ids": [
+		"door_street_a"
+	],
 	"schema": 1,
 	"zone": "lantern_village"
 }

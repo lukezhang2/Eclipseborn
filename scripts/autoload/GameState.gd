@@ -60,8 +60,18 @@ var intro_cutscene_playing: bool = false
 var map_min_x: float = 40.0
 var map_max_x: float = 3900.0
 var _regen_accum: float = 0.0
+## Blocks Interact (and walk-exit) briefly after zone fades so held E can't bounce.
+var _interact_lock_until_msec: int = 0
 
 enum LightKind { HEARTH, CANDLE, MOON, CRIMSON, SUNSHAFT }
+
+
+func lock_interact(seconds: float = 0.85) -> void:
+	_interact_lock_until_msec = Time.get_ticks_msec() + int(maxf(0.0, seconds) * 1000.0)
+
+
+func can_interact() -> bool:
+	return Time.get_ticks_msec() >= _interact_lock_until_msec
 
 
 func _ready() -> void:

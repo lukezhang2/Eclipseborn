@@ -2,7 +2,7 @@ extends Control
 ## Level editor: fixed left toolbar, world SubViewport, bottom scrub for long levels.
 
 
-enum Tool { SELECT, MOVE, RESIZE, DELETE }
+enum Tool { SELECT, MOVE, RESIZE, ROTATE, DELETE }
 
 const PANEL_W := 320.0
 const BOTTOM_H := 44.0
@@ -33,6 +33,15 @@ var _dialogue_edit: TextEdit
 var _link_row: VBoxContainer
 var _link_list: ItemList
 var _syncing_links: bool = false
+var _platform_row: VBoxContainer
+var _plat_amp: SpinBox
+var _plat_speed: SpinBox
+var _plat_path_y: SpinBox
+var _plat_rot_speed: SpinBox
+var _plat_vertical: CheckButton
+var _plat_rotate: CheckButton
+var _plat_rotate_body: CheckButton
+var _syncing_platform: bool = false
 var _blocks_light_btn: CheckButton
 var _layer_label: Label
 var _status: Label
@@ -43,6 +52,9 @@ var _scrub_label: Label
 var _extent_label: Label
 var _panning: bool = false
 var _pan_last: Vector2 = Vector2.ZERO
+var _rotating: bool = false
+var _rotate_start_angle: float = 0.0
+var _rotate_piece_start: float = 0.0
 var _syncing_list: bool = false
 var _syncing_scrub: bool = false
 var _syncing_dialogue: bool = false
@@ -272,6 +284,60 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	)
 	_link_row.add_child(_link_list)
 
+	_platform_row = VBoxContainer.new()
+	_platform_row.visible = false
+	_platform_row.add_theme_constant_override("separation", 4)
+	col.add_child(_platform_row)
+	_platform_row.add_child(_section("Moving platform"))
+	_plat_amp = _spin_row(_platform_row, "Path distance", 10, 400, 5, 90)
+	_plat_amp.value_changed.connect(func(v: float) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.move_amplitude = v
+	)
+	_plat_speed = _spin_row(_platform_row, "Move speed", 0.05, 4.0, 0.05, 0.65)
+	_plat_speed.value_changed.connect(func(v: float) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.move_speed = v
+	)
+	_plat_path_y = _spin_row(_platform_row, "Side wobble", 0, 200, 5, 0)
+	_plat_path_y.value_changed.connect(func(v: float) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.path_y_amplitude = v
+	)
+	_plat_rot_speed = _spin_row(_platform_row, "Rotate speed", 0, 4.0, 0.05, 1.0)
+	_plat_rot_speed.value_changed.connect(func(v: float) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.rotate_speed = v
+	)
+	_plat_vertical = CheckButton.new()
+	_plat_vertical.text = "Vertical path"
+	_plat_vertical.toggled.connect(func(on: bool) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.move_vertical = on
+	)
+	_platform_row.add_child(_plat_vertical)
+	_plat_rotate = CheckButton.new()
+	_plat_rotate.text = "Rotate gear while moving"
+	_plat_rotate.toggled.connect(func(on: bool) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.rotate_while_moving = on
+	)
+	_platform_row.add_child(_plat_rotate)
+	_plat_rotate_body = CheckButton.new()
+	_plat_rotate_body.text = "Rotate platform body"
+	_plat_rotate_body.toggled.connect(func(on: bool) -> void:
+		if _syncing_platform or _selected == null:
+			return
+		_selected.rotate_platform = on
+	)
+	_platform_row.add_child(_plat_rotate_body)
+
 	col.add_child(_section("Light & layer"))
 	_blocks_light_btn = CheckButton.new()
 	_blocks_light_btn.text = "Blocks light"
@@ -314,7 +380,10 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	col.add_child(_section("Tools"))
 	var tools := HBoxContainer.new()
 	col.add_child(tools)
-	for pair in [["Select", Tool.SELECT], ["Move", Tool.MOVE], ["Resize", Tool.RESIZE], ["Delete", Tool.DELETE]]:
+	for pair in [
+		["Select", Tool.SELECT], ["Move", Tool.MOVE], ["Resize", Tool.RESIZE],
+		["Rotate", Tool.ROTATE], ["Delete", Tool.DELETE]
+	]:
 		var b := Button.new()
 		b.text = pair[0]
 		var t: Tool = pair[1]
@@ -346,6 +415,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	for item in [
 		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Crate"],
 		["light", "Lantern"], ["prop_switch", "Lever"], ["prop_door", "Door (switchable)"],
+		["prop_platform", "Moving platform"], ["prop_vent", "Steam vent"],
 		["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
 		["prop_npc", "NPC / Shopkeeper"], ["prop_desk", "Desk"],
 	]:
@@ -407,6 +477,20 @@ func _section(t: String) -> Label:
 	l.text = t
 	l.add_theme_color_override("font_color", Color(0.75, 0.7, 0.55))
 	return l
+
+
+func _spin_row(parent: Control, label: String, mn: float, mx: float, step: float, val: float) -> SpinBox:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	row.add_child(_lbl(label))
+	var spin := SpinBox.new()
+	spin.min_value = mn
+	spin.max_value = mx
+	spin.step = step
+	spin.value = val
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spin)
+	return spin
 
 
 func _piece_right_edge(p: EditorPiece) -> float:
@@ -512,7 +596,12 @@ func _load_zone() -> void:
 		var merged: Dictionary = cat.duplicate(true)
 		if overrides.has(id):
 			var ov: Dictionary = overrides[id]
-			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor", "blocks_light", "layer", "target_ids", "starts_on", "starts_open"]:
+			for key in [
+				"x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor",
+				"blocks_light", "layer", "target_ids", "starts_on", "starts_open", "rotation",
+				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
+				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear"
+			]:
 				if ov.has(key):
 					merged[key] = ov[key]
 			overrides.erase(id)
@@ -572,13 +661,25 @@ func _update_inspector() -> void:
 	_link_row.visible = is_switch
 	if is_switch:
 		_refresh_link_list()
+	var is_plat := _selected != null and PieceSpecs.is_platform_kind(_selected.catalog_kind)
+	_platform_row.visible = is_plat
+	if is_plat:
+		_syncing_platform = true
+		_plat_amp.value = _selected.move_amplitude
+		_plat_speed.value = _selected.move_speed
+		_plat_path_y.value = _selected.path_y_amplitude
+		_plat_rot_speed.value = _selected.rotate_speed
+		_plat_vertical.set_pressed_no_signal(_selected.move_vertical)
+		_plat_rotate.set_pressed_no_signal(_selected.rotate_while_moving)
+		_plat_rotate_body.set_pressed_no_signal(_selected.rotate_platform)
+		_syncing_platform = false
 	_blocks_light_btn.disabled = _selected == null
 	if _selected:
 		_blocks_light_btn.set_pressed_no_signal(_selected.blocks_light)
 		var rel := _selected.draw_layer - PieceSpecs.PLAYER_DRAW_LAYER
 		var rel_s := ("+%d" % rel) if rel > 0 else str(rel)
-		_layer_label.text = "Piece layer: %d (%s vs player)  |  Player layer: %d" % [
-			_selected.draw_layer, rel_s, PieceSpecs.PLAYER_DRAW_LAYER
+		_layer_label.text = "Piece layer: %d (%s vs player)  |  rot %.0f°  |  Player: %d" % [
+			_selected.draw_layer, rel_s, _selected.rotation_deg, PieceSpecs.PLAYER_DRAW_LAYER
 		]
 	else:
 		_blocks_light_btn.set_pressed_no_signal(false)
@@ -664,6 +765,8 @@ func _add_piece() -> void:
 	## Snap floor-sitting kinds onto the zone floor so crates aren't buried.
 	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc", "prop_switch", "prop_door"]:
 		y = PieceSpecs.sit_on_floor_y(_palette_id, floor_top, sz)
+	elif _palette_id == "prop_platform":
+		y = floor_top - 90.0
 	var d := {
 		"id": "%s_%d" % [_palette_id, Time.get_ticks_msec()],
 		"name": _palette_id.replace("prop_", "").capitalize(),
@@ -691,8 +794,21 @@ func _add_piece() -> void:
 		d["starts_open"] = false
 	if _palette_id == "prop_checkpoint":
 		d["name"] = "Rest Hearth"
+	if _palette_id == "prop_platform":
+		d["name"] = "Moving Platform"
+		d["move_amplitude"] = 90
+		d["move_speed"] = 0.65
+		d["vertical"] = false
+		d["path_y_amplitude"] = 0
+		d["rotate_while_moving"] = true
+		d["rotate_speed"] = 1.0
+		d["rotate_platform"] = false
+		d["with_gear"] = true
+	if _palette_id == "prop_vent":
+		d["name"] = "Steam Vent"
 	d["blocks_light"] = PieceSpecs.default_blocks_light(_palette_id)
 	d["layer"] = PieceSpecs.default_draw_layer(_palette_id)
+	d["rotation"] = 0
 	_spawn_piece_dict(d)
 	_select(_pieces.back())
 	tool = Tool.MOVE
@@ -892,9 +1008,11 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			var world := _vp_to_world(mb.position)
 			if mb.pressed:
 				_on_click(world)
-			elif _selected and tool != Tool.DELETE:
-				_selected.end_interact()
-				_refresh_world_extent()
+			else:
+				_rotating = false
+				if _selected and tool != Tool.DELETE:
+					_selected.end_interact()
+					_refresh_world_extent()
 			_vp_container.accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -907,7 +1025,12 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 		if _selected == null or tool == Tool.DELETE:
 			return
 		var world := _vp_to_world(mm.position)
-		if tool == Tool.MOVE or _selected._dragging:
+		if tool == Tool.ROTATE and _rotating:
+			var ang := (world - _selected.position).angle()
+			var delta_deg := rad_to_deg(ang - _rotate_start_angle)
+			_selected.set_rotation_deg(_rotate_piece_start + delta_deg)
+			_update_inspector()
+		elif tool == Tool.MOVE or _selected._dragging:
 			_selected.drag_to(world)
 			if snap_enabled:
 				_snap_selected_to_edges()
@@ -1015,5 +1138,9 @@ func _on_click(world: Vector2) -> void:
 				var c := p.handle_at(p.to_local(world))
 				if c >= 0:
 					p.begin_resize(c)
+			elif tool == Tool.ROTATE:
+				_rotating = true
+				_rotate_start_angle = (world - p.position).angle()
+				_rotate_piece_start = p.rotation_deg
 			return
 	_select(null)

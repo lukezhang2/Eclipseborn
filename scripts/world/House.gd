@@ -85,18 +85,22 @@ func _apply_light_block(hx: float) -> void:
 func _process(_delta: float) -> void:
 	var p = GameState.player
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 42.0
-	_prompt.visible = near
+	_prompt.visible = near and GameState.can_interact()
 	if not near:
 		return
 	_prompt.text = "%s — Enter %s" % [InputMapManager.get_slot_text("interact", 0), house_name]
-	if Input.is_action_just_pressed("interact"):
+	if GameState.can_interact() and Input.is_action_just_pressed("interact"):
 		_enter()
 
 
 func _enter() -> void:
+	if not GameState.can_interact():
+		return
 	GameState.set_meta("pending_house_id", house_id)
-	## Land at the left-wall exit door inside.
-	GameState.pending_spawn = Vector2(120, 460)
+	## Land near the left exit, but not overlapping the walk-exit pad.
+	GameState.pending_spawn = Vector2(160, 460)
 	GameState.current_zone_id = house_id
 	GameState.last_position = GameState.pending_spawn
-	get_tree().change_scene_to_file(interior_scene)
+	GameState.lock_interact(1.25)
+	var title := house_name if house_name != "" else "the house"
+	ZoneTransition.go(get_tree(), interior_scene, "Entering %s…" % title)

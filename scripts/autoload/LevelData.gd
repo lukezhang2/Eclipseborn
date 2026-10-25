@@ -156,6 +156,20 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			LevelCommon.add_bench(parent, pos)
 		"prop_vent":
 			LevelCommon.add_steam_vent(parent, pos)
+		"prop_platform":
+			var cfg := {
+				"move_amplitude": float(p.get("move_amplitude", p.get("amplitude", 90.0))),
+				"move_speed": float(p.get("move_speed", p.get("speed", 0.65))),
+				"vertical": bool(p.get("vertical", false)),
+				"path_y_amplitude": float(p.get("path_y_amplitude", 0.0)),
+				"rotate_while_moving": bool(p.get("rotate_while_moving", p.get("rotate", true))),
+				"rotate_speed": float(p.get("rotate_speed", 1.0)),
+				"rotate_platform": bool(p.get("rotate_platform", false)),
+				"rotation": float(p.get("rotation", 0.0)),
+				"with_gear": bool(p.get("with_gear", true)),
+			}
+			var plat := LevelCommon.add_moving_platform(parent, pos, size, cfg)
+			LevelData.tag(plat, str(p.get("id", "")))
 		"prop_crate":
 			LevelCommon.add_crate_prop(parent, pos, size)
 		"prop_checkpoint":
