@@ -81,12 +81,11 @@ func _draw() -> void:
 
 
 func _draw_parchment(wr: Vector2) -> void:
-	draw_rect(Rect2(Vector2.ZERO, wr), Color(0.12, 0.1, 0.09, 0.92), true)
-	## Soft vignette bands
-	draw_rect(Rect2(0, 0, wr.x, 18), Color(0.06, 0.05, 0.04, 0.55), true)
-	draw_rect(Rect2(0, wr.y - 22, wr.x, 22), Color(0.06, 0.05, 0.04, 0.55), true)
-	## Faint grid of stitch lines (map cloth)
-	var col := Color(0.35, 0.28, 0.2, 0.12)
+	## Warm parchment so the side-view picture reads even under fog.
+	draw_rect(Rect2(Vector2.ZERO, wr), Color(0.22, 0.18, 0.14, 0.96), true)
+	draw_rect(Rect2(0, 0, wr.x, 18), Color(0.12, 0.1, 0.08, 0.4), true)
+	draw_rect(Rect2(0, wr.y - 22, wr.x, 22), Color(0.12, 0.1, 0.08, 0.4), true)
+	var col := Color(0.4, 0.32, 0.22, 0.14)
 	var x := 40.0
 	while x < wr.x - 20.0:
 		draw_line(Vector2(x, 24), Vector2(x, wr.y - 28), col, 1.0)
@@ -101,37 +100,40 @@ func _draw_continuous_ground(wr: Vector2) -> void:
 	var floor_y := left.y
 	var roof_y := roof_l.y
 	var span_w := right.x - left.x
-	## Soft depth wash (far wall → mid air) so the strip reads as one scene
+	## Air / far wall wash — light enough to stay visible under fog
 	draw_rect(
 		Rect2(Vector2(left.x, roof_y), Vector2(span_w, floor_y - roof_y)),
-		Color(0.14, 0.12, 0.16, 0.7),
+		Color(0.32, 0.28, 0.3, 0.85),
 		true
 	)
-	## Mid-tone band suggests wall height along the whole zone
+	## Wall band
 	var mid_y := lerpf(roof_y, floor_y, 0.35)
 	draw_rect(
 		Rect2(Vector2(left.x, mid_y), Vector2(span_w, floor_y - mid_y)),
-		Color(0.2, 0.17, 0.15, 0.45),
+		Color(0.38, 0.32, 0.26, 0.7),
 		true
 	)
 	## Floor band
 	var floor_h := maxf(14.0, wr.y - floor_y - 28.0)
 	draw_rect(
 		Rect2(Vector2(left.x, floor_y), Vector2(span_w, floor_h)),
-		Color(0.28, 0.26, 0.24, 0.95),
+		Color(0.42, 0.36, 0.28, 0.98),
 		true
 	)
-	draw_line(Vector2(left.x, floor_y), Vector2(right.x, floor_y), Color(0.7, 0.58, 0.38, 0.85), 2.5)
-	## Thin roof rail
-	draw_line(Vector2(left.x, roof_y), Vector2(right.x, roof_y), Color(0.45, 0.38, 0.3, 0.5), 1.5)
-	## Path ticks along the floor so travel distance is readable
-	var tick_col := Color(0.55, 0.45, 0.3, 0.35)
+	draw_line(Vector2(left.x, floor_y), Vector2(right.x, floor_y), Color(0.82, 0.68, 0.42, 0.95), 3.0)
+	draw_line(Vector2(left.x, roof_y), Vector2(right.x, roof_y), Color(0.55, 0.45, 0.32, 0.65), 2.0)
+	## Path ticks
+	var tick_col := Color(0.65, 0.52, 0.32, 0.45)
 	var wx := world_x_range.x
 	var step := 200.0
 	while wx <= world_x_range.y + 0.1:
 		var tx := _world_to_map(Vector2(wx, world_y_range.y)).x
-		draw_line(Vector2(tx, floor_y), Vector2(tx, floor_y + 8.0), tick_col, 1.0)
+		draw_line(Vector2(tx, floor_y), Vector2(tx, floor_y + 10.0), tick_col, 1.5)
 		wx += step
+	## Soft room dividers so the continuous strip still reads as a mapped path
+	for room in rooms:
+		var x0 := _world_to_map(Vector2(float(room.get("x0", 0)), world_y_range.y)).x
+		draw_line(Vector2(x0, roof_y + 4.0), Vector2(x0, floor_y), Color(0.5, 0.4, 0.28, 0.28), 1.0)
 
 
 func _draw_landmarks(known_only: bool) -> void:
@@ -149,8 +151,8 @@ func _draw_landmarks(known_only: bool) -> void:
 		var wy := float(lm.get("y", world_y_range.y))
 		var p := _world_to_map(Vector2(wx, wy))
 		var kind := str(lm.get("kind", "mark"))
-		## Unknown: readable silhouette under the veil. Known: full detail + label.
-		var alpha := 1.0 if known else 0.55
+		## Unknown silhouettes stay bold enough to read through soft fog.
+		var alpha := 1.0 if known else 0.75
 		match kind:
 			"house":
 				_draw_house_mark(p, alpha)
@@ -182,34 +184,38 @@ func _draw_house_mark(p: Vector2, a: float) -> void:
 	var wall := PackedVector2Array([
 		p + Vector2(-18, 0), p + Vector2(18, 0), p + Vector2(18, -28), p + Vector2(-18, -28)
 	])
-	draw_colored_polygon(wall, Color(0.32, 0.26, 0.22, a))
+	draw_colored_polygon(wall, Color(0.48, 0.38, 0.3, a))
 	var roof := PackedVector2Array([
 		p + Vector2(-22, -28), p + Vector2(22, -28), p + Vector2(0, -44)
 	])
-	draw_colored_polygon(roof, Color(0.45, 0.22, 0.18, a))
+	draw_colored_polygon(roof, Color(0.62, 0.3, 0.22, a))
 
 
 func _draw_hatch_mark(p: Vector2, a: float) -> void:
-	draw_rect(Rect2(p + Vector2(-16, -4), Vector2(32, 8)), Color(0.4, 0.35, 0.28, a), true)
-	draw_line(p + Vector2(-16, 0), p + Vector2(16, 0), Color(0.7, 0.55, 0.3, a), 2.0)
+	draw_rect(Rect2(p + Vector2(-18, -6), Vector2(36, 10)), Color(0.55, 0.45, 0.32, a), true)
+	draw_line(p + Vector2(-18, 0), p + Vector2(18, 0), Color(0.85, 0.65, 0.35, a), 2.5)
 
 
 func _draw_tower_mark(p: Vector2, a: float) -> void:
-	draw_rect(Rect2(p + Vector2(-12, -70), Vector2(24, 70)), Color(0.3, 0.28, 0.26, a), true)
-	draw_circle(p + Vector2(0, -78), 10.0, Color(0.5, 0.42, 0.28, a))
+	draw_rect(Rect2(p + Vector2(-14, -78), Vector2(28, 78)), Color(0.45, 0.4, 0.36, a), true)
+	draw_circle(p + Vector2(0, -86), 12.0, Color(0.65, 0.52, 0.32, a))
 
 
 func _draw_lamp_mark(p: Vector2, a: float) -> void:
-	draw_circle(p + Vector2(0, -10), 6.0, Color(1.0, 0.75, 0.35, a * 0.85))
-	draw_line(p + Vector2(0, -4), p + Vector2(0, 0), Color(0.5, 0.45, 0.35, a), 2.0)
+	draw_circle(p + Vector2(0, -14), 8.0, Color(1.0, 0.78, 0.35, a * 0.9))
+	draw_line(p + Vector2(0, -6), p + Vector2(0, 0), Color(0.6, 0.5, 0.35, a), 2.5)
 
 
 func _draw_platform_mark(p: Vector2, a: float) -> void:
-	draw_rect(Rect2(p + Vector2(-20, -6), Vector2(40, 6)), Color(0.4, 0.38, 0.36, a), true)
+	draw_rect(Rect2(p + Vector2(-24, -10), Vector2(48, 10)), Color(0.55, 0.48, 0.4, a), true)
+	draw_rect(Rect2(p + Vector2(-20, -28), Vector2(8, 18)), Color(0.45, 0.4, 0.35, a * 0.85), true)
+	draw_rect(Rect2(p + Vector2(12, -28), Vector2(8, 18)), Color(0.45, 0.4, 0.35, a * 0.85), true)
 
 
 func _draw_generic_mark(p: Vector2, a: float) -> void:
-	draw_circle(p + Vector2(0, -8), 5.0, Color(0.55, 0.5, 0.4, a))
+	## Tall wall / obstacle silhouette
+	draw_rect(Rect2(p + Vector2(-8, -40), Vector2(16, 40)), Color(0.5, 0.42, 0.34, a), true)
+	draw_circle(p + Vector2(0, -8), 6.0, Color(0.62, 0.52, 0.4, a))
 
 
 func _draw_fog(wr: Vector2) -> void:
@@ -226,19 +232,9 @@ func _draw_fog(wr: Vector2) -> void:
 		var w := maxf(4.0, x1 - x0)
 		draw_rect(
 			Rect2(Vector2(x0, pad), Vector2(w, wr.y - pad * 2.0)),
-			Color(0.05, 0.04, 0.06, 0.38),
+			Color(0.08, 0.06, 0.05, 0.22),
 			true
 		)
-		## Hatch marks so fogged span still feels mapped, not empty.
-		var hatch_y := pad + 10.0
-		while hatch_y < wr.y - pad - 8.0:
-			draw_line(
-				Vector2(x0 + 4.0, hatch_y),
-				Vector2(x0 + w - 4.0, hatch_y + 10.0),
-				Color(0.2, 0.17, 0.14, 0.18),
-				1.0
-			)
-			hatch_y += 18.0
 
 
 func _draw_frame(wr: Vector2) -> void:
