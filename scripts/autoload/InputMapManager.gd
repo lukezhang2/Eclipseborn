@@ -15,6 +15,7 @@ const ACTIONS := [
 	"jump",
 	"attack",
 	"zone_map",
+	"inventory",
 	"menu",
 ]
 
@@ -30,6 +31,7 @@ const DISPLAY_NAMES := {
 	"jump": "Jump",
 	"attack": "Attack",
 	"zone_map": "Zone Map",
+	"inventory": "Inventory",
 	"menu": "Menu",
 }
 
@@ -68,6 +70,9 @@ func _ensure_extra_actions() -> void:
 	# Saved controls from before Interact existed: give it E unless the player rebound E elsewhere.
 	if InputMap.action_get_events("interact").is_empty() and not _key_in_use(KEY_E):
 		_set_slots("interact", [KEY_E, KEY_NONE])
+	## Inventory defaults to B when unbound / free.
+	if InputMap.action_get_events("inventory").is_empty() and not _key_in_use(KEY_B):
+		_set_slots("inventory", [KEY_B, KEY_NONE])
 	# Ensure movement always has WASD + arrows when missing a slot.
 	_ensure_slot_key("move_left", 0, KEY_A)
 	_ensure_slot_key("move_left", 1, KEY_LEFT)
@@ -201,6 +206,7 @@ func reset_defaults() -> void:
 	_set_slots("jump", [KEY_SPACE, KEY_NONE])
 	_set_slots("attack", [KEY_F, KEY_NONE])
 	_set_slots("zone_map", [KEY_TAB, KEY_NONE])
+	_set_slots("inventory", [KEY_B, KEY_NONE])
 	_set_slots("menu", [KEY_ESCAPE, KEY_NONE])
 	save_bindings()
 	bindings_changed.emit()

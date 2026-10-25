@@ -214,6 +214,8 @@ func load_game(slot: int) -> bool:
 		GameState.collected_ids = []
 	var stock_raw = cfg.get_value("world", "shop_stock", {})
 	GameState.shop_stock = stock_raw if typeof(stock_raw) == TYPE_DICTIONARY else {}
+	var inv_raw = cfg.get_value("world", "inventory", {})
+	GameState.inventory = inv_raw if typeof(inv_raw) == TYPE_DICTIONARY else {}
 	## Prefer JSON sidecar / checkpoints_json — nested Array-of-Dict can drop on web reload.
 	var hearths: Array = []
 	var json_field = cfg.get_value("map", "checkpoints_json", "")
@@ -230,6 +232,7 @@ func load_game(slot: int) -> bool:
 	GameState.health_changed.emit(GameState.health, GameState.max_health)
 	GameState.shade_changed.emit(GameState.shade)
 	GameState.currency_changed.emit(GameState.currency)
+	GameState.inventory_changed.emit(GameState.inventory)
 	return true
 
 
@@ -320,6 +323,7 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("world", "broken", GameState.broken_ids)
 	cfg.set_value("world", "collected", GameState.collected_ids)
 	cfg.set_value("world", "shop_stock", GameState.shop_stock)
+	cfg.set_value("world", "inventory", GameState.inventory)
 	var err := cfg.save(slot_path(slot))
 	_write_hearths_sidecar(slot)
 	_persist_web_fs()

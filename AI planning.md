@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.50 — Inventory on B (+ HUD Bag button) with shop-style fade; supplies stash/use, abilities + key items; `index-0_1_50.pck`
 - v0.1.49 — player map: textured side-view of every zone piece, whole zone fitted in the panel; `index-0_1_49.pck`
 - v0.1.48 — village purple full-field BG + top-only fire fringe (nudged up); editor Pieces/Background mode; `index-0_1_48.pck`
 - v0.1.47 — Clockwork Tower ladders (hold W climb + climb anim), full lobby floor (no hole), story floors + denser brick backdrop; `index-0_1_47.pck`

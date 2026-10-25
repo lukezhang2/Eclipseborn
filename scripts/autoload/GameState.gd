@@ -5,6 +5,7 @@ signal health_changed(current: int, maximum: int)
 signal shade_changed(ratio: float)
 signal currency_changed(amount: int)
 signal currency_hud_reveal
+signal inventory_changed(items: Dictionary)
 signal died
 signal respawned
 signal ability_unlocked(ability_id: String)
@@ -51,6 +52,8 @@ var collected_ids: Array = []
 
 var currency: int = 0
 var currency_hud_unlocked: bool = false
+## Bag counts for useable supplies: item_id -> int.
+var inventory: Dictionary = {}
 ## Remaining shop stock overrides: "zone/npc_id/item_id" -> int (−1 infinite, else remaining).
 var shop_stock: Dictionary = {}
 
@@ -109,6 +112,7 @@ func reset_run() -> void:
 	umbra = 0.0
 	currency = 0
 	currency_hud_unlocked = false
+	inventory = {}
 	shop_stock = {}
 	has_double_jump = false
 	has_shadow_grip = false
@@ -134,6 +138,7 @@ func reset_run() -> void:
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
 	currency_changed.emit(currency)
+	inventory_changed.emit(inventory)
 
 
 ## True after the Wickwright defeat cutscene has run (opens village descent hole).
@@ -169,6 +174,47 @@ func spend_currency(amount: int) -> bool:
 		return false
 	currency -= amount
 	currency_changed.emit(currency)
+	return true
+
+
+func get_inventory_count(item_id: String) -> int:
+	if item_id == "" or not inventory.has(item_id):
+		return 0
+	return maxi(0, int(inventory[item_id]))
+
+
+func add_inventory_item(item_id: String, amount: int = 1) -> void:
+	if item_id == "" or amount <= 0:
+		return
+	inventory[item_id] = get_inventory_count(item_id) + amount
+	inventory_changed.emit(inventory)
+
+
+func use_inventory_item(item_id: String) -> bool:
+	## Consumes one supply from the bag and applies its effect.
+	if get_inventory_count(item_id) <= 0:
+		return false
+	var it := ShopCatalog.get_item(item_id)
+	if str(it.get("kind", "")) != "consumable":
+		return false
+	match item_id:
+		"heal_tonic":
+			if health >= max_health:
+				return false
+			heal(40)
+		"shade_vial":
+			if shade >= 0.999:
+				return false
+			shade = 1.0
+			shade_changed.emit(shade)
+		_:
+			return false
+	var left := get_inventory_count(item_id) - 1
+	if left <= 0:
+		inventory.erase(item_id)
+	else:
+		inventory[item_id] = left
+	inventory_changed.emit(inventory)
 	return true
 
 
