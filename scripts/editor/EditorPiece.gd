@@ -36,6 +36,8 @@ var target_zone: String = "lantern_village"
 var spawn_x: float = 520.0
 var spawn_y: float = 460.0
 var travel_caption: String = ""
+## WorldArt style for prop_backdrop (0 brick&copper, 1 teal foundry, 2 riveted bulkhead).
+var art_style: int = 0
 ## If true, gameplay should occlude lantern washes (no player collision required).
 var blocks_light: bool = true
 ## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
@@ -128,6 +130,9 @@ func to_dict() -> Dictionary:
 		d["kind"] = "background"
 	elif has_meta("piece_kind"):
 		d["kind"] = str(get_meta("piece_kind"))
+	if catalog_kind == "prop_backdrop" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_backdrop"):
+		d["kind"] = "prop_backdrop"
+		d["style"] = art_style
 	if PieceSpecs.supports_tint(catalog_kind) and tint_color != Color.WHITE:
 		d["color"] = tint_color.to_html(false)
 	if catalog_kind == "prop_npc" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_npc"):
@@ -258,6 +263,8 @@ func apply_dict(d: Dictionary) -> void:
 				spawn_x = float(d.get("spawn_x", spawn_x))
 				spawn_y = float(d.get("spawn_y", spawn_y))
 				travel_caption = str(d.get("caption", d.get("travel_caption", travel_caption)))
+			if k == "prop_backdrop":
+				art_style = clampi(int(d.get("style", 0)), 0, 2)
 	if display_name == "" or display_name == "Piece":
 		display_name = piece_id if piece_id != "" else k
 	_rebuild()
@@ -440,6 +447,17 @@ func _rebuild() -> void:
 		Kind.PROP:
 			if catalog_kind == "prop_text":
 				_visual.texture = _make_text_tex(int(size.x), int(size.y))
+			elif catalog_kind == "prop_backdrop":
+				## Live WorldArt sample so styles read clearly in the editor.
+				## BACKDROP draws upward from its origin (bottom-center).
+				_visual.visible = false
+				var art := WorldArt.new()
+				art.kind = WorldArt.Kind.BACKDROP
+				art.style = clampi(art_style, 0, 2)
+				art.size = size
+				## Body is AABB-centered; BACKDROP origin is bottom-center of the panel.
+				art.position = Vector2(0, size.y * 0.5)
+				_body.add_child(art)
 			else:
 				_visual.texture = _make_prop_tex(int(size.x), int(size.y), catalog_kind)
 		_:
@@ -448,10 +466,11 @@ func _rebuild() -> void:
 			else:
 				_visual.texture = _make_block_tex(int(size.x), int(size.y), catalog_kind)
 	## Texture pixels == world size (same contract as PushableBox / steel floors).
-	var tw := maxi(_visual.texture.get_width(), 1)
-	var th := maxi(_visual.texture.get_height(), 1)
-	_visual.scale = Vector2(size.x / float(tw), size.y / float(th))
-	if PieceSpecs.supports_tint(catalog_kind) and catalog_kind != "background" and catalog_kind != "prop_text":
+	if _visual.texture != null:
+		var tw := maxi(_visual.texture.get_width(), 1)
+		var th := maxi(_visual.texture.get_height(), 1)
+		_visual.scale = Vector2(size.x / float(tw), size.y / float(th))
+	if PieceSpecs.supports_tint(catalog_kind) and catalog_kind != "background" and catalog_kind != "prop_text" and catalog_kind != "prop_backdrop":
 		_visual.modulate = tint_color
 	_body.add_child(_visual)
 	if catalog_kind == "prop_text":

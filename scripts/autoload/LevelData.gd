@@ -15,9 +15,55 @@ extends Node
 const USER_DIR := "user://editor/"
 const RES_DIR := "res://data/levels/"
 
+## In-memory editor overlays for this browser/tab session only.
+## Refresh clears them — browser IndexedDB copies of user://editor/ are wiped on boot.
+static var _session_overlays: Dictionary = {}
+
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(USER_DIR)
+	## Drop leftover editor JSON from a previous page load (web IDBFS / desktop user://).
+	clear_session_editor_overlays(true)
+	if OS.has_feature("web"):
+		## IDBFS may finish mounting after the first frames — wipe again so restored files die.
+		call_deferred("_clear_editor_after_idbfs")
+
+
+func _clear_editor_after_idbfs() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	clear_user_editor_files_only()
+	await get_tree().create_timer(0.75).timeout
+	clear_user_editor_files_only()
+
+
+## Wipe session memory + on-disk editor overlays (call on boot / refresh).
+static func clear_session_editor_overlays(wipe_disk: bool = true) -> void:
+	_session_overlays.clear()
+	if wipe_disk:
+		clear_user_editor_files_only()
+
+
+static func clear_user_editor_files_only() -> void:
+	var dir := DirAccess.open(USER_DIR)
+	if dir == null:
+		DirAccess.make_dir_recursive_absolute(USER_DIR)
+		dir = DirAccess.open(USER_DIR)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var name := dir.get_next()
+	while name != "":
+		if not dir.current_is_dir() and name.ends_with(".json"):
+			dir.remove(name)
+		name = dir.get_next()
+	dir.list_dir_end()
+	## Persist the empty editor folder to IndexedDB so a refresh stays clean.
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval(
+			"(function(){try{if(typeof FS!=='undefined'&&FS.syncfs){FS.syncfs(false,function(){});}}catch(e){}})();",
+			true
+		)
 
 
 static func path_for(zone_id: String, prefer_user: bool = true) -> String:
@@ -31,7 +77,11 @@ static func path_for(zone_id: String, prefer_user: bool = true) -> String:
 
 
 static func load_raw(zone_id: String) -> Dictionary:
-	var path := path_for(zone_id)
+	## Prefer this tab's session overlay (survives playtest, dies on refresh).
+	if _session_overlays.has(zone_id):
+		return (_session_overlays[zone_id] as Dictionary).duplicate(true)
+	## Never load durable browser editor JSON after a refresh — only repo overlays.
+	var path := RES_DIR + zone_id + ".json"
 	if not FileAccess.file_exists(path):
 		return {"schema": PieceSpecs.SCHEMA_VERSION, "zone": zone_id, "pieces": [], "removed_ids": []}
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -84,11 +134,18 @@ static func backdrop_for(zone_id: String) -> Dictionary:
 static func save_raw(zone_id: String, data: Dictionary, to_res: bool = false) -> Error:
 	if not data.has("schema"):
 		data["schema"] = PieceSpecs.SCHEMA_VERSION
-	var path := (RES_DIR if to_res else USER_DIR) + zone_id + ".json"
-	if to_res:
-		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(RES_DIR))
-	else:
+	if not to_res:
+		## Session-only: playtest in this tab sees edits; refresh discards them.
+		_session_overlays[zone_id] = data.duplicate(true)
+		## Also mirror to user:// for mid-session playtest loads that race memory.
 		DirAccess.make_dir_recursive_absolute(USER_DIR)
+		var user_path := USER_DIR + zone_id + ".json"
+		var uf := FileAccess.open(user_path, FileAccess.WRITE)
+		if uf:
+			uf.store_string(JSON.stringify(data, "\t"))
+		return OK
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(RES_DIR))
+	var path := RES_DIR + zone_id + ".json"
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return ERR_CANT_CREATE
@@ -186,6 +243,13 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 		"background":
 			var bg := LevelCommon.add_brick_wall_face(parent, pos.x, pos.y, size.x, size.y)
 			_apply_tint(bg, tint)
+			LevelData.tag(bg, str(p.get("id", "")))
+		"prop_backdrop":
+			var mural := LevelCommon.add_art_backdrop(
+				parent, pos, size, clampi(int(p.get("style", 0)), 0, 2)
+			)
+			_apply_tint(mural, tint)
+			LevelData.tag(mural, str(p.get("id", "")))
 		"block", "floor":
 			var fl := LevelCommon.add_steel_floor(parent, pos.x, pos.y, size.x, maxf(size.y, 16.0))
 			_apply_tint(fl, tint)
@@ -324,6 +388,9 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			LevelData.tag(enemy, str(p.get("id", "")))
 		"prop_pipe":
 			LevelCommon.add_pipe(parent, pos + Vector2(-size.x * 0.5, 0), pos + Vector2(size.x * 0.5, 0), maxf(size.y, 8.0))
+		"prop_valve":
+			var valve := LevelCommon.add_valve(parent, pos)
+			LevelData.tag(valve, str(p.get("id", "")))
 		"prop_tower":
 			var tower_scr: GDScript = load("res://scripts/world/ClockworkTower.gd") as GDScript
 			var tower: Node = tower_scr.new()

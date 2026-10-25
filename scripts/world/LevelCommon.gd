@@ -220,6 +220,21 @@ static func add_bg_gear(parent: Node2D, pos: Vector2, radius: float = 50.0, spee
 	return g
 
 
+static func add_art_backdrop(parent: Node2D, pos: Vector2, size: Vector2, style: int = 0) -> Node2D:
+	## Placeable WorldArt backdrop panel (brick&copper / teal foundry / riveted bulkhead).
+	var holder := Node2D.new()
+	holder.position = pos
+	holder.z_index = PieceSpecs.default_draw_layer("prop_backdrop")
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.BACKDROP
+	art.style = clampi(style, 0, 2)
+	art.size = size
+	## WorldArt BACKDROP draws upward from origin (bottom-anchored rect).
+	holder.add_child(art)
+	parent.add_child(holder)
+	return holder
+
+
 static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float, height: float) -> Node2D:
 	## Distant mural — darker, flatter, no collision. Reads as BG not solid geometry.
 	var face := Node2D.new()
@@ -318,7 +333,7 @@ static func add_pipe(parent: Node2D, from: Vector2, to: Vector2, thick: float = 
 		Vector2(min_x, min_y), Vector2(max_x, min_y), Vector2(max_x, max_y), Vector2(min_x, max_y)
 	]), true)
 
-static func add_valve(parent: Node2D, pos: Vector2) -> void:
+static func add_valve(parent: Node2D, pos: Vector2) -> Node2D:
 	## Red spoked wheel mounted flat on the wall.
 	var art := WorldArt.new()
 	art.kind = WorldArt.Kind.VALVE
@@ -328,6 +343,7 @@ static func add_valve(parent: Node2D, pos: Vector2) -> void:
 	LightOnlyBlocker.attach(art, PackedVector2Array([
 		Vector2(-14, -14), Vector2(14, -14), Vector2(14, 14), Vector2(-14, 14)
 	]), true)
+	return art
 
 static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2(36, 28)) -> Node2D:
 	## Non-interactive scenery crate: dark-oak planks without the X brace pushable crates have.

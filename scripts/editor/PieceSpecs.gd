@@ -106,7 +106,7 @@ const LIGHT_BLOCK_PHYSICS_LAYER := 128
 static func default_blocks_light(kind: String) -> bool:
 	## Default ON — opt out for emitters, characters, and pure draw props.
 	match kind:
-		"light", "background", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint", "prop_ladder", "prop_text":
+		"light", "background", "prop_backdrop", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint", "prop_ladder", "prop_text", "prop_valve":
 			return false
 		_:
 			return true
@@ -127,7 +127,7 @@ static func is_platform_kind(kind: String) -> bool:
 static func supports_tint(kind: String) -> bool:
 	## Floors/walls/platforms and other builds that take a modulate color.
 	return kind in [
-		"floor", "wall", "block", "background", "crate",
+		"floor", "wall", "block", "background", "prop_backdrop", "crate",
 		"prop_platform", "prop_pipe", "prop_crate", "prop_text",
 	]
 
@@ -135,7 +135,7 @@ static func supports_tint(kind: String) -> bool:
 static func default_draw_layer(kind: String) -> int:
 	## Relative to PLAYER_DRAW_LAYER (0). Negative = behind player.
 	match kind:
-		"background", "prop_bg_gear":
+		"background", "prop_backdrop", "prop_bg_gear":
 			return -8
 		"floor", "wall", "block":
 			return -4
@@ -206,6 +206,14 @@ static func default_size(kind: String) -> Vector2:
 			return Vector2(28, 200)
 		"prop_text":
 			return Vector2(160, 28)
+		"background":
+			return Vector2(320, 180)
+		"prop_backdrop":
+			return Vector2(360, 200)
+		"prop_valve":
+			return Vector2(28, 28)
+		"prop_pipe":
+			return Vector2(160, 12)
 		_:
 			return Vector2(48, 48)
 
@@ -215,7 +223,7 @@ static func anchor(kind: String) -> String:
 	match kind:
 		"prop_house", "prop_checkpoint", "prop_bench", "prop_vent", \
 		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_door", "prop_exit", \
-		"prop_ladder":
+		"prop_ladder", "prop_backdrop":
 			return "bottom"
 		"prop_platform":
 			return "center"

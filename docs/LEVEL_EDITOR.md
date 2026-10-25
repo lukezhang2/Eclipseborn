@@ -26,6 +26,10 @@ New and duplicated pieces use numeric suffixes (`window_1`, `lantern_12`), not l
 
 Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/−1 or a count, plus per-keeper **price**) when Shopkeeper is on; otherwise a dialogue box. New shopkeepers start with **all sales off** (`"shop_items": []`). Stored as `"is_shopkeeper": true` and `"shop_items": [{"id","stock","price"},…]`. House interiors read `npc_shop` via `LevelData.merged_piece`.
 
+### Browser / session saves
+
+Editor **Save (this session)** and auto-saves only last until you refresh the page. Refreshing clears `user://editor/` overlays so play uses repo `data/levels/` again. Use **Copy Save Code** (or commit JSON) to keep work.
+
 ### Tint color & text
 
 - Floors, walls, platforms, crates, pipes, backgrounds, and **Text label** (`prop_text`) show a **Tint color** picker (wheel + `#hex`).
