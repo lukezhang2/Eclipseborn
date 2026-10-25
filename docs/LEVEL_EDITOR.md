@@ -19,7 +19,7 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 
 ### NPC dialogue
 
-Select a `prop_npc` piece → **NPC dialogue** box (one line per entry). Stored as `"lines": ["…"]` on the piece. House interiors read `npc_shop` via `LevelData.merged_piece`.
+Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/−1 or a count) when Shopkeeper is on; otherwise a dialogue box. Stored as `"is_shopkeeper": true` and `"shop_items": [{"id","stock"},…]`. House interiors read `npc_shop` via `LevelData.merged_piece`.
 
 ### Levers, doors, and links
 

@@ -1,6 +1,6 @@
 extends Node2D
 ## Playable interior zone for a village house — desk + shopkeeper behind it.
-## Dialogue defaults: HouseProfiles. Overrides: LevelData / editor save for npc_shop.
+## Shopkeeper defaults: HouseProfiles. Overrides: LevelData / editor save for npc_shop.
 
 
 const FLOOR_Y := 500.0
@@ -10,6 +10,7 @@ var house_id: String = "house_keep"
 var house_title: String = "Shop"
 var keeper_name: String = "Keeper"
 var keeper_lines: PackedStringArray = PackedStringArray([])
+var keeper_shop_items: Array = []
 var return_spawn: Vector2 = Vector2(520, 460)
 var _npc_id: String = "npc_shop"
 
@@ -54,6 +55,7 @@ func _apply_house_profile() -> void:
 	return_spawn = profile.get("return_spawn", Vector2(520, 460))
 	_npc_id = str(profile.get("npc_id", "npc_shop"))
 	keeper_lines = HouseProfiles.lines_to_packed(profile.get("lines", []))
+	keeper_shop_items = ShopCatalog.normalize_shop_items(profile.get("shop_items", ShopCatalog.default_shop_stock()))
 	## Editor / LevelData overrides for this shopkeeper.
 	var saved := LevelData.merged_piece(house_id, _npc_id)
 	if not saved.is_empty():
@@ -61,6 +63,10 @@ func _apply_house_profile() -> void:
 			keeper_lines = HouseProfiles.lines_to_packed(saved.get("lines"))
 		if saved.has("name") and str(saved.get("name", "")) != "":
 			keeper_name = str(saved.get("name"))
+		if saved.has("shop_items"):
+			keeper_shop_items = ShopCatalog.normalize_shop_items(saved.get("shop_items"))
+		elif bool(saved.get("is_shopkeeper", true)) and keeper_shop_items.is_empty():
+			keeper_shop_items = ShopCatalog.default_shop_stock()
 
 
 func _build_room() -> void:
@@ -128,6 +134,9 @@ func _build_desk_and_keeper() -> void:
 	npc.position = npc_pos
 	npc.npc_name = keeper_name
 	npc.lines = keeper_lines
+	npc.is_shopkeeper = true
+	npc.shop_items = keeper_shop_items if not keeper_shop_items.is_empty() else ShopCatalog.default_shop_stock()
+	npc.shop_key = "%s/%s" % [house_id, _npc_id]
 	npc.z_index = -1
 	LevelData.tag(npc, _npc_id)
 	add_child(npc)

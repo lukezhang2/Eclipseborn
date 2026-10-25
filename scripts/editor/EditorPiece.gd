@@ -19,8 +19,11 @@ var builtin: bool = false
 var catalog_kind: String = "floor"
 ## "center" or "bottom" — must match PieceSpecs.anchor(catalog_kind).
 var anchor_mode: String = "center"
-## NPC dialogue lines (one string per line). Empty for non-NPCs.
+## NPC dialogue lines (one string per line). Empty for non-NPCs / shopkeepers.
 var dialogue_lines: PackedStringArray = PackedStringArray()
+## Shopkeeper flag + stock list: [{id, stock}] with stock −1 = infinite.
+var is_shopkeeper: bool = false
+var shop_items: Array = []
 ## If true, gameplay should occlude lantern washes (no player collision required).
 var blocks_light: bool = true
 ## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
@@ -109,6 +112,8 @@ func to_dict() -> Dictionary:
 		for s in dialogue_lines:
 			lines_arr.append(s)
 		d["lines"] = lines_arr
+		d["is_shopkeeper"] = is_shopkeeper
+		d["shop_items"] = ShopCatalog.normalize_shop_items(shop_items)
 		d["kind"] = "prop_npc"
 	if catalog_kind == "prop_switch" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_switch"):
 		d["kind"] = "prop_switch"
@@ -187,6 +192,10 @@ func apply_dict(d: Dictionary) -> void:
 			set_meta("piece_kind", k)
 			if k == "prop_npc":
 				dialogue_lines = HouseProfiles.lines_to_packed(d.get("lines", dialogue_lines))
+				is_shopkeeper = bool(d.get("is_shopkeeper", true))
+				shop_items = ShopCatalog.normalize_shop_items(d.get("shop_items", []))
+				if is_shopkeeper and shop_items.is_empty():
+					shop_items = ShopCatalog.default_shop_stock()
 	if display_name == "" or display_name == "Piece":
 		display_name = piece_id if piece_id != "" else k
 	_rebuild()
@@ -201,6 +210,30 @@ func set_dialogue_text(text: String) -> void:
 
 func get_dialogue_text() -> String:
 	return "\n".join(dialogue_lines)
+
+
+func set_shop_item_stock(item_id: String, stock: int, enabled: bool) -> void:
+	var next: Array = []
+	var found := false
+	for entry in ShopCatalog.normalize_shop_items(shop_items):
+		var id := str(entry.get("id", ""))
+		if id == item_id:
+			found = true
+			if enabled:
+				next.append({"id": id, "stock": stock})
+		else:
+			next.append(entry)
+	if enabled and not found:
+		next.append({"id": item_id, "stock": stock})
+	shop_items = next
+
+
+func get_shop_item_stock(item_id: String) -> int:
+	## Returns stock if listed, or −2 if not sold by this keeper.
+	for entry in ShopCatalog.normalize_shop_items(shop_items):
+		if str(entry.get("id", "")) == item_id:
+			return int(entry.get("stock", -1))
+	return -2
 
 
 func set_draw_layer(layer: int) -> void:

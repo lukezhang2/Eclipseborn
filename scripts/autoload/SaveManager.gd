@@ -199,11 +199,17 @@ func load_game(slot: int) -> bool:
 	)
 	GameState.has_double_jump = cfg.get_value("abilities", "double_jump", false)
 	GameState.has_shadow_grip = cfg.get_value("abilities", "shadow_grip", false)
+	GameState.has_shade_dash = cfg.get_value("abilities", "shade_dash", false)
+	GameState.has_gear_sense = cfg.get_value("abilities", "gear_sense", false)
+	GameState.has_reflect = cfg.get_value("abilities", "reflect", false)
+	GameState.has_snuff = cfg.get_value("abilities", "snuff", false)
 	GameState.discovered_rooms = cfg.get_value("map", "discovered", {})
 	GameState.broken_ids = cfg.get_value("world", "broken", [])
 	GameState.collected_ids = cfg.get_value("world", "collected", [])
 	if typeof(GameState.collected_ids) != TYPE_ARRAY:
 		GameState.collected_ids = []
+	var stock_raw = cfg.get_value("world", "shop_stock", {})
+	GameState.shop_stock = stock_raw if typeof(stock_raw) == TYPE_DICTIONARY else {}
 	## Prefer JSON sidecar / checkpoints_json — nested Array-of-Dict can drop on web reload.
 	var hearths: Array = []
 	var json_field = cfg.get_value("map", "checkpoints_json", "")
@@ -266,6 +272,10 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("player", "pos_y", pos.y)
 	cfg.set_value("abilities", "double_jump", GameState.has_double_jump)
 	cfg.set_value("abilities", "shadow_grip", GameState.has_shadow_grip)
+	cfg.set_value("abilities", "shade_dash", GameState.has_shade_dash)
+	cfg.set_value("abilities", "gear_sense", GameState.has_gear_sense)
+	cfg.set_value("abilities", "reflect", GameState.has_reflect)
+	cfg.set_value("abilities", "snuff", GameState.has_snuff)
 	cfg.set_value("map", "discovered", GameState.discovered_rooms)
 	var hearths := _normalize_checkpoints(GameState.activated_checkpoints)
 	GameState.activated_checkpoints = hearths
@@ -274,6 +284,7 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("meta", "checkpoint_id", GameState.checkpoint_path)
 	cfg.set_value("world", "broken", GameState.broken_ids)
 	cfg.set_value("world", "collected", GameState.collected_ids)
+	cfg.set_value("world", "shop_stock", GameState.shop_stock)
 	var err := cfg.save(slot_path(slot))
 	_write_hearths_sidecar(slot)
 	_persist_web_fs()

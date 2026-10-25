@@ -129,7 +129,8 @@ static func _house_interior(house_id: String) -> Array:
 		str(profile.get("keeper_name", "Keeper")),
 		MAP_W * 0.5,
 		float(profile.get("npc_y", FLOOR_TOP - 40)),
-		profile.get("lines", [])
+		profile.get("lines", []),
+		profile.get("shop_items", ShopCatalog.default_shop_stock())
 	))
 	return out
 
@@ -175,11 +176,14 @@ static func _plight(id: String, name: String, x: float, y: float, radius: float)
 	}
 
 
-static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant) -> Dictionary:
+static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant, shop_items: Variant = null) -> Dictionary:
 	var packed := HouseProfiles.lines_to_packed(lines)
 	var arr: Array = []
 	for s in packed:
 		arr.append(s)
+	var stock := ShopCatalog.normalize_shop_items(shop_items)
+	if stock.is_empty():
+		stock = ShopCatalog.default_shop_stock()
 	return {
 		"id": id,
 		"kind": "prop_npc",
@@ -193,4 +197,6 @@ static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant) 
 		"layer": PieceSpecs.default_draw_layer("prop_npc"),
 		"builtin": true,
 		"lines": arr,
+		"is_shopkeeper": true,
+		"shop_items": stock,
 	}

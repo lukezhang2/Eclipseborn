@@ -51,6 +51,8 @@ var collected_ids: Array = []
 
 var currency: int = 0
 var currency_hud_unlocked: bool = false
+## Remaining shop stock overrides: "zone/npc_id/item_id" -> int (−1 infinite, else remaining).
+var shop_stock: Dictionary = {}
 
 var is_paused: bool = false
 var single_player: bool = true
@@ -104,6 +106,7 @@ func reset_run() -> void:
 	umbra = 0.0
 	currency = 0
 	currency_hud_unlocked = false
+	shop_stock = {}
 	has_double_jump = false
 	has_shadow_grip = false
 	has_shade_dash = false
@@ -138,6 +141,38 @@ func add_currency(amount: int) -> void:
 		currency_hud_unlocked = true
 		currency_hud_reveal.emit()
 	currency_changed.emit(currency)
+
+
+func spend_currency(amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if currency < amount:
+		return false
+	currency -= amount
+	currency_changed.emit(currency)
+	return true
+
+
+func shop_stock_key(shop_key: String, item_id: String) -> String:
+	return "%s/%s" % [shop_key, item_id]
+
+
+func get_shop_stock(shop_key: String, item_id: String, base_stock: int) -> int:
+	## base_stock −1 = infinite. Runtime overrides only apply to finite stock.
+	if base_stock < 0:
+		return -1
+	var key := shop_stock_key(shop_key, item_id)
+	if shop_stock.has(key):
+		return maxi(0, int(shop_stock[key]))
+	return maxi(0, base_stock)
+
+
+func set_shop_stock(shop_key: String, item_id: String, remaining: int) -> void:
+	var key := shop_stock_key(shop_key, item_id)
+	if remaining < 0:
+		shop_stock.erase(key)
+		return
+	shop_stock[key] = remaining
 
 
 func mark_broken(id: String) -> void:

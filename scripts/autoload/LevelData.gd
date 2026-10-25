@@ -206,8 +206,14 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			npc.position = pos
 			npc.npc_name = str(p.get("name", "Villager"))
 			npc.lines = HouseProfiles.lines_to_packed(p.get("lines", ["…"]))
+			npc.is_shopkeeper = bool(p.get("is_shopkeeper", true))
+			npc.shop_items = ShopCatalog.normalize_shop_items(p.get("shop_items", []))
+			if npc.is_shopkeeper and npc.shop_items.is_empty():
+				npc.shop_items = ShopCatalog.default_shop_stock()
+			var nid := str(p.get("id", ""))
+			npc.shop_key = "%s/%s" % [GameState.current_zone_id, nid if nid != "" else npc.npc_name]
 			parent.add_child(npc)
-			LevelData.tag(npc, str(p.get("id", "")))
+			LevelData.tag(npc, nid)
 		"prop_pickup":
 			var pid := str(p.get("id", "shadow_crystal"))
 			if GameState.is_collected(pid):

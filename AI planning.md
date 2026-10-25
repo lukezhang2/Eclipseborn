@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.28 — shop GUI fade (gear prices + editor stock Inf/N); fast-travel fade polish; no shopkeeper dialogue
 - v0.1.27 — enemy hit flash/knockback; hit-connect SFX when player attack lands
 - v0.1.26 — shadow crystal: no floating label; tiny red ember in the core
 - v0.1.25 — editor moving-platform path/spin inspector when selected + path ghost; village platforms are prop_platform

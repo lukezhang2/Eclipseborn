@@ -30,6 +30,10 @@ var _radius_spin: SpinBox
 var _radius_row: HBoxContainer
 var _dialogue_row: VBoxContainer
 var _dialogue_edit: TextEdit
+var _shop_row: VBoxContainer
+var _shopkeeper_check: CheckButton
+var _shop_list: VBoxContainer
+var _syncing_shop: bool = false
 var _link_row: VBoxContainer
 var _link_list: ItemList
 var _syncing_links: bool = false
@@ -249,17 +253,40 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	col.add_child(_dialogue_row)
 	_dialogue_row.add_child(_lbl("NPC dialogue (one line per entry)"))
 	_dialogue_edit = TextEdit.new()
-	_dialogue_edit.custom_minimum_size = Vector2(280, 110)
+	_dialogue_edit.custom_minimum_size = Vector2(280, 90)
 	_dialogue_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_dialogue_edit.placeholder_text = "Line 1\nLine 2\nLine 3"
 	_dialogue_edit.text_changed.connect(_on_dialogue_changed)
 	_dialogue_row.add_child(_dialogue_edit)
 	var dlg_hint := Label.new()
-	dlg_hint.text = "Saved with the zone. Playtest to hear lines."
+	dlg_hint.text = "Only for non-shop NPCs. Shopkeepers open a buy GUI."
 	dlg_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dlg_hint.add_theme_font_size_override("font_size", 11)
 	dlg_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
 	_dialogue_row.add_child(dlg_hint)
+
+	_shop_row = VBoxContainer.new()
+	_shop_row.visible = false
+	_shop_row.add_theme_constant_override("separation", 4)
+	col.add_child(_shop_row)
+	_shop_row.add_child(_section("Shop inventory"))
+	_shopkeeper_check = CheckButton.new()
+	_shopkeeper_check.text = "Shopkeeper (opens buy GUI)"
+	_shopkeeper_check.toggled.connect(_on_shopkeeper_toggled)
+	_shop_row.add_child(_shopkeeper_check)
+	var shop_hint := Label.new()
+	shop_hint.text = "Tick items to sell. Stock −1 / Inf = unlimited."
+	shop_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	shop_hint.add_theme_font_size_override("font_size", 11)
+	shop_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
+	_shop_row.add_child(shop_hint)
+	var shop_scroll := ScrollContainer.new()
+	shop_scroll.custom_minimum_size = Vector2(280, 220)
+	_shop_row.add_child(shop_scroll)
+	_shop_list = VBoxContainer.new()
+	_shop_list.add_theme_constant_override("separation", 6)
+	_shop_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shop_scroll.add_child(_shop_list)
 
 	_link_row = VBoxContainer.new()
 	_link_row.visible = false
@@ -609,7 +636,8 @@ func _load_zone() -> void:
 				"x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor",
 				"blocks_light", "layer", "target_ids", "starts_on", "starts_open", "rotation",
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
-				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear"
+				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
+				"is_shopkeeper", "shop_items",
 			]:
 				if ov.has(key):
 					merged[key] = ov[key]
@@ -659,7 +687,17 @@ func _update_inspector() -> void:
 	if is_light:
 		_radius_spin.value = _selected.light_radius
 	var is_npc := _selected != null and _selected.is_npc()
-	_dialogue_row.visible = is_npc
+	_shop_row.visible = is_npc
+	_syncing_shop = true
+	if is_npc:
+		_shopkeeper_check.set_pressed_no_signal(_selected.is_shopkeeper)
+		_rebuild_shop_list()
+	else:
+		_shopkeeper_check.set_pressed_no_signal(false)
+		for c in _shop_list.get_children():
+			c.queue_free()
+	_syncing_shop = false
+	_dialogue_row.visible = is_npc and not (_selected != null and _selected.is_shopkeeper)
 	_syncing_dialogue = true
 	if is_npc:
 		_dialogue_edit.text = _selected.get_dialogue_text()
@@ -733,6 +771,87 @@ func _on_dialogue_changed() -> void:
 	_selected.set_dialogue_text(_dialogue_edit.text)
 
 
+func _on_shopkeeper_toggled(on: bool) -> void:
+	if _syncing_shop or _selected == null or not _selected.is_npc():
+		return
+	_selected.is_shopkeeper = on
+	if on and _selected.shop_items.is_empty():
+		_selected.shop_items = ShopCatalog.default_shop_stock()
+	_dialogue_row.visible = not on
+	_rebuild_shop_list()
+	_status.text = "Shopkeeper %s." % ("on" if on else "off")
+
+
+func _rebuild_shop_list() -> void:
+	if _shop_list == null:
+		return
+	for c in _shop_list.get_children():
+		c.queue_free()
+	if _selected == null or not _selected.is_npc() or not _selected.is_shopkeeper:
+		return
+	for item_id in ShopCatalog.all_ids():
+		var it := ShopCatalog.get_item(item_id)
+		var stock := _selected.get_shop_item_stock(item_id)
+		var enabled := stock != -2
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 2)
+		var top := HBoxContainer.new()
+		top.add_theme_constant_override("separation", 6)
+		row.add_child(top)
+		var sell := CheckButton.new()
+		sell.text = str(it.get("name", item_id))
+		sell.button_pressed = enabled
+		sell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(sell)
+		var price := Label.new()
+		price.text = "%dg" % int(it.get("price", 0))
+		price.add_theme_font_size_override("font_size", 11)
+		price.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+		top.add_child(price)
+		var bottom := HBoxContainer.new()
+		bottom.add_theme_constant_override("separation", 6)
+		row.add_child(bottom)
+		var inf := CheckButton.new()
+		inf.text = "Inf"
+		inf.disabled = not enabled
+		inf.button_pressed = enabled and stock < 0
+		bottom.add_child(inf)
+		var spin := SpinBox.new()
+		spin.min_value = 0
+		spin.max_value = 999
+		spin.step = 1
+		spin.value = 1 if (not enabled or stock < 0) else float(stock)
+		spin.editable = enabled and not inf.button_pressed
+		spin.custom_minimum_size.x = 90
+		bottom.add_child(spin)
+		var stock_l := Label.new()
+		stock_l.text = "stock"
+		stock_l.add_theme_font_size_override("font_size", 11)
+		stock_l.add_theme_color_override("font_color", Color(0.55, 0.5, 0.45))
+		bottom.add_child(stock_l)
+		sell.toggled.connect(func(on: bool) -> void:
+			if _syncing_shop or _selected == null:
+				return
+			inf.disabled = not on
+			spin.editable = on and not inf.button_pressed
+			var s := -1 if inf.button_pressed else int(spin.value)
+			_selected.set_shop_item_stock(item_id, s, on)
+		)
+		inf.toggled.connect(func(on: bool) -> void:
+			if _syncing_shop or _selected == null or not sell.button_pressed:
+				return
+			spin.editable = not on
+			var s := -1 if on else int(spin.value)
+			_selected.set_shop_item_stock(item_id, s, true)
+		)
+		spin.value_changed.connect(func(v: float) -> void:
+			if _syncing_shop or _selected == null or not sell.button_pressed or inf.button_pressed:
+				return
+			_selected.set_shop_item_stock(item_id, int(v), true)
+		)
+		_shop_list.add_child(row)
+
+
 func _on_list_selected(index: int) -> void:
 	if _syncing_list or index < 0 or index >= _pieces.size():
 		return
@@ -793,7 +912,9 @@ func _add_piece() -> void:
 		d["pushable"] = true
 	if _palette_id == "prop_npc":
 		d["name"] = "Shopkeeper"
-		d["lines"] = ["You're the stranger here — the only one who needs the shade."]
+		d["is_shopkeeper"] = true
+		d["shop_items"] = ShopCatalog.default_shop_stock()
+		d["lines"] = []
 	if _palette_id == "prop_switch":
 		d["name"] = "Lever"
 		d["starts_on"] = true

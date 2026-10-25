@@ -20,10 +20,13 @@ static func get_profile(house_id: String) -> Dictionary:
 				"keeper_name": "Gearwright",
 				"npc_id": "npc_shop",
 				"return_spawn": Vector2(980, 460),
-				"lines": [
-					"You're the only shade-walker left. The rest of us live in the light fine.",
-					"That umbra hunger of yours — it's not natural, traveler.",
-					"I can fit gears. I can't fit whatever made you burn in daylight.",
+				"shop_items": [
+					{"id": "heal_tonic", "stock": -1},
+					{"id": "shade_vial", "stock": -1},
+					{"id": "double_jump", "stock": 1},
+					{"id": "shadow_grip", "stock": 1},
+					{"id": "gear_sense", "stock": 1},
+					{"id": "shade_dash", "stock": 1},
 				],
 			}
 		"house_inn":
@@ -33,10 +36,11 @@ static func get_profile(house_id: String) -> Dictionary:
 				"keeper_name": "Innkeep",
 				"npc_id": "npc_shop",
 				"return_spawn": Vector2(1780, 460),
-				"lines": [
-					"Most guests sit by the hearth. You… flinch from it.",
-					"You're the odd one — shade-bound while we walk the lantern streets.",
-					"Room's in the dark wing. Figured you'd prefer it that way.",
+				"shop_items": [
+					{"id": "heal_tonic", "stock": -1},
+					{"id": "shade_vial", "stock": -1},
+					{"id": "shade_heart", "stock": 5},
+					{"id": "snuff", "stock": 1},
 				],
 			}
 		_:
@@ -47,10 +51,7 @@ static func get_profile(house_id: String) -> Dictionary:
 				"npc_id": "npc_shop",
 				"npc_y": 450.0,
 				"return_spawn": Vector2(520, 460),
-				"lines": [
-					"Spirit, you're marked, the shade clings to you like a second skin.",
-					"67",
-				],
+				"shop_items": ShopCatalog.default_shop_stock(),
 			}
 
 
