@@ -231,15 +231,7 @@ static func _tower() -> Array:
 	out.append(_p("checkpoint_antechamber", "prop_checkpoint", "Dial Gate", 220, ANTECHAMBER_TOP, 56, 24))
 	out.append(_p("ladder_arena", "prop_ladder", "Arena Ladder", 480, ANTECHAMBER_TOP, 28, ANTECHAMBER_TOP - ARENA_TOP))
 	out.append(_p("floor_arena", "floor", "Dial Arena Floor", 400, ARENA_FLOOR, 620, FLOOR_H))
-	var tla := _plight("tower_lamp_a", "Arena Lamp A", 250, ARENA_TOP - 8, 100)
-	var tlb := _plight("tower_lamp_b", "Arena Lamp B", 400, ARENA_TOP - 8, 100)
-	var tlc := _plight("tower_lamp_c", "Arena Lamp C", 550, ARENA_TOP - 8, 100)
-	tla["intensity"] = 0.5
-	tlb["intensity"] = 0.5
-	tlc["intensity"] = 0.5
-	out.append(tla)
-	out.append(tlb)
-	out.append(tlc)
+	## High arena lamps are overlay non-builtins (tower_lamp_4/5/6); floor a/b/c removed.
 	var lever_y := ARENA_TOP - 110.0
 	out.append(_p("ledge_lever_a", "floor", "Lever Ledge A", 250, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
 	out.append(_p("ledge_lever_b", "floor", "Lever Ledge B", 400, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
@@ -247,7 +239,7 @@ static func _tower() -> Array:
 	out.append(_p("ladder_lever_a", "prop_ladder", "Lever Ladder A", 310, ARENA_TOP, 28, ARENA_TOP - lever_y))
 	out.append(_p("ladder_lever_b", "prop_ladder", "Lever Ladder B", 459, ARENA_TOP, 28, ARENA_TOP - lever_y))
 	out.append(_p("ladder_lever_c", "prop_ladder", "Lever Ladder C", 609, ARENA_TOP, 28, ARENA_TOP - lever_y))
-	for pair2 in [["tower_switch_a", "tower_lamp_a", 250.0, true], ["tower_switch_b", "tower_lamp_b", 400.0, false], ["tower_switch_c", "tower_lamp_c", 550.0, true]]:
+	for pair2 in [["tower_switch_a", "tower_lamp_6", 250.0, true], ["tower_switch_b", "tower_lamp_4", 400.0, false], ["tower_switch_c", "tower_lamp_5", 550.0, true]]:
 		var asw := _p(str(pair2[0]), "prop_switch", "Arena Lever", float(pair2[2]), lever_y, 24, 40)
 		asw["starts_on"] = bool(pair2[3])
 		asw["target_ids"] = [str(pair2[1])]

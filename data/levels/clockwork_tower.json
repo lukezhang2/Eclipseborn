@@ -162,6 +162,34 @@
 		},
 		{
 			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"h": 36,
+			"id": "enemy_lobby_a",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Lobby Grub A",
+			"rotation": 0,
+			"w": 28,
+			"x": 480,
+			"y": 2644
+		},
+		{
+			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"h": 36,
+			"id": "enemy_lobby_b",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Lobby Grub B",
+			"rotation": 0,
+			"w": 28,
+			"x": 720,
+			"y": 2644
+		},
+		{
+			"anchor": "center",
 			"blocks_light": true,
 			"builtin": true,
 			"h": 36,
@@ -187,6 +215,21 @@
 			"w": 28,
 			"x": 220,
 			"y": 2462
+		},
+		{
+			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "mite",
+			"h": 36,
+			"id": "enemy_shaft_1",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Shaft Rivet Mite",
+			"rotation": 0,
+			"w": 28,
+			"x": 360,
+			"y": 2446
 		},
 		{
 			"anchor": "center",
@@ -250,6 +293,21 @@
 		},
 		{
 			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "beetle",
+			"h": 36,
+			"id": "enemy_shaft_2",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Shaft Fuse Beetle",
+			"rotation": 0,
+			"w": 28,
+			"x": 400,
+			"y": 2234
+		},
+		{
+			"anchor": "center",
 			"blocks_light": true,
 			"builtin": true,
 			"h": 36,
@@ -292,6 +350,21 @@
 		},
 		{
 			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "mite",
+			"h": 36,
+			"id": "enemy_workshop",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Workshop Rivet Mite",
+			"rotation": 0,
+			"w": 28,
+			"x": 980,
+			"y": 2246
+		},
+		{
+			"anchor": "center",
 			"blocks_light": true,
 			"builtin": true,
 			"h": 36,
@@ -317,6 +390,21 @@
 			"w": 28,
 			"x": 246,
 			"y": 2062
+		},
+		{
+			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "beetle",
+			"h": 36,
+			"id": "enemy_cloister",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Cloister Fuse Beetle",
+			"rotation": 0,
+			"w": 28,
+			"x": 420,
+			"y": 2038
 		},
 		{
 			"anchor": "center",
@@ -440,6 +528,20 @@
 		},
 		{
 			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"h": 36,
+			"id": "enemy_flue_1",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Flue Grub",
+			"rotation": 0,
+			"w": 28,
+			"x": 420,
+			"y": 1646
+		},
+		{
+			"anchor": "center",
 			"blocks_light": true,
 			"builtin": true,
 			"h": 36,
@@ -465,6 +567,21 @@
 			"w": 28,
 			"x": 560,
 			"y": 1462
+		},
+		{
+			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "beetle",
+			"h": 36,
+			"id": "enemy_flue_2",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Flue Fuse Beetle",
+			"rotation": 0,
+			"w": 28,
+			"x": 400,
+			"y": 1446
 		},
 		{
 			"anchor": "center",
@@ -578,6 +695,21 @@
 		},
 		{
 			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "mite",
+			"h": 36,
+			"id": "enemy_archive",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Archive Rivet Mite",
+			"rotation": 0,
+			"w": 28,
+			"x": 180,
+			"y": 1246
+		},
+		{
+			"anchor": "center",
 			"blocks_light": true,
 			"builtin": true,
 			"h": 36,
@@ -660,6 +792,36 @@
 		},
 		{
 			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "beetle",
+			"h": 36,
+			"id": "enemy_gallery_a",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Gallery Fuse Beetle A",
+			"rotation": 0,
+			"w": 28,
+			"x": 320,
+			"y": 1044
+		},
+		{
+			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "beetle",
+			"h": 36,
+			"id": "enemy_gallery_b",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Gallery Fuse Beetle B",
+			"rotation": 0,
+			"w": 28,
+			"x": 480,
+			"y": 1044
+		},
+		{
+			"anchor": "center",
 			"blocks_light": true,
 			"builtin": true,
 			"h": 36,
@@ -685,6 +847,21 @@
 			"w": 28,
 			"x": 320,
 			"y": 862
+		},
+		{
+			"anchor": "center",
+			"blocks_light": false,
+			"builtin": true,
+			"enemy_kind": "mite",
+			"h": 36,
+			"id": "enemy_pre_gate",
+			"kind": "prop_enemy",
+			"layer": 1,
+			"name": "Pre-Gate Rivet Mite",
+			"rotation": 0,
+			"w": 28,
+			"x": 450,
+			"y": 846
 		},
 		{
 			"anchor": "center",
@@ -741,60 +918,6 @@
 			"w": 620,
 			"x": 400,
 			"y": 360
-		},
-		{
-			"anchor": "center",
-			"blocks_light": false,
-			"builtin": true,
-			"h": 36,
-			"id": "tower_lamp_a",
-			"intensity": 0.5,
-			"kind": "light",
-			"layer": 2,
-			"light_kind": 0,
-			"name": "Arena Lamp A",
-			"pushable": false,
-			"radius": 100,
-			"rotation": 0,
-			"w": 28,
-			"x": 250,
-			"y": 334
-		},
-		{
-			"anchor": "center",
-			"blocks_light": false,
-			"builtin": true,
-			"h": 36,
-			"id": "tower_lamp_b",
-			"intensity": 0.5,
-			"kind": "light",
-			"layer": 2,
-			"light_kind": 0,
-			"name": "Arena Lamp B",
-			"pushable": false,
-			"radius": 100,
-			"rotation": 0,
-			"w": 28,
-			"x": 400,
-			"y": 334
-		},
-		{
-			"anchor": "center",
-			"blocks_light": false,
-			"builtin": true,
-			"h": 36,
-			"id": "tower_lamp_c",
-			"intensity": 0.5,
-			"kind": "light",
-			"layer": 2,
-			"light_kind": 0,
-			"name": "Arena Lamp C",
-			"pushable": false,
-			"radius": 100,
-			"rotation": 0,
-			"w": 28,
-			"x": 550,
-			"y": 334
 		},
 		{
 			"anchor": "center",
@@ -892,7 +1015,7 @@
 			"rotation": 0,
 			"starts_on": true,
 			"target_ids": [
-				"tower_lamp_a"
+				"tower_lamp_6"
 			],
 			"w": 24,
 			"x": 250,
@@ -910,7 +1033,7 @@
 			"rotation": 0,
 			"starts_on": false,
 			"target_ids": [
-				"tower_lamp_b"
+				"tower_lamp_4"
 			],
 			"w": 24,
 			"x": 400,
@@ -928,7 +1051,7 @@
 			"rotation": 0,
 			"starts_on": true,
 			"target_ids": [
-				"tower_lamp_c"
+				"tower_lamp_5"
 			],
 			"w": 24,
 			"x": 550,
@@ -1076,7 +1199,10 @@
 		"text_gallery",
 		"practice_a",
 		"practice_b",
-		"practice_c"
+		"practice_c",
+		"tower_lamp_a",
+		"tower_lamp_b",
+		"tower_lamp_c"
 	],
 	"schema": 1,
 	"zone": "clockwork_tower"

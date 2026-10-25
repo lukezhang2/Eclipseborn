@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.83 — sync clockwork_tower (arena levers→lamps 4–6, remove floor a/b/c); `index-0_1_83.pck`
 - v0.1.81 — sync clockwork_tower (arena levers→lamps 4–6, remove floor a/b/c, enemies in overlay); `index-0_1_81.pck`
 - v0.1.80 — Wickwright sword hits reach + flash/sparks/wound dial feedback; `index-0_1_80.pck`
 - v0.1.77 — Wickwright takes full sword hits (10 to kill, larger hurtbox); `index-0_1_77.pck`
