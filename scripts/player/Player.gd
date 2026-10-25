@@ -470,9 +470,9 @@ func _update_light_exposure(delta: float) -> void:
 func _recompute_light_state() -> void:
 	_in_vulnerable_light = false
 	_active_light_kind = GameState.LightKind.HEARTH
-	_active_light_intensity = 1.0
+	_active_light_intensity = 0.0
 	var center := global_position + Vector2(0, -18)
-	var best_score := -1.0
+	var has_sunshaft := false
 	for light in get_tree().get_nodes_in_group("lights"):
 		if not light.has_method("is_on") or not light.is_on():
 			continue
@@ -488,13 +488,13 @@ func _recompute_light_state() -> void:
 		if light.has_method("get_intensity"):
 			inten = float(light.get_intensity())
 		var kind: int = light.get_light_kind()
-		## Prefer sunshaft; otherwise the strongest overlapping lamp.
-		var score := inten + (100.0 if kind == GameState.LightKind.SUNSHAFT else 0.0)
-		if score > best_score:
-			best_score = score
-			_in_vulnerable_light = true
+		## Overlapping lamps add intensity (matches additive wash stacking).
+		_in_vulnerable_light = true
+		_active_light_intensity += inten
+		if kind == GameState.LightKind.SUNSHAFT or not has_sunshaft:
 			_active_light_kind = kind
-			_active_light_intensity = inten
+			if kind == GameState.LightKind.SUNSHAFT:
+				has_sunshaft = true
 
 
 func _occluded(from: Vector2, to: Vector2) -> bool:

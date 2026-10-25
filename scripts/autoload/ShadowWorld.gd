@@ -19,10 +19,16 @@ const CULL_MARGIN := 420.0
 ## Contact-hardening: hard umbra ends here; soft penumbra continues past.
 const UMBRA_CONTACT_T := 0.36
 ## Soft wash shell scale (same rays, no extra casts) — cheap area-light penumbra.
-const WASH_PENUMBRA_SCALE := 1.09
-const WASH_CORE_SCALE := 0.55
+const WASH_PENUMBRA_SCALE := 1.08
+const WASH_CORE_SCALE := 0.45
+## Matches LightSource intensity clamp. At max: fill 50% opaque, outline 100%.
+const INTENSITY_MAX := 3.0
+const FILL_ALPHA_AT_MAX := 0.5
+const OUTLINE_ALPHA_AT_MAX := 1.0
 ## world(1) + boxes(8) + light-only(128)
 const OCCLUDER_MASK := 1 | 8 | 128
+
+var _wash_add_mat: CanvasItemMaterial = null
 
 var lights: Array = []
 var occluders: Array = []
@@ -312,33 +318,47 @@ func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, 
 	return best - dir * 0.6
 
 
+func _intensity_t(intensity: float) -> float:
+	## 0..1 linear over the editor intensity range (max → full opacity budget).
+	return clampf(intensity, 0.0, INTENSITY_MAX) / INTENSITY_MAX
+
+
+func _wash_add_material() -> CanvasItemMaterial:
+	## Additive so overlapping lamps sum visually (stronger fill where they meet).
+	if _wash_add_mat == null:
+		_wash_add_mat = CanvasItemMaterial.new()
+		_wash_add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return _wash_add_mat
+
+
 func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: Rect2) -> void:
 	var origin: Vector2 = light.get_light_origin()
 	var radius: float = maxf(light.get_radius(), 8.0)
 	var kind: int = light.get_light_kind()
 	var intensity: float = 1.0
 	if light.has_method("get_intensity"):
-		intensity = clampf(float(light.get_intensity()), 0.15, 3.0)
-	var burns := kind in [GameState.LightKind.HEARTH, GameState.LightKind.CANDLE, GameState.LightKind.SUNSHAFT]
-	## Bright enough that the burn/safe zone is obvious on the floor.
-	var base_a := (0.48 if burns else 0.22) * intensity
-	var core := Color(1.0, 0.78, 0.32, mini(0.85, base_a))
+		intensity = clampf(float(light.get_intensity()), 0.0, INTENSITY_MAX)
+	var t := _intensity_t(intensity)
+	var fill_a := FILL_ALPHA_AT_MAX * t
+	var outline_a := OUTLINE_ALPHA_AT_MAX * t
+
+	var rgb := Color(1.0, 0.78, 0.32)
 	match kind:
 		GameState.LightKind.MOON:
-			core = Color(0.65, 0.85, 1.0, mini(0.55, 0.28 * intensity))
+			rgb = Color(0.65, 0.85, 1.0)
 		GameState.LightKind.CRIMSON:
-			core = Color(0.95, 0.25, 0.3, mini(0.7, 0.4 * intensity))
+			rgb = Color(0.95, 0.25, 0.3)
 		GameState.LightKind.SUNSHAFT:
-			core = Color(1.0, 1.0, 0.85, mini(0.9, 0.55 * intensity))
+			rgb = Color(1.0, 1.0, 0.88)
 		GameState.LightKind.CANDLE:
-			core = Color(1.0, 0.72, 0.38, mini(0.8, 0.42 * intensity))
+			rgb = Color(1.0, 0.72, 0.38)
 
 	var exclude: Array = []
 	if light.has_method("get_exclude_rids"):
 		exclude = light.get_exclude_rids()
 
 	var angles := _collect_ray_angles(origin, radius, view)
-	## Rim points only — filled as a triangle fan from `origin` so the middle stays solid.
+	## Rim points — filled as a triangle fan from `origin`.
 	var pts := PackedVector2Array()
 	for i in angles.size():
 		var dir := Vector2.from_angle(angles[i])
@@ -350,49 +370,36 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
 
-	## z −3/−2/−1 sits above floors (−4) and below the player (0).
-	## Soft outer shell (penumbra) → main wash → bright core (depth toward the lamp).
+	## Soft rim (behind) + main fill at linear opacity. Additive → overlaps sum.
 	_add_wash_fan(
 		origin,
 		_scale_ring(origin, pts, WASH_PENUMBRA_SCALE),
-		Color(core.r, core.g, core.b, core.a * 0.4),
-		-3
+		Color(rgb.r, rgb.g, rgb.b, fill_a * 0.35),
+		-3,
+		true
 	)
 	_add_wash_fan(
 		origin,
 		pts,
-		Color(core.r, core.g, core.b, mini(0.72, core.a * 0.9)),
-		-2
+		Color(rgb.r, rgb.g, rgb.b, fill_a),
+		-2,
+		true
 	)
+	## Inner depth — same budget, brighter RGB, smaller radius (reads as falloff).
 	_add_wash_fan(
 		origin,
 		_scale_ring(origin, pts, WASH_CORE_SCALE),
-		Color(
-			mini(1.0, core.r + 0.12),
-			mini(1.0, core.g + 0.1),
-			mini(1.0, core.b + 0.05),
-			mini(0.88, core.a * 1.25)
-		),
-		-2
-	)
-	## Hottest center — always on so the middle isn't empty.
-	var hot_pts := PackedVector2Array()
-	var hot_r := radius * clampf(0.2 + (intensity - 1.0) * 0.08, 0.18, 0.36)
-	for i in 16:
-		var a := TAU * float(i) / 16.0
-		hot_pts.append(origin + Vector2.from_angle(a) * hot_r)
-	_add_wash_fan(
-		origin,
-		hot_pts,
-		Color(1.0, 0.9, 0.5, mini(0.55, 0.28 + intensity * 0.12)),
-		-2
+		Color(mini(1.0, rgb.r + 0.15), mini(1.0, rgb.g + 0.12), mini(1.0, rgb.b + 0.06), fill_a * 0.55),
+		-2,
+		true
 	)
 
-	## AoE edge matches burn rays (gameplay occluders only).
+	## Outline at 100% when intensity is max; scales linearly. Normal blend (crisp edge).
 	var ring := _take_line()
-	ring.width = 2.6 + intensity * 0.5
-	ring.default_color = Color(core.r, core.g, core.b, mini(0.95, 0.75 + intensity * 0.08))
+	ring.width = 2.8
+	ring.default_color = Color(rgb.r, rgb.g, rgb.b, outline_a)
 	ring.z_index = -1
+	ring.material = null
 	ring.clear_points()
 	for p in pts:
 		ring.add_point(p)
@@ -400,17 +407,6 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		ring.add_point(pts[0])
 	_root.add_child(ring)
 	_visuals.append(ring)
-	var glow := _take_line()
-	glow.width = 5.5 + intensity
-	glow.default_color = Color(core.r, core.g, core.b, 0.3)
-	glow.z_index = -1
-	glow.clear_points()
-	for p in pts:
-		glow.add_point(p)
-	if pts.size() > 0:
-		glow.add_point(pts[0])
-	_root.add_child(glow)
-	_visuals.append(glow)
 
 	_draw_umbrae_for_light(light, origin, radius, space, exclude)
 
@@ -465,11 +461,18 @@ func _scale_ring(origin: Vector2, pts: PackedVector2Array, t: float) -> PackedVe
 	return out
 
 
-func _add_wash_fan(origin: Vector2, rim: PackedVector2Array, color: Color, z: int) -> void:
-	if rim.size() < 2:
+func _add_wash_fan(
+	origin: Vector2,
+	rim: PackedVector2Array,
+	color: Color,
+	z: int,
+	additive: bool = false
+) -> void:
+	if rim.size() < 2 or color.a < 0.01:
 		return
 	var fan := _take_fan()
 	fan.z_index = z
+	fan.material = _wash_add_material() if additive else null
 	fan.set_fan(origin, rim, color)
 	_root.add_child(fan)
 	_visuals.append(fan)
