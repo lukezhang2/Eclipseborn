@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.70 — Playtest Zone shows session editor edits (trusted user:// mirror + sync tagged builtins on apply); `index-0_1_70.pck`
 - v0.1.69 — Editor Ctrl/Cmd multi-select (group move/dupe/delete/layer/light settings), top-layer click pick, Resize N/E/S/W edge grips; `index-0_1_69.pck`
 - v0.1.68 — Editor lantern kind (Moon / Hearth / Candle / Crimson / Sunshaft); `index-0_1_68.pck`
 - v0.1.67 — sync cursed_cottage (backdrop, moon lamp mid-hall, hatch spawn 520/460); `index-0_1_67.pck`

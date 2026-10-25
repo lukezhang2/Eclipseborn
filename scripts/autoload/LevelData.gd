@@ -18,6 +18,9 @@ const RES_DIR := "res://data/levels/"
 ## In-memory editor overlays for this browser/tab session only.
 ## Refresh clears them — browser IndexedDB copies of user://editor/ are wiped on boot.
 static var _session_overlays: Dictionary = {}
+## True after this tab writes a session save. Lets load_raw read user:// mid-session
+## (playtest) without resurrecting IndexedDB leftovers from a previous page load.
+static var _session_disk_trusted: bool = false
 
 
 func _ready() -> void:
@@ -32,14 +35,20 @@ func _ready() -> void:
 func _clear_editor_after_idbfs() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
+	## Never erase this tab's live editor saves (playtest disk mirror).
+	if _session_disk_trusted:
+		return
 	clear_user_editor_files_only()
 	await get_tree().create_timer(0.75).timeout
+	if _session_disk_trusted:
+		return
 	clear_user_editor_files_only()
 
 
 ## Wipe session memory + on-disk editor overlays (call on boot / refresh).
 static func clear_session_editor_overlays(wipe_disk: bool = true) -> void:
 	_session_overlays.clear()
+	_session_disk_trusted = false
 	if wipe_disk:
 		clear_user_editor_files_only()
 
@@ -80,7 +89,19 @@ static func load_raw(zone_id: String) -> Dictionary:
 	## Prefer this tab's session overlay (survives playtest, dies on refresh).
 	if _session_overlays.has(zone_id):
 		return (_session_overlays[zone_id] as Dictionary).duplicate(true)
-	## Never load durable browser editor JSON after a refresh — only repo overlays.
+	## Mid-session disk mirror written by save_raw — only when this tab saved.
+	## After a refresh, _session_disk_trusted is false so IndexedDB leftovers are ignored.
+	if _session_disk_trusted:
+		var user_path := USER_DIR + zone_id + ".json"
+		if FileAccess.file_exists(user_path):
+			var uf := FileAccess.open(user_path, FileAccess.READ)
+			if uf:
+				var user_parsed: Variant = JSON.parse_string(uf.get_as_text())
+				if typeof(user_parsed) == TYPE_DICTIONARY:
+					var user_data := user_parsed as Dictionary
+					_session_overlays[zone_id] = user_data.duplicate(true)
+					return user_data.duplicate(true)
+	## Repo overlays only after refresh / with no session save.
 	var path := RES_DIR + zone_id + ".json"
 	if not FileAccess.file_exists(path):
 		return {"schema": PieceSpecs.SCHEMA_VERSION, "zone": zone_id, "pieces": [], "removed_ids": []}
@@ -137,7 +158,8 @@ static func save_raw(zone_id: String, data: Dictionary, to_res: bool = false) ->
 	if not to_res:
 		## Session-only: playtest in this tab sees edits; refresh discards them.
 		_session_overlays[zone_id] = data.duplicate(true)
-		## Also mirror to user:// for mid-session playtest loads that race memory.
+		_session_disk_trusted = true
+		## Mirror to user:// so playtest still works if memory races a scene change.
 		DirAccess.make_dir_recursive_absolute(USER_DIR)
 		var user_path := USER_DIR + zone_id + ".json"
 		var uf := FileAccess.open(user_path, FileAccess.WRITE)
@@ -205,16 +227,153 @@ static func merged_piece(zone_id: String, piece_id: String) -> Dictionary:
 static func apply(parent: Node2D, zone_id: String) -> void:
 	var data := load_raw(zone_id)
 	var pieces: Array = data.get("pieces", [])
+	var overlay_by_id: Dictionary = {}
 	for p in pieces:
 		if typeof(p) != TYPE_DICTIONARY:
 			continue
-		if bool(p.get("builtin", false)):
-			continue  # builtins are spawned by the room script
 		var id := str(p.get("id", ""))
+		if id != "":
+			overlay_by_id[id] = p
+		if bool(p.get("builtin", false)):
+			continue  # builtins are spawned by the room script; synced below
 		if id != "" and data.get("removed_ids", []).has(id):
 			continue
 		_spawn_piece(parent, p)
+	## Push editor fields onto room-built catalog nodes (move lamp, retint crate, …).
+	_sync_tagged_from_overlay(parent, overlay_by_id)
 	prune_removed(parent, zone_id)
+
+
+static func _sync_tagged_from_overlay(parent: Node, overlay_by_id: Dictionary) -> void:
+	if overlay_by_id.is_empty() or parent == null:
+		return
+	_sync_tagged_recursive(parent, overlay_by_id)
+
+
+static func _sync_tagged_recursive(node: Node, overlay_by_id: Dictionary) -> void:
+	if node.has_meta("catalog_id"):
+		var cid := str(node.get_meta("catalog_id"))
+		if overlay_by_id.has(cid):
+			_apply_overlay_to_node(node, overlay_by_id[cid] as Dictionary)
+	for child in node.get_children():
+		_sync_tagged_recursive(child, overlay_by_id)
+
+
+static func _apply_overlay_to_node(node: Node, p: Dictionary) -> void:
+	if node is Node2D and p.has("x") and p.has("y"):
+		(node as Node2D).position = Vector2(float(p.get("x")), float(p.get("y")))
+	if node is LightSource:
+		var lamp := node as LightSource
+		if p.has("radius"):
+			lamp.set_radius(float(p.get("radius")))
+		if p.has("intensity"):
+			lamp.set_intensity(float(p.get("intensity")))
+		if p.has("light_kind"):
+			lamp.light_kind = int(p.get("light_kind")) as GameState.LightKind
+		if p.has("pushable"):
+			lamp.pushable = bool(p.get("pushable"))
+		return
+	if node is PushableBox:
+		var box := node as PushableBox
+		if p.has("w") and p.has("h"):
+			box.box_size = Vector2(float(p.get("w")), float(p.get("h")))
+		return
+	if node is LightSwitch:
+		var sw := node as LightSwitch
+		if p.has("starts_on"):
+			sw.starts_on = bool(p.get("starts_on"))
+		if p.has("target_ids"):
+			var tids := PackedStringArray()
+			for t in p.get("target_ids", []):
+				tids.append(str(t))
+			sw.target_ids = tids
+		return
+	if node is SwitchDoor:
+		var door := node as SwitchDoor
+		if p.has("starts_open"):
+			door.starts_open = bool(p.get("starts_open"))
+		if p.has("w"):
+			door.width = maxf(float(p.get("w")), 20.0)
+		if p.has("h"):
+			door.height = maxf(float(p.get("h")), 64.0)
+		return
+	if node is Checkpoint:
+		var cp := node as Checkpoint
+		if p.has("name") and str(p.get("name", "")) != "":
+			cp.checkpoint_name = str(p.get("name"))
+		return
+	if node is House:
+		var house := node as House
+		if p.has("w"):
+			house.width = float(p.get("w"))
+		if p.has("h"):
+			house.height = float(p.get("h"))
+		if p.has("name") and str(p.get("name", "")) != "":
+			house.house_name = str(p.get("name"))
+		if p.has("blocks_light"):
+			house.blocks_light = bool(p.get("blocks_light"))
+		if p.has("target_zone") and str(p.get("target_zone", "")) != "":
+			house.house_id = str(p.get("target_zone"))
+		elif p.has("house_id") and str(p.get("house_id", "")) != "":
+			house.house_id = str(p.get("house_id"))
+		if p.has("spawn_x") or p.has("spawn_y"):
+			house.interior_spawn = Vector2(
+				float(p.get("spawn_x", house.interior_spawn.x)),
+				float(p.get("spawn_y", house.interior_spawn.y))
+			)
+		if p.has("caption"):
+			house.travel_caption = str(p.get("caption"))
+		if p.has("layer"):
+			house.z_index = int(p.get("layer"))
+		return
+	if node is BreakableHatch:
+		var hatch := node as BreakableHatch
+		if p.has("w") and p.has("h"):
+			hatch.hatch_size = Vector2(maxf(float(p.get("w")), 40.0), maxf(float(p.get("h")), 12.0))
+		if p.has("target_zone") and str(p.get("target_zone", "")) != "":
+			hatch.next_scene = SaveManager.scene_for_zone(str(p.get("target_zone")))
+		if p.has("spawn_x") or p.has("spawn_y"):
+			hatch.spawn_in_next = Vector2(
+				float(p.get("spawn_x", hatch.spawn_in_next.x)),
+				float(p.get("spawn_y", hatch.spawn_in_next.y))
+			)
+		return
+	if node is BreakableProp:
+		var jar := node as BreakableProp
+		if p.has("w") and p.has("h"):
+			jar.prop_size = Vector2(float(p.get("w")), float(p.get("h")))
+		return
+	if node is NPC:
+		var npc := node as NPC
+		if p.has("name") and str(p.get("name", "")) != "":
+			npc.npc_name = str(p.get("name"))
+		if p.has("lines"):
+			npc.lines = HouseProfiles.lines_to_packed(p.get("lines", ["…"]))
+		if p.has("is_shopkeeper"):
+			npc.is_shopkeeper = bool(p.get("is_shopkeeper"))
+		if p.has("shop_items"):
+			npc.shop_items = ShopCatalog.normalize_shop_items(p.get("shop_items", []))
+		return
+	if node is ShadowCrystal:
+		var crystal := node as ShadowCrystal
+		if p.has("name") and str(p.get("name", "")) != "":
+			crystal.display_name = str(p.get("name"))
+		return
+	## Zone-link exit doors (scripted Node, not always class_name).
+	if node.get_script() != null and str(node.get_script().resource_path).ends_with("ZoneLinkDoor.gd"):
+		if p.has("target_zone"):
+			node.set("target_zone", str(p.get("target_zone")))
+		if p.has("spawn_x") or p.has("spawn_y"):
+			node.set(
+				"spawn_pos",
+				Vector2(float(p.get("spawn_x", 520)), float(p.get("spawn_y", 460)))
+			)
+		if p.has("caption") or p.has("travel_caption"):
+			node.set("travel_caption", str(p.get("caption", p.get("travel_caption", ""))))
+		if p.has("name"):
+			node.set("verb", str(p.get("name")))
+		return
+	_apply_tint(node, _piece_tint(p))
 
 
 static func _piece_tint(p: Dictionary) -> Color:
