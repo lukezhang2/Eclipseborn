@@ -13,6 +13,9 @@ var keeper_lines: PackedStringArray = PackedStringArray([])
 var keeper_shop_items: Array = []
 var return_spawn: Vector2 = Vector2(520, 460)
 var _npc_id: String = "npc_shop"
+var _keeper: Node2D
+## Keeper's feet sit just above the floor so the counter hides his legs.
+const KEEPER_Y := FLOOR_Y - 4
 
 ## Per-shop look: WorldArt INTERIOR / DESK / SIGN styles.
 const SHOP_LOOK := {
@@ -45,6 +48,9 @@ func _ready() -> void:
 	_build_exit()
 	LevelData.apply(self, house_id)
 	LevelData.prune_removed(self, house_id)
+	## Editor saves can carry an old keeper y (Lantern Keep had 450 → floating); keep their x only.
+	if is_instance_valid(_keeper):
+		_keeper.position.y = KEEPER_Y
 
 	## Spawn near the left exit, clear of the walk pad so we don't bounce out.
 	var spawn := Vector2(160, FLOOR_Y - 40)
@@ -131,7 +137,7 @@ func _build_desk_and_keeper() -> void:
 	if saved.has("y"):
 		npc_pos.y = float(saved.get("y"))
 	# Standing behind the low counter: visible from the waist up.
-	npc_pos.y = FLOOR_Y - 4
+	npc_pos.y = KEEPER_Y
 	npc.position = npc_pos
 	npc.npc_name = keeper_name
 	npc.lines = keeper_lines
@@ -142,6 +148,7 @@ func _build_desk_and_keeper() -> void:
 	npc.z_index = -2
 	LevelData.tag(npc, _npc_id)
 	add_child(npc)
+	_keeper = npc
 
 
 ## Shop name on a sign hanging from the ceiling, in the steampunk display face.
