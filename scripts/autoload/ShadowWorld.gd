@@ -7,9 +7,11 @@ extends Node
 signal shadows_rebuilt
 
 ## Enough rays for a smooth rim; corner angles still catch hard edges.
-const RAY_COUNT := 48
-const CORNER_EPS := 0.003
-const ANGLE_MERGE := 0.006
+const RAY_COUNT := 64
+## Grazing rays around occluder corners (must stay ABOVE ANGLE_MERGE).
+const CORNER_EPS := 0.008
+## Dedup threshold — must be < CORNER_EPS or corner grazes get merged away.
+const ANGLE_MERGE := 0.0025
 ## Cap umbra casters per light (nearest first).
 const UMBRA_MAX_PER_LIGHT := 8
 ## Max full rebuilds per second while dirty (moving platforms keep dirty=true).
@@ -264,22 +266,36 @@ func _collect_ray_angles(origin: Vector2, radius: float, view: Rect2) -> PackedF
 			angles.append(a - CORNER_EPS)
 			angles.append(a + CORNER_EPS)
 
+	## Wrap FIRST, then sort — otherwise TAU-crossing corner rays scramble rim order
+	## and the triangle fan draws self-overlapping shards (additive seams).
+	for i in angles.size():
+		angles[i] = fposmod(float(angles[i]), TAU)
 	angles.sort()
 	var out := PackedFloat32Array()
 	var last := -999.0
 	for a in angles:
-		var ang: float = fposmod(float(a), TAU)
+		var ang: float = float(a)
 		if out.is_empty() or absf(ang - last) > ANGLE_MERGE:
 			out.append(ang)
 			last = ang
+	## Drop near-duplicate across the 0/TAU seam (first vs last).
+	if out.size() >= 2:
+		var first: float = out[0]
+		var wrap_last: float = out[out.size() - 1]
+		if absf(first + TAU - wrap_last) <= ANGLE_MERGE:
+			out.remove_at(out.size() - 1)
 	return out
 
 
 func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, radius: float, exclude: Array) -> Vector2:
-	var to := origin + dir * radius
+	var dir_n := dir.normalized()
+	if dir_n.length_squared() < 0.0001:
+		return origin
+	var to := origin + dir_n * radius
 	var best := to
 	var best_dist := radius
-	var start := origin + dir * 1.5
+	## Start slightly out so we don't immediately "hit" the emitter's own volume.
+	var start := origin + dir_n * 2.0
 	var ray_aabb := Rect2(start, Vector2.ZERO).expand(to)
 
 	## Geometry against gameplay occluders only (same set as burns).
@@ -292,28 +308,45 @@ func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, 
 		for edge in e["edges"]:
 			var hit: Variant = Geometry2D.segment_intersects_segment(start, to, edge[0], edge[1])
 			if hit is Vector2:
-				var d := origin.distance_to(hit as Vector2)
-				if d > 2.0 and d < best_dist:
+				var hp := hit as Vector2
+				## Keep hit on this ray (reject numerical cross-hits).
+				if dir_n.dot((hp - origin).normalized()) < 0.97:
+					continue
+				var d := origin.distance_to(hp)
+				if d > 2.5 and d < best_dist:
 					best_dist = d
-					best = hit as Vector2
+					best = hp
 
 	## Physics backup (floors / crates / light-only).
-	var q := PhysicsRayQueryParameters2D.create(origin + dir * 1.25, to)
+	## hit_from_inside=false avoids random far hits when the lamp sits in a collider.
+	var q := PhysicsRayQueryParameters2D.create(start, to)
 	q.collision_mask = OCCLUDER_MASK
-	q.hit_from_inside = true
+	q.hit_from_inside = false
 	q.exclude = exclude
 	var ph := space.intersect_ray(q)
 	if not ph.is_empty():
 		var hit_pos: Vector2 = ph.position
 		var d := origin.distance_to(hit_pos)
-		if d > 2.0 and d < best_dist:
+		if d > 2.5 and d < best_dist:
 			best_dist = d
 			best = hit_pos
 
 	if best_dist >= radius - 0.01:
 		return to
-	## Tiny pullback so the rim sits just outside solid faces (avoids z-fighting).
-	return best - dir * 0.35
+	## Pullback along the ray so the rim sits just outside solid faces.
+	return origin + dir_n * maxf(best_dist - 0.6, 2.5)
+
+
+func _sort_rim_angular(origin: Vector2, pts: PackedVector2Array) -> PackedVector2Array:
+	var pairs: Array = []
+	for p in pts:
+		pairs.append({"a": (p - origin).angle(), "p": p})
+	pairs.sort_custom(func(x, y): return float(x["a"]) < float(y["a"]))
+	var out := PackedVector2Array()
+	out.resize(pairs.size())
+	for i in pairs.size():
+		out[i] = pairs[i]["p"]
+	return out
 
 
 func _intensity_t(intensity: float) -> float:
@@ -367,6 +400,9 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		for i in 24:
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
+	else:
+		## Safety: keep rim in ascending angle order around the lamp.
+		pts = _sort_rim_angular(origin, pts)
 
 	## z −3: above floors (−4), below houses (−1) so facades are not painted over.
 	_add_wash_fan(origin, pts, Color(rgb.r, rgb.g, rgb.b, fill_a), -3, true)
