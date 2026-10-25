@@ -9,7 +9,7 @@ radius = 10.0
 height = 36.0
 
 [sub_resource type="RectangleShape2D" id="Rect_hit"]
-size = Vector2(24, 38)
+size = Vector2(60, 38)
 
 [sub_resource type="CircleShape2D" id="Circle_probe"]
 radius = 3.0

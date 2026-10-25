@@ -12,6 +12,13 @@ const ATTACK_STARTUP := 0.05
 const ATTACK_ACTIVE := 0.11
 const ATTACK_RECOVERY := 0.12
 const ATTACK_DAMAGE := 12
+## Outward length past the body edge — matches AttackSlash tip (~40 local + offset, grown ~1.25×).
+const HIT_REACH_SIDE := 60.0
+const HIT_REACH_UP := 56.0
+const HIT_REACH_DOWN := 58.0
+## Cross-axis thickness of the attack volume (keeps the box from being a thin line).
+const HIT_THICK_SIDE := 1.07  # × body height
+const HIT_THICK_VERT := 1.37  # × body width
 
 var facing: float = 1.0
 ## Cardinal look: Vector2.RIGHT/LEFT/UP/DOWN
@@ -364,7 +371,7 @@ func _sync_hurtbox() -> void:
 
 
 func _sync_hitbox() -> void:
-	## Red cardinal attack boxes flush against green (inner edge touches body, no gap).
+	## Red cardinal attack boxes: flush on the body, long enough to cover the slash tip.
 	var shape := hitbox.get_node_or_null("CollisionShape2D") as CollisionShape2D
 	if shape == null:
 		return
@@ -379,23 +386,21 @@ func _sync_hitbox() -> void:
 	if shape.shape is RectangleShape2D:
 		var rect := shape.shape as RectangleShape2D
 		if aim_dir == Vector2.UP:
-			# ~1.37× green width, ~0.61× green height; bottom edge on body top.
-			rect.size = Vector2(body_w * 1.37, body_h * 0.61)
+			rect.size = Vector2(body_w * HIT_THICK_VERT, HIT_REACH_UP)
 			hitbox.position = Vector2(body_cx, body_top - rect.size.y * 0.5)
 		elif aim_dir == Vector2.DOWN:
-			rect.size = Vector2(body_w * 1.37, body_h * 0.61)
+			rect.size = Vector2(body_w * HIT_THICK_VERT, HIT_REACH_DOWN)
 			hitbox.position = Vector2(body_cx, body_bottom + rect.size.y * 0.5)
 		else:
-			# ~1.22× green width, ~1.07× green height; inner edge on body side.
-			rect.size = Vector2(body_w * 1.22, body_h * 1.07)
+			rect.size = Vector2(HIT_REACH_SIDE, body_h * HIT_THICK_SIDE)
 			hitbox.position = Vector2(body_cx + facing * (half.x + rect.size.x * 0.5), body_cy)
 	else:
 		if aim_dir == Vector2.UP:
-			hitbox.position = Vector2(0, body_top - 11.0)
+			hitbox.position = Vector2(0, body_top - HIT_REACH_UP * 0.5)
 		elif aim_dir == Vector2.DOWN:
-			hitbox.position = Vector2(0, body_bottom + 11.0)
+			hitbox.position = Vector2(0, body_bottom + HIT_REACH_DOWN * 0.5)
 		else:
-			hitbox.position = Vector2(facing * (half.x + 12.0), body_cy)
+			hitbox.position = Vector2(facing * (half.x + HIT_REACH_SIDE * 0.5), body_cy)
 	hitbox.rotation = 0
 	hitbox.scale = Vector2.ONE
 
