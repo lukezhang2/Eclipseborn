@@ -65,9 +65,11 @@ func _draw() -> void:
 	for piece in _pieces:
 		if typeof(piece) == TYPE_DICTIONARY:
 			_draw_piece(piece)
-	## Cover everything the camera has not framed, so the zone shape stays hidden.
+	## Unrevealed cells, then the margin around the zone so lamp circles cannot
+	## glow into the dark area above the map.
 	for span in GameState.map_hidden_spans(zone_id, _bounds):
 		draw_rect(_map_rect(span), veil, true)
+	_veil_outside(fitted, veil)
 	_draw_seen_labels()
 	_draw_plaque(_zone_title(), Vector2(16, 14), 20)
 	_draw_frame(wr)
@@ -85,8 +87,29 @@ func _draw_washes() -> void:
 		var radius := float(piece.get("radius", 0.0))
 		if radius <= 1.0:
 			continue
-		var center := _to_map(Vector2(float(piece.get("x", 0.0)), float(piece.get("y", 0.0))))
+		var world := Vector2(float(piece.get("x", 0.0)), float(piece.get("y", 0.0)))
+		if not GameState.map_cell_seen(zone_id, world):
+			continue
+		var center := _to_map(world)
 		draw_circle(center, radius * _scale, Color(WorldArt.LAMP.r, WorldArt.LAMP.g, WorldArt.LAMP.b, 0.07))
+
+
+func _veil_outside(inner: Rect2, veil: Color) -> void:
+	## Opaque cover for the panel around the zone, including light that spills past it.
+	var wr := size
+	var top := maxf(inner.position.y, 0.0)
+	var bottom := minf(inner.end.y, wr.y)
+	if top > 0.0:
+		draw_rect(Rect2(0.0, 0.0, wr.x, top), veil, true)
+	if bottom < wr.y:
+		draw_rect(Rect2(0.0, bottom, wr.x, wr.y - bottom), veil, true)
+	var left := maxf(inner.position.x, 0.0)
+	var right := minf(inner.end.x, wr.x)
+	var mid_h := maxf(bottom - top, 0.0)
+	if left > 0.0:
+		draw_rect(Rect2(0.0, top, left, mid_h), veil, true)
+	if right < wr.x:
+		draw_rect(Rect2(right, top, wr.x - right, mid_h), veil, true)
 
 
 func _draw_piece(piece: Dictionary) -> void:
