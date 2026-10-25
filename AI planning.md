@@ -117,6 +117,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.79 — Pearl gear icon on the HUD counter, shop gear total + prices, and backpack; `index-0_1_79.pck`
 - v0.1.78 — tower prompt E — Ascend; ladder top hops onto the landing; white Pearl gear currency; player plain round head (no ears); `index-0_1_78.pck`
 - v0.1.71 — boot shows the real title behind the glass (no white flash); Clockwork crack look; particle steam vents; Wickwright redrawn as the Grandfather Wraith (animated wings, pendulum heart, eye tracking); `index-0_1_71.pck`
 - v0.1.56 — shop counters walk-through (keeper behind, player in front); tower exit spawns left of the door via shared `ClockworkTower.VILLAGE_DOOR_X`; tower facade no longer blocks walking; `index-0_1_56.pck`

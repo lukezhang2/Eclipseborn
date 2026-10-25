@@ -22,6 +22,7 @@ const INK_LIGHT := Color("b8a3e0")
 ## Steampunk typefaces (SIL Open Font License; licenses sit next to the .ttf files).
 const TITLE_FONT := "res://assets/fonts/IMFellEnglishSC-Regular.ttf"
 const PROMPT_FONT := "res://assets/fonts/IMFellEnglishSC-Regular.ttf"
+const CurrencyArtScript := preload("res://scripts/world/CurrencyArt.gd")
 
 static var _theme: Theme
 
@@ -287,3 +288,31 @@ static func _toggle(on: bool) -> ImageTexture:
 			if Vector2(x + 0.5, y + 0.5).distance_to(kc) <= r - 4.0:
 				img.set_pixel(x, y, knob)
 	return ImageTexture.create_from_image(img)
+
+
+## Pearl gear currency icon (same art as the pickups) sized for UI rows.
+static func make_gear_icon(px: float) -> Control:
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(px, px)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var art: Node2D = CurrencyArtScript.new()
+	art.style = 1
+	art.still = true
+	art.position = Vector2(px, px) * 0.5
+	art.scale = Vector2.ONE * (px / 20.0) ## pearl gear is ~20px across at scale 1
+	box.add_child(art)
+	return box
+
+
+## Icon + amount label in one centered/right-aligned row.
+static func gear_row(label: Label, px: float, align: BoxContainer.AlignmentMode = BoxContainer.ALIGNMENT_CENTER) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = align
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon := make_gear_icon(px)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(label)
+	return row

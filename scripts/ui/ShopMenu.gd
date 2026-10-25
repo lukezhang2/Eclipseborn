@@ -78,7 +78,7 @@ func _build_ui() -> void:
 	gears_label.add_theme_font_size_override("font_size", 18)
 	gears_label.add_theme_color_override("font_color", UITheme.LAMP)
 	gears_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(gears_label)
+	vbox.add_child(UITheme.gear_row(gears_label, 22.0))
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(500, 300)
@@ -235,11 +235,11 @@ func _make_row(entry: Dictionary, remaining: int) -> Control:
 	h.add_child(meta)
 
 	var price_l := Label.new()
-	price_l.text = "%d gears" % price
+	price_l.text = "%d" % price
 	price_l.add_theme_font_size_override("font_size", 14)
 	price_l.add_theme_color_override("font_color", UITheme.LAMP)
 	price_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	meta.add_child(price_l)
+	meta.add_child(UITheme.gear_row(price_l, 16.0, BoxContainer.ALIGNMENT_END))
 
 	var stock_l := Label.new()
 	if remaining < 0:

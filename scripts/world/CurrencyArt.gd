@@ -5,6 +5,8 @@ var style: int = 1
 var t: float = 0.0
 var spin: float = 0.0
 var fade: float = 1.0
+## UI icon mode: no bob (HUD, shop, backpack).
+var still: bool = false
 
 
 func _ready() -> void:
@@ -24,7 +26,7 @@ const EDGE := Color(0.36, 0.38, 0.46)
 
 
 func _draw() -> void:
-	var c := Vector2(0, sin(t * 3.0) * 1.5 - 2.0)
+	var c := Vector2.ZERO if still else Vector2(0, sin(t * 3.0) * 1.5 - 2.0)
 	draw_set_transform(c, 0.0, Vector2(SIZE, SIZE))
 	match style:
 		2:

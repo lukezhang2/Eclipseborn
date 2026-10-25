@@ -94,7 +94,7 @@ func _build_ui() -> void:
 	gears_label.add_theme_font_size_override("font_size", 16)
 	gears_label.add_theme_color_override("font_color", UITheme.LAMP)
 	gears_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(gears_label)
+	vbox.add_child(UITheme.gear_row(gears_label, 20.0))
 
 	var tabs := HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
