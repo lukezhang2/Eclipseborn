@@ -120,6 +120,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.84 — ladder top: no hop; climb up onto an invisible one-way ledge over the hatch and walk off (S/Down climbs back down); `index-0_1_84.pck`
 - v0.1.82 — shopkeepers stay behind the counter even with an old editor-saved y (Lantern Keep no longer floats); `index-0_1_82.pck`
 - v0.1.79 — Pearl gear icon on the HUD counter, shop gear total + prices, and backpack; `index-0_1_79.pck`
 - v0.1.78 — tower prompt E — Ascend; ladder top hops onto the landing; white Pearl gear currency; player plain round head (no ears); `index-0_1_78.pck`

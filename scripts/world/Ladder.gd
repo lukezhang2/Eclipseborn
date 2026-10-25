@@ -5,6 +5,8 @@ class_name Ladder
 
 @export var ladder_height: float = 200.0
 @export var ladder_width: float = 28.0
+## One-way ledge across the ladder top (ladders pass through hatch gaps in floors).
+var top_cap: StaticBody2D
 
 
 func _ready() -> void:
@@ -14,6 +16,7 @@ func _ready() -> void:
 	monitorable = false
 	add_to_group("ladders")
 	_build_shape()
+	_build_top_cap()
 	_build_art()
 
 
@@ -25,6 +28,20 @@ func _build_shape() -> void:
 	cs.shape = rect
 	cs.position = Vector2(0.0, -ladder_height * 0.5)
 	add_child(cs)
+
+
+func _build_top_cap() -> void:
+	top_cap = StaticBody2D.new()
+	top_cap.collision_layer = 1
+	top_cap.collision_mask = 0
+	var cs := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(ladder_width + 20.0, 6.0)
+	cs.shape = rect
+	cs.position = Vector2(0.0, -ladder_height + 3.0)
+	cs.one_way_collision = true
+	top_cap.add_child(cs)
+	add_child(top_cap)
 
 
 func _build_art() -> void:
