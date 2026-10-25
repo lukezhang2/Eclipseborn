@@ -21,14 +21,12 @@ const LIGHT_BLOCK_PHYSICS_LAYER := 128
 
 
 static func default_blocks_light(kind: String) -> bool:
+	## Default ON — opt out for emitters, characters, and pure draw props.
 	match kind:
-		"floor", "wall", "block", "crate", "prop_house", "prop_desk", "prop_hatch":
-			return true
-		"light", "background", "prop_npc", "prop_bench", "prop_vent", "prop_checkpoint", \
-		"prop_enemy", "prop_bg_gear", "prop_pickup", "prop_pipe", "prop_window", "prop_valve":
+		"light", "background", "prop_npc", "prop_enemy", "prop_pickup":
 			return false
 		_:
-			return false
+			return true
 
 
 static func default_draw_layer(kind: String) -> int:

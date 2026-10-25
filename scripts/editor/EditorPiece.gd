@@ -22,7 +22,7 @@ var anchor_mode: String = "center"
 ## NPC dialogue lines (one string per line). Empty for non-NPCs.
 var dialogue_lines: PackedStringArray = PackedStringArray()
 ## If true, gameplay should occlude lantern washes (no player collision required).
-var blocks_light: bool = false
+var blocks_light: bool = true
 ## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
 var draw_layer: int = 0
 

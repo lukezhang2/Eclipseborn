@@ -7,7 +7,7 @@ cd "$ROOT"
 
 bash "$ROOT/tools/ensure-godot.sh"
 
-VERSION="$(rg -o 'config/version="([^"]+)"' -r '$1' project.godot | head -1 || true)"
+VERSION="$(python3 -c 'import re; print(re.search(r'"'"'config/version="([^"]+)"'"'"', open("project.godot").read()).group(1))' 2>/dev/null || true)"
 if [[ -z "${VERSION}" ]]; then
 	VERSION="0.0.0"
 fi
