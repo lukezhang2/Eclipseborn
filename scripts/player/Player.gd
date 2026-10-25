@@ -9,6 +9,8 @@ const JUMP_VELOCITY := -360.0
 const DOUBLE_JUMP_VELOCITY := -320.0
 const GRAVITY := 980.0
 const CLIMB_SPEED := 115.0
+## Feet this far below the ladder top = hands on the top rung; start the step-off.
+const MANTLE_START := 30.0
 const CLIMB_SLIDE_X := 55.0
 const ATTACK_STARTUP := 0.05
 const ATTACK_ACTIVE := 0.11
@@ -34,6 +36,8 @@ var _pushing: bool = false
 var _pulling: bool = false
 var _climbing: bool = false
 var _ladder: Node = null
+## Short hop off the top of a ladder onto the landing (no climb pose above the rails).
+var _mantling: bool = false
 var _in_vulnerable_light: bool = false
 var _active_light_kind: int = GameState.LightKind.HEARTH
 var _active_light_intensity: float = 1.0
@@ -126,6 +130,9 @@ func _get_move_axis() -> float:
 func _physics_process(delta: float) -> void:
 	if GameState.is_paused or GameState.intro_cutscene_playing:
 		return
+	if _mantling:
+		_update_visual(0.0)
+		return
 
 	_land_suppress = maxf(0.0, _land_suppress - delta)
 	_update_aim_and_crouch()
@@ -217,6 +224,9 @@ func _try_handle_climb(delta: float) -> bool:
 		Input.is_action_pressed("crouch") and not is_on_floor()
 	)
 	## Mount when pressing W near a ladder, or S while mid-air / at the top.
+	## W at the top landing should not re-mount (it would just hop you off again).
+	if want_up and global_position.y <= (near as Ladder).top_y() + MANTLE_START:
+		want_up = false
 	if want_up or (want_down and (not is_on_floor() or global_position.y <= (near as Ladder).top_y() + 8.0)):
 		_enter_climb(near)
 		_apply_climb_motion(delta)
@@ -276,13 +286,47 @@ func _apply_climb_motion(_delta: float) -> void:
 	## Soft clamp so you don't fly off the top/bottom without letting go.
 	if _ladder is Ladder:
 		var lad := _ladder as Ladder
-		if global_position.y < lad.top_y() - 4.0 and velocity.y < 0.0:
-			velocity.y = 0.0
-			global_position.y = lad.top_y() - 4.0
+		## Hands reach the top rung → step up onto the landing instead of climbing thin air.
+		if global_position.y <= lad.top_y() + MANTLE_START and velocity.y < 0.0:
+			_start_mantle(lad)
+			return
 		if global_position.y > lad.bottom_y() + 6.0 and velocity.y > 0.0:
 			## Step off the bottom onto the floor.
 			_exit_climb(false)
 			velocity.y = 0.0
+
+
+func _start_mantle(lad: Ladder) -> void:
+	var target := _mantle_target(lad)
+	_climbing = false
+	_ladder = null
+	_mantling = true
+	velocity = Vector2.ZERO
+	if absf(target.x - lad.global_position.x) > 1.0:
+		facing = signf(target.x - lad.global_position.x)
+	var tw := create_tween()
+	tw.tween_property(self, "global_position", Vector2(global_position.x, target.y - 8.0), 0.13) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "global_position", target, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func() -> void:
+		_mantling = false
+		velocity = Vector2.ZERO)
+
+
+## Floor beside the ladder top (facing side first); ladders pass through hatch gaps.
+func _mantle_target(lad: Ladder) -> Vector2:
+	var top := lad.top_y()
+	var cx := lad.global_position.x
+	var space := get_world_2d().direct_space_state
+	var off := lad.ladder_width * 0.5 + 22.0
+	for x in [cx + facing * off, cx - facing * off, cx]:
+		var q := PhysicsRayQueryParameters2D.create(Vector2(x, top - 24.0), Vector2(x, top + 12.0))
+		q.collision_mask = collision_mask
+		q.exclude = [get_rid()]
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			return Vector2(x, (hit.position as Vector2).y - 1.0)
+	return Vector2(cx, top - 2.0)
 
 
 func _finish_floor_audio(fall_speed: float) -> void:

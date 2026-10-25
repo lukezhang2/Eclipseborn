@@ -11,6 +11,9 @@ const BODY_RADIUS := 8.0
 ## Default loot when a normal enemy dies.
 const ENEMY_DROP_MIN := 2
 const ENEMY_DROP_MAX := 3
+const ArtScript := preload("res://scripts/world/CurrencyArt.gd")
+## 0 = original flat silver gear; 1..5 = CurrencyArt looks (1 = Pearl).
+const ART_STYLE := 1
 
 var pop_velocity: Vector2 = Vector2.ZERO
 var _spin: float = 0.0
@@ -18,6 +21,7 @@ var _visual: Node2D
 var _age: float = 0.0
 var _can_pickup: bool = false
 var _pickup_area: Area2D
+var _art = null ## CurrencyArt
 
 
 ## Scatter silver gears from a kill / smash point. `count` ≤ 0 → random enemy drop size.
@@ -72,6 +76,14 @@ func _build_pickup_area() -> void:
 func _build_visual() -> void:
 	_visual = Node2D.new()
 	add_child(_visual)
+	var art_style := ART_STYLE
+	if GameState.has_meta("preview_coin_style"):
+		art_style = int(GameState.get_meta("preview_coin_style"))
+	if art_style > 0:
+		_art = ArtScript.new()
+		_art.style = art_style
+		_visual.add_child(_art)
+		return
 	var ring := Polygon2D.new()
 	ring.polygon = _ring_poly(10.0, 6.5, 16)
 	ring.color = Color(0.78, 0.82, 0.88)
@@ -93,8 +105,11 @@ func _build_visual() -> void:
 
 func _physics_process(delta: float) -> void:
 	_age += delta
-	_spin += delta * 4.0
-	if _visual:
+	## Fast spin while tossed, lazy turn once settled.
+	_spin += delta * (4.0 if not _can_pickup else 1.4)
+	if _art:
+		_art.spin = _spin
+	elif _visual:
 		_visual.rotation = _spin
 		_visual.modulate.a = 0.55 + 0.45 * clampf(_age / PICKUP_DELAY, 0.0, 1.0)
 

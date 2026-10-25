@@ -10,6 +10,53 @@ const EYE := Color(0.95, 0.95, 0.93, 1.0)
 const WEAPON := Color(0.75, 0.78, 0.85, 1.0)
 const SHADE_WISP := Color(0.55, 0.35, 0.85, 0.85)
 const BURN_WISP := Color(0.95, 0.45, 0.2, 0.9)
+## Head silhouette: 1 plain round, 2 messy hair, 3 flat cap, 4 hood.
+const HEAD_STYLE := 1
+const RIM := Color(0.36, 0.24, 0.5, 1.0)
+
+
+static func _head_style() -> int:
+	if GameState.has_meta("preview_head_style"):
+		return int(GameState.get_meta("preview_head_style"))
+	return HEAD_STYLE
+
+
+## Human head-top silhouette (drawn facing right; the sprite flips with facing).
+## Outlines first, then fills, so overlapping pieces merge into one shape.
+static func _head_top(img: Image, cx: int, hy: int, r: int, fill: Color) -> void:
+	var parts: Array = [] ## [x, y, rx, ry]
+	var st := _head_style()
+	match st:
+		2:
+			## Messy swept hair: tufts poking up and forward over the brow.
+			parts = [[cx - 3, hy - r + 1, 5, 3], [cx + 2, hy - r, 4, 3], [cx - 6, hy - r + 3, 3, 3],
+				[cx - 2, hy - r - 2, 2, 2], [cx + 3, hy - r - 2, 2, 2], [cx + 7, hy - r + 3, 3, 2],
+				[cx - 9, hy - r + 6, 2, 3]]
+		3:
+			## Flat cap: puffy crown and a brim out front.
+			parts = [[cx - 1, hy - r + 2, r + 1, 4], [cx + r, hy - r + 5, 5, 1]]
+		4:
+			## Hood with a peak flopping back.
+			parts = [[cx - 1, hy - 1, r + 2, r + 2], [cx - 6, hy - r - 2, 3, 3], [cx - 9, hy - r, 3, 2],
+				[cx - 11, hy - r + 3, 2, 2]]
+		_:
+			return
+	for q in parts:
+		_oval(img, q[0], q[1], q[2], q[3], OUTLINE, false)
+	for q in parts:
+		_oval(img, q[0], q[1], q[2], q[3], fill, true)
+	## Faint rim light so the shape reads on dark walls.
+	match st:
+		2:
+			_line_thick(img, Vector2(cx - 5, hy - r - 1), Vector2(cx + 3, hy - r - 1), RIM, 0)
+			_line_thick(img, Vector2(cx + 4, hy - r + 1), Vector2(cx + 8, hy - r + 3), RIM, 0)
+		3:
+			_line_thick(img, Vector2(cx - r, hy - r + 4), Vector2(cx + r - 1, hy - r + 4), RIM, 0) ## band
+			_line_thick(img, Vector2(cx + r - 2, hy - r + 5), Vector2(cx + r + 4, hy - r + 5), RIM, 0) ## brim
+			_line_thick(img, Vector2(cx - 5, hy - r - 1), Vector2(cx + 3, hy - r - 1), RIM, 0)
+		4:
+			_oval(img, cx + 1, hy, r - 2, r - 2, Color(0.1, 0.06, 0.16), true) ## face opening
+			_oval(img, cx + 1, hy, r - 1, r - 1, RIM, false)
 
 
 static func build_frames() -> SpriteFrames:
@@ -133,10 +180,7 @@ static func _draw(
 		hy += 2
 	_oval(img, cx, hy, 8, 8, fill, true)
 	_oval(img, cx, hy, 8, 8, OUTLINE, false)
-	_oval(img, cx - 4, hy - 7, 2, 3, fill, true)
-	_oval(img, cx + 4, hy - 7, 2, 3, fill, true)
-	_oval(img, cx - 4, hy - 7, 2, 3, OUTLINE, false)
-	_oval(img, cx + 4, hy - 7, 2, 3, OUTLINE, false)
+	_head_top(img, cx, hy, 8, fill)
 	var ey := hy - 1 + (1 if look < 0 else (-1 if look > 0 else 0))
 	_oval(img, cx - 3, ey, 2, 2, EYE, true)
 	_oval(img, cx + 3, ey, 2, 2, EYE, true)
@@ -199,10 +243,7 @@ static func _draw_fall(phase: int) -> Image:
 	var hy := body_top
 	_oval(img, cx, hy, 8, 8, fill, true)
 	_oval(img, cx, hy, 8, 8, OUTLINE, false)
-	_oval(img, cx - 4, hy - 7, 2, 3, fill, true)
-	_oval(img, cx + 4, hy - 7, 2, 3, fill, true)
-	_oval(img, cx - 4, hy - 7, 2, 3, OUTLINE, false)
-	_oval(img, cx + 4, hy - 7, 2, 3, OUTLINE, false)
+	_head_top(img, cx, hy, 8, fill)
 	_oval(img, cx - 3, hy - 1, 2, 2, EYE, true)
 	_oval(img, cx + 3, hy - 1, 2, 2, EYE, true)
 	## Legs tucked a touch under the cloak.
@@ -248,6 +289,7 @@ static func _draw_pull(phase: int) -> Image:
 	var hy := body_top - 1
 	_oval(img, cx, hy, 8, 8, FILL, true)
 	_oval(img, cx, hy, 8, 8, OUTLINE, false)
+	_head_top(img, cx, hy, 8, FILL)
 	_oval(img, cx - 3, hy - 1, 2, 2, EYE, true)
 	_oval(img, cx + 3, hy - 1, 2, 2, EYE, true)
 	# Legs planted / tiny scuttle
@@ -276,6 +318,7 @@ static func _draw_crouch(leg: int) -> Image:
 	_oval(img, cx, base - 12, 12, 9, OUTLINE, false)
 	_oval(img, cx, base - 22, 8, 6, FILL, true)
 	_oval(img, cx, base - 22, 8, 6, OUTLINE, false)
+	_head_top(img, cx, base - 22, 6, FILL)
 	_oval(img, cx - 3, base - 23, 2, 2, EYE, true)
 	_oval(img, cx + 3, base - 23, 2, 2, EYE, true)
 	var ox := 1 if leg == 1 else (-1 if leg == 2 else 0)
@@ -300,6 +343,7 @@ static func _draw_climb(phase: int) -> Image:
 	var hy := body_top - 1
 	_oval(img, cx, hy, 7, 7, fill, true)
 	_oval(img, cx, hy, 7, 7, OUTLINE, false)
+	_head_top(img, cx, hy, 7, fill)
 	_oval(img, cx - 3, hy - 1, 2, 2, EYE, true)
 	_oval(img, cx + 3, hy - 1, 2, 2, EYE, true)
 	## Legs step on rungs.

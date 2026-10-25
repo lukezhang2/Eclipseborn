@@ -44,14 +44,14 @@ func _build() -> void:
 	_prompt.visible = false
 	add_child(_prompt)
 	UITheme.style_prompt(_prompt)
-	UITheme.set_prompt_text(_prompt, "F — Ascend")
+	UITheme.set_prompt_text(_prompt, "E — Ascend")
 
 
 func _process(_delta: float) -> void:
 	var p = GameState.player
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 70.0
 	_prompt.visible = near
-	if near and Input.is_action_just_pressed("attack") and GameState.can_interact():
+	if near and Input.is_action_just_pressed("interact") and GameState.can_interact():
 		_ascend()
 
 
