@@ -436,8 +436,9 @@ static func add_backdrop(
 	height: float,
 	floor_top: float = 500.0,
 	roof_top: float = 180.0,
-	with_city: bool = true
-) -> void:
+	with_city: bool = true,
+	backdrop_settings: Dictionary = {}
+) -> BlackFireSky:
 	## Black-fire sky is the real backdrop. Optional city silhouettes for older rooms.
 	if with_city:
 		var bg := Polygon2D.new()
@@ -471,8 +472,10 @@ static func add_backdrop(
 				parent.add_child(win)
 			x += bw + randf_range(30, 80)
 	var sky := BlackFireSky.new()
-	sky.setup(width, floor_top, roof_top)
+	sky.name = "BlackFireSky"
+	sky.setup(width, floor_top, roof_top, backdrop_settings)
 	parent.add_child(sky)
+	return sky
 
 
 static func spawn_player(parent: Node2D, pos: Vector2) -> Player:

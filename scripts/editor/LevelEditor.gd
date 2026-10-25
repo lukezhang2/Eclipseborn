@@ -3,6 +3,7 @@ extends Control
 
 
 enum Tool { SELECT, MOVE, RESIZE, ROTATE, DELETE }
+enum EditMode { PIECES, BACKGROUND }
 
 const PANEL_W := 320.0
 const BOTTOM_H := 44.0
@@ -16,11 +17,14 @@ const HISTORY_MAX := 80
 
 var zone_id: String = "cursed_cottage"
 var tool: Tool = Tool.SELECT
+var edit_mode: EditMode = EditMode.PIECES
 var snap_enabled: bool = true
 var _palette_id: String = "floor"
 var _pieces: Array[EditorPiece] = []
 var _removed_ids: Array = []
 var _selected: EditorPiece = null
+var _backdrop: Dictionary = {}
+var _sky: BlackFireSky = null
 var _world: Node2D
 var _cam: Camera2D
 var _bg: Polygon2D
@@ -55,6 +59,17 @@ var _layer_label: Label
 var _status: Label
 var _tool_label: Label
 var _zone_option: OptionButton
+var _mode_pieces_btn: Button
+var _mode_bg_btn: Button
+var _pieces_block: VBoxContainer
+var _backdrop_block: VBoxContainer
+var _bg_enabled: CheckButton
+var _bg_offset_spin: SpinBox
+var _bg_count_spin: SpinBox
+var _bg_r: SpinBox
+var _bg_g: SpinBox
+var _bg_b: SpinBox
+var _syncing_backdrop: bool = false
 var _scrub: HScrollBar
 var _scrub_label: Label
 var _extent_label: Label
@@ -221,14 +236,72 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	)
 	zone_row.add_child(_zone_option)
 
-	col.add_child(_section("Pieces"))
+	var mode_row := HBoxContainer.new()
+	col.add_child(mode_row)
+	mode_row.add_child(_lbl("Mode"))
+	_mode_pieces_btn = Button.new()
+	_mode_pieces_btn.text = "Pieces"
+	_mode_pieces_btn.toggle_mode = true
+	_mode_pieces_btn.button_pressed = true
+	_mode_pieces_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_mode_pieces_btn.pressed.connect(func() -> void: _set_edit_mode(EditMode.PIECES))
+	mode_row.add_child(_mode_pieces_btn)
+	_mode_bg_btn = Button.new()
+	_mode_bg_btn.text = "Background"
+	_mode_bg_btn.toggle_mode = true
+	_mode_bg_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_mode_bg_btn.pressed.connect(func() -> void: _set_edit_mode(EditMode.BACKGROUND))
+	mode_row.add_child(_mode_bg_btn)
+
+	_backdrop_block = VBoxContainer.new()
+	_backdrop_block.visible = false
+	_backdrop_block.add_theme_constant_override("separation", 6)
+	col.add_child(_backdrop_block)
+	_backdrop_block.add_child(_section("Black-fire sky"))
+	_bg_enabled = CheckButton.new()
+	_bg_enabled.text = "Enabled"
+	_bg_enabled.toggled.connect(func(on: bool) -> void:
+		if _syncing_backdrop or _history_restoring:
+			return
+		_push_undo()
+		_backdrop["enabled"] = on
+		_backdrop["kind"] = "black_fire" if on else "none"
+		_refresh_sky_preview()
+		_save()
+	)
+	_backdrop_block.add_child(_bg_enabled)
+	_bg_offset_spin = _bg_spin_row(_backdrop_block, "Flame band Y offset", -40.0, 120.0, 1.0, 12.0, func(v: float) -> void:
+		_backdrop["flame_band_offset"] = v
+		_refresh_sky_preview()
+	)
+	_bg_count_spin = _bg_spin_row(_backdrop_block, "Flame count", 8.0, 96.0, 1.0, 48.0, func(v: float) -> void:
+		_backdrop["flame_count"] = int(v)
+		_refresh_sky_preview()
+	)
+	_backdrop_block.add_child(_lbl("Void color (purple fill)"))
+	var color_row := HBoxContainer.new()
+	_backdrop_block.add_child(color_row)
+	_bg_r = _bg_color_spin(color_row, "R", func(v: float) -> void: _set_void_channel(0, v))
+	_bg_g = _bg_color_spin(color_row, "G", func(v: float) -> void: _set_void_channel(1, v))
+	_bg_b = _bg_color_spin(color_row, "B", func(v: float) -> void: _set_void_channel(2, v))
+	var tip := Label.new()
+	tip.text = "Anim sits at roof + offset. Lower offset = higher on screen. Middle-mouse pan to the top."
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.add_theme_font_size_override("font_size", 11)
+	tip.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
+	_backdrop_block.add_child(tip)
+
+	_pieces_block = VBoxContainer.new()
+	_pieces_block.add_theme_constant_override("separation", 8)
+	col.add_child(_pieces_block)
+	_pieces_block.add_child(_section("Pieces"))
 	_piece_list = ItemList.new()
 	_piece_list.custom_minimum_size = Vector2(280, 200)
 	_piece_list.item_selected.connect(_on_list_selected)
-	col.add_child(_piece_list)
+	_pieces_block.add_child(_piece_list)
 
 	var sel_row := HBoxContainer.new()
-	col.add_child(sel_row)
+	_pieces_block.add_child(sel_row)
 	_name_edit = LineEdit.new()
 	_name_edit.placeholder_text = "Name"
 	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -253,7 +326,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 
 	_radius_row = HBoxContainer.new()
 	_radius_row.visible = false
-	col.add_child(_radius_row)
+	_pieces_block.add_child(_radius_row)
 	_radius_row.add_child(_lbl("Lantern radius"))
 	_radius_spin = SpinBox.new()
 	_radius_spin.min_value = 40
@@ -275,7 +348,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 
 	_intensity_row = HBoxContainer.new()
 	_intensity_row.visible = false
-	col.add_child(_intensity_row)
+	_pieces_block.add_child(_intensity_row)
 	_intensity_row.add_child(_lbl("Light intensity"))
 	_intensity_spin = SpinBox.new()
 	_intensity_spin.min_value = 0.25
@@ -298,7 +371,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_dialogue_row = VBoxContainer.new()
 	_dialogue_row.visible = false
 	_dialogue_row.add_theme_constant_override("separation", 4)
-	col.add_child(_dialogue_row)
+	_pieces_block.add_child(_dialogue_row)
 	_dialogue_row.add_child(_lbl("NPC dialogue (one line per entry)"))
 	_dialogue_edit = TextEdit.new()
 	_dialogue_edit.custom_minimum_size = Vector2(280, 90)
@@ -316,7 +389,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_shop_row = VBoxContainer.new()
 	_shop_row.visible = false
 	_shop_row.add_theme_constant_override("separation", 4)
-	col.add_child(_shop_row)
+	_pieces_block.add_child(_shop_row)
 	_shop_row.add_child(_section("Shop inventory"))
 	_shopkeeper_check = CheckButton.new()
 	_shopkeeper_check.text = "Shopkeeper (opens buy GUI)"
@@ -339,7 +412,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_link_row = VBoxContainer.new()
 	_link_row.visible = false
 	_link_row.add_theme_constant_override("separation", 4)
-	col.add_child(_link_row)
+	_pieces_block.add_child(_link_row)
 	_link_row.add_child(_section("Lever links"))
 	var link_hint := Label.new()
 	link_hint.text = "Select lanterns / doors this lever powers (multi-select)."
@@ -362,7 +435,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_platform_row = VBoxContainer.new()
 	_platform_row.visible = false
 	_platform_row.add_theme_constant_override("separation", 4)
-	col.add_child(_platform_row)
+	_pieces_block.add_child(_platform_row)
 	_platform_row.add_child(_section("Moving platform path"))
 	var plat_hint := Label.new()
 	plat_hint.text = "Select a moving platform to edit travel distance, path, and spin."
@@ -429,7 +502,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	)
 	_platform_row.add_child(_plat_rotate_body)
 
-	col.add_child(_section("Light & layer"))
+	_pieces_block.add_child(_section("Light & layer"))
 	_blocks_light_btn = CheckButton.new()
 	_blocks_light_btn.text = "Blocks light"
 	_blocks_light_btn.tooltip_text = "Occludes lantern washes without solid player collision (layer 128)"
@@ -441,11 +514,11 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		_selected.blocks_light = on
 		_status.text = "Blocks light: %s" % ("ON" if on else "OFF")
 	)
-	col.add_child(_blocks_light_btn)
+	_pieces_block.add_child(_blocks_light_btn)
 
 	var layer_row := HBoxContainer.new()
 	layer_row.add_theme_constant_override("separation", 6)
-	col.add_child(layer_row)
+	_pieces_block.add_child(layer_row)
 	var layer_down := Button.new()
 	layer_down.text = "Layer −"
 	layer_down.tooltip_text = "Move selected piece one draw layer down (behind)"
@@ -470,7 +543,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_layer_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_layer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_layer_label.text = "Piece: —  |  Player: %d" % PieceSpecs.PLAYER_DRAW_LAYER
-	col.add_child(_layer_label)
+	_pieces_block.add_child(_layer_label)
 
 	col.add_child(_section("Tools"))
 	var tools := HBoxContainer.new()
@@ -521,9 +594,9 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	)
 	col.add_child(snap_btn)
 
-	col.add_child(_section("Add"))
+	_pieces_block.add_child(_section("Add"))
 	var add_row := HBoxContainer.new()
-	col.add_child(add_row)
+	_pieces_block.add_child(add_row)
 	var add_opt := OptionButton.new()
 	add_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for item in [
@@ -584,6 +657,155 @@ func _lbl(t: String) -> Label:
 	var l := Label.new()
 	l.text = t
 	return l
+
+
+func _bg_spin_row(parent: Control, label: String, mn: float, mx: float, step: float, val: float, on_change: Callable) -> SpinBox:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	row.add_child(_lbl(label))
+	var spin := SpinBox.new()
+	spin.min_value = mn
+	spin.max_value = mx
+	spin.step = step
+	spin.value = val
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_backdrop or _history_restoring:
+			return
+		_push_undo_inspector()
+		on_change.call(v)
+		_save()
+	)
+	row.add_child(spin)
+	return spin
+
+
+func _bg_color_spin(parent: Control, label: String, on_change: Callable) -> SpinBox:
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(box)
+	box.add_child(_lbl(label))
+	var spin := SpinBox.new()
+	spin.min_value = 0.0
+	spin.max_value = 1.0
+	spin.step = 0.01
+	spin.value = 0.1
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_backdrop or _history_restoring:
+			return
+		_push_undo_inspector()
+		on_change.call(v)
+		_refresh_sky_preview()
+		_save()
+	)
+	box.add_child(spin)
+	return spin
+
+
+func _set_void_channel(idx: int, v: float) -> void:
+	var raw: Variant = _backdrop.get("void_color", [0.11, 0.045, 0.145, 1.0])
+	var arr: Array = []
+	if raw is Array:
+		arr = (raw as Array).duplicate()
+	else:
+		arr = [0.11, 0.045, 0.145, 1.0]
+	while arr.size() < 4:
+		arr.append(1.0 if arr.size() == 3 else 0.0)
+	arr[idx] = v
+	_backdrop["void_color"] = arr
+
+
+func _set_edit_mode(mode: EditMode) -> void:
+	edit_mode = mode
+	if _mode_pieces_btn:
+		_mode_pieces_btn.button_pressed = mode == EditMode.PIECES
+	if _mode_bg_btn:
+		_mode_bg_btn.button_pressed = mode == EditMode.BACKGROUND
+	if _pieces_block:
+		_pieces_block.visible = mode == EditMode.PIECES
+	if _backdrop_block:
+		_backdrop_block.visible = mode == EditMode.BACKGROUND
+	if mode == EditMode.BACKGROUND:
+		_select(null)
+		_sync_backdrop_inspector()
+		_refresh_sky_preview()
+		## Frame the top fire band.
+		var roof := _zone_roof_top()
+		var offset := float(_backdrop.get("flame_band_offset", 18.0))
+		_cam.position = Vector2(_cam.position.x, roof + offset + 40.0)
+		_clamp_camera()
+		_status.text = "Background mode — edit purple fill + top fire fringe."
+	else:
+		_status.text = "Pieces mode."
+	for p in _pieces:
+		if is_instance_valid(p):
+			p.modulate.a = 0.35 if mode == EditMode.BACKGROUND else 1.0
+
+
+func _zone_roof_top() -> float:
+	match zone_id:
+		"lantern_village":
+			return 160.0
+		"clockwork_tower":
+			return 20.0
+		"house_keep", "house_gear", "house_inn":
+			return 160.0
+		_:
+			return 180.0
+
+
+func _zone_map_width() -> float:
+	match zone_id:
+		"lantern_village":
+			return 3200.0
+		"clockwork_tower":
+			return 1100.0
+		"house_keep", "house_gear", "house_inn":
+			return 720.0
+		_:
+			return 4000.0
+
+
+func _sync_backdrop_inspector() -> void:
+	if _bg_enabled == null:
+		return
+	_syncing_backdrop = true
+	var enabled := bool(_backdrop.get("enabled", _backdrop.get("kind", "") == "black_fire"))
+	_bg_enabled.button_pressed = enabled
+	_bg_offset_spin.value = float(_backdrop.get("flame_band_offset", 18.0))
+	_bg_count_spin.value = float(_backdrop.get("flame_count", 48))
+	var raw: Variant = _backdrop.get("void_color", [0.11, 0.045, 0.145, 1.0])
+	var arr: Array = raw if raw is Array else [0.11, 0.045, 0.145, 1.0]
+	_bg_r.value = float(arr[0]) if arr.size() > 0 else 0.11
+	_bg_g.value = float(arr[1]) if arr.size() > 1 else 0.045
+	_bg_b.value = float(arr[2]) if arr.size() > 2 else 0.145
+	_syncing_backdrop = false
+
+
+func _refresh_sky_preview() -> void:
+	if _world == null:
+		return
+	var enabled := bool(_backdrop.get("enabled", false)) and str(_backdrop.get("kind", "none")) != "none"
+	if not enabled:
+		if _sky and is_instance_valid(_sky):
+			_sky.queue_free()
+			_sky = null
+		if _bg:
+			_bg.color = Color(0.05, 0.045, 0.06)
+		return
+	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
+	var roof := _zone_roof_top()
+	var width := maxf(_zone_map_width(), _world_right + 200.0)
+	if _sky == null or not is_instance_valid(_sky):
+		_sky = BlackFireSky.new()
+		_sky.name = "EditorBlackFireSky"
+		_world.add_child(_sky)
+		_world.move_child(_sky, 0 if _bg == null else 1)
+	_sky.setup(width, floor_top, roof, _backdrop)
+	if _bg:
+		var vc := BlackFireSky._color_from(_backdrop.get("void_color", null), BlackFireSky.DEFAULT_VOID)
+		_bg.color = vc
 
 
 func _section(t: String) -> Label:
@@ -735,8 +957,12 @@ func _clear_pieces() -> void:
 
 func _load_zone() -> void:
 	_clear_pieces()
+	if _sky and is_instance_valid(_sky):
+		_sky.queue_free()
+		_sky = null
 	var data := LevelData.load_raw(zone_id)
 	_removed_ids = data.get("removed_ids", []).duplicate()
+	_backdrop = LevelData.backdrop_for(zone_id)
 	var overrides := {}
 	for raw in data.get("pieces", []):
 		if typeof(raw) != TYPE_DICTIONARY:
@@ -769,6 +995,9 @@ func _load_zone() -> void:
 		_spawn_piece_dict(raw)
 	_refresh_list()
 	_refresh_world_extent()
+	_sync_backdrop_inspector()
+	_refresh_sky_preview()
+	_set_edit_mode(EditMode.PIECES)
 	_cam.position = Vector2(700 if zone_id != "clockwork_tower" else 430, _default_cam_y())
 	_cam.zoom = Vector2.ONE
 	_clamp_camera()
@@ -994,14 +1223,14 @@ func _on_list_selected(index: int) -> void:
 	_clamp_camera()
 
 
-func _select(piece: EditorPiece) -> void:
+func _select(piece) -> void:
 	if piece != _selected:
 		_break_undo_coalesce()
 	if _selected and is_instance_valid(_selected):
 		_selected.set_selected(false)
 		_selected.show_move_arrows = false
 		_selected.queue_redraw()
-	_selected = piece
+	_selected = piece as EditorPiece if piece != null else null
 	if _selected:
 		_selected.set_selected(true)
 	_sync_move_arrows()
@@ -1178,6 +1407,7 @@ func _build_data() -> Dictionary:
 		"zone": zone_id,
 		"pieces": pieces,
 		"removed_ids": _removed_ids.duplicate(),
+		"backdrop": _backdrop.duplicate(true),
 	}
 
 
@@ -1512,6 +1742,9 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			_vp_container.accept_event()
 			return
 		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if edit_mode == EditMode.BACKGROUND:
+				_vp_container.accept_event()
+				return
 			var world := _vp_to_world(mb.position)
 			if mb.pressed:
 				_on_click(world)
@@ -1529,6 +1762,8 @@ func _on_vp_gui_input(event: InputEvent) -> void:
 			_pan_last = mm.position
 			_clamp_camera()
 			_vp_container.accept_event()
+			return
+		if edit_mode == EditMode.BACKGROUND:
 			return
 		if _selected == null or tool == Tool.DELETE:
 			return

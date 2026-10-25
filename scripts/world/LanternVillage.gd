@@ -17,7 +17,9 @@ func _ready() -> void:
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
 	## Fire sky only — no brick murals / city silhouettes (they also falsely cut lantern washes).
-	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_TOP, false)
+	LevelCommon.add_backdrop(
+		self, MAP_W, 780, FLOOR_TOP, ROOF_TOP, false, LevelData.backdrop_for("lantern_village")
+	)
 	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_CENTER + FLOOR_H * 0.5)
 
 	LevelCommon.add_cobble_floor(self, MAP_W * 0.5, FLOOR_CENTER, MAP_W, FLOOR_H)

@@ -10,6 +10,7 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 | Piece proxy (draw/select/resize) | `scripts/editor/EditorPiece.gd` |
 | Canonical sizes & anchors | `scripts/editor/PieceSpecs.gd` |
 | Builtin zone seeds | `scripts/editor/ZoneCatalog.gd` (`cursed_cottage`, `lantern_village`, `clockwork_tower`, `house_keep`, `house_gear`, `house_inn`) |
+| Backdrop (black-fire sky) | Level JSON `"backdrop"` + editor **Background** mode; runtime `LevelData.backdrop_for` / `BlackFireSky` |
 | House shopkeeper defaults | `scripts/world/HouseProfiles.gd` |
 | Load / save / spawn overlays | `scripts/autoload/LevelData.gd` |
 | Saved overlays (repo) | `data/levels/<zone_id>.json` |

@@ -43,6 +43,44 @@ static func load_raw(zone_id: String) -> Dictionary:
 	return parsed
 
 
+static func default_backdrop(zone_id: String) -> Dictionary:
+	## Purple full-field void + top-only black-fire fringe (village / fire-sky rooms).
+	match zone_id:
+		"lantern_village":
+			return {
+				"kind": "black_fire",
+				"enabled": true,
+				"flame_band_offset": 12.0,
+				"flame_count": 48,
+				"void_color": [0.11, 0.045, 0.145, 1.0],
+			}
+		"cursed_cottage", "house_keep", "house_gear", "house_inn":
+			return {
+				"kind": "black_fire",
+				"enabled": true,
+				"flame_band_offset": 22.0,
+				"flame_count": 40,
+				"void_color": [0.11, 0.045, 0.145, 1.0],
+			}
+		_:
+			return {
+				"kind": "none",
+				"enabled": false,
+			}
+
+
+static func backdrop_for(zone_id: String) -> Dictionary:
+	var base := default_backdrop(zone_id)
+	var data := load_raw(zone_id)
+	var saved: Variant = data.get("backdrop", {})
+	if typeof(saved) != TYPE_DICTIONARY or (saved as Dictionary).is_empty():
+		return base
+	var out := base.duplicate(true)
+	for key in (saved as Dictionary).keys():
+		out[key] = saved[key]
+	return out
+
+
 static func save_raw(zone_id: String, data: Dictionary, to_res: bool = false) -> Error:
 	if not data.has("schema"):
 		data["schema"] = PieceSpecs.SCHEMA_VERSION

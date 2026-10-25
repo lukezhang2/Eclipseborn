@@ -25,7 +25,9 @@ func _ready() -> void:
 	GameState.map_max_x = MAP_W - 40.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, MAP_W, 720, FLOOR_Y, 160.0)
+	LevelCommon.add_backdrop(
+		self, MAP_W, 720, FLOOR_Y, 160.0, true, LevelData.backdrop_for(GameState.current_zone_id)
+	)
 	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_Y + 20.0)
 	LevelCommon.add_cobble_floor(self, MAP_W * 0.5, FLOOR_Y + 20.0, MAP_W, 40.0)
 	LevelCommon.add_border_walls(self, MAP_W, FLOOR_Y, 160.0)

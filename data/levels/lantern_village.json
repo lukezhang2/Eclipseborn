@@ -434,5 +434,17 @@
 		"door_street_1"
 	],
 	"schema": 1,
-	"zone": "lantern_village"
+	"zone": "lantern_village",
+	"backdrop": {
+		"kind": "black_fire",
+		"enabled": true,
+		"flame_band_offset": 12.0,
+		"flame_count": 48,
+		"void_color": [
+			0.11,
+			0.045,
+			0.145,
+			1.0
+		]
+	}
 }

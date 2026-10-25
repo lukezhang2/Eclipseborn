@@ -17,7 +17,10 @@ func _ready() -> void:
 	GameState.map_max_x = MAP_W - 100.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5)
+	LevelCommon.add_backdrop(
+		self, MAP_W, 780, FLOOR_TOP, ROOF_CENTER - ROOF_H * 0.5, true,
+		LevelData.backdrop_for("cursed_cottage")
+	)
 	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_CENTER + FLOOR_H * 0.5)
 
 	LevelCommon.add_steel_floor(self, MAP_W * 0.5, FLOOR_CENTER, MAP_W, FLOOR_H)

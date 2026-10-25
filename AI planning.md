@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.48 — village purple full-field BG + top-only fire fringe (nudged up); editor Pieces/Background mode; `index-0_1_48.pck`
 - v0.1.47 — Clockwork Tower ladders (hold W climb + climb anim), full lobby floor (no hole), story floors + denser brick backdrop; `index-0_1_47.pck`
 - v0.1.46 — Clockwork Tower in Level Editor (zone seed, playtest, tall-map camera, lamp/checkpoint overlays); `index-0_1_46.pck`
 - v0.1.45 — single yellow light wash; houses above wash (no paint-through); quieter umbras; `index-0_1_45.pck`
