@@ -110,6 +110,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.71 — boot shows the real title behind the glass (no white flash); Clockwork crack look; particle steam vents; Wickwright redrawn as the Grandfather Wraith (animated wings, pendulum heart, eye tracking); `index-0_1_71.pck`
 - v0.1.56 — shop counters walk-through (keeper behind, player in front); tower exit spawns left of the door via shared `ClockworkTower.VILLAGE_DOOR_X`; tower facade no longer blocks walking; `index-0_1_56.pck`
 - v0.1.53 — editor Add tabs (Build/Lights/Props/Decor/People) w/ art previews; steampunk NPCs; themed shops (lamp shop / gear rack workshop / hearth lodge) + low D3 desks (keeper behind) + brass title signs; IM Fell font for title/headings/"E —" plaques; mirrored clockwork tower complex (door left, MAP_W-500); enemy black-box fix; house shadow corners (clip ignores own body); removed intro "boiler-house" hint; `index-0_1_53.pck`
 - v0.1.36 — fixed rooms crashing on load: v0.1.34 id renumbering also renamed code names (`map_min_x`→`map_min_24`, `MAP_W`→`MAP_23`…) in LanternVillage/CursedCottage/ZoneCatalog; restored (string ids kept). Village polish: wash light gap closed; house light blockers = walls+roof (no eave/hull wedges); chains on all fixed lamps; dark-oak decor crates; unsquished jars; bench/vent nudged clear of houses; `index-0_1_36.pck`

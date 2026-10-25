@@ -18,63 +18,79 @@ func _build() -> void:
 		Vector2(-18, -6), Vector2(18, -6), Vector2(18, 8), Vector2(-18, 8)
 	]), true)
 
-	var particles := CPUParticles2D.new()
-	particles.emitting = true
-	particles.amount = 18
-	particles.lifetime = 1.6
-	particles.preprocess = 0.8
-	particles.explosiveness = 0.05
-	particles.randomness = 0.4
-	particles.direction = Vector2(0, -1)
-	particles.spread = 18.0
-	particles.gravity = Vector2(0, -28)
-	particles.initial_velocity_min = 28.0
-	particles.initial_velocity_max = 55.0
-	particles.scale_amount_min = 0.6
-	particles.scale_amount_max = 1.4
-	particles.angular_velocity_min = -40.0
-	particles.angular_velocity_max = 40.0
-	## Soft translucent steam (white → clear).
-	var grad := Gradient.new()
-	grad.colors = PackedColorArray([
-		Color(0.92, 0.94, 0.96, 0.0),
-		Color(0.9, 0.92, 0.95, 0.35),
-		Color(0.85, 0.88, 0.92, 0.18),
-		Color(0.8, 0.84, 0.9, 0.0),
+	# Steady column of soft steam plus a heavier puff every couple of seconds.
+	add_child(_make_steam(22, 2.4, 0.15, Vector2(36, 70), 0.5, 1.8, 0.32))
+	var burst := _make_steam(10, 1.9, 0.85, Vector2(70, 120), 0.8, 2.6, 0.4)
+	burst.position = Vector2(0, -2)
+	add_child(burst)
+	_pulse(burst)
+
+
+## Soft round puffs that rise, swell, drift and fade.
+func _make_steam(amount: int, life: float, burst: float, speed: Vector2, s0: float, s1: float, alpha: float) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.texture = _puff_texture()
+	p.amount = amount
+	p.lifetime = life
+	p.preprocess = life
+	p.explosiveness = burst
+	p.randomness = 0.5
+	p.direction = Vector2(0, -1)
+	p.spread = 14.0
+	p.gravity = Vector2(6, -22)
+	p.initial_velocity_min = speed.x
+	p.initial_velocity_max = speed.y
+	p.damping_min = 8.0
+	p.damping_max = 18.0
+	p.angular_velocity_min = -30.0
+	p.angular_velocity_max = 30.0
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(12, 2)
+	var grow := Curve.new()
+	grow.add_point(Vector2(0, s0 / s1))
+	grow.add_point(Vector2(1, 1))
+	p.scale_amount_curve = grow
+	p.scale_amount_min = s1 * 0.8
+	p.scale_amount_max = s1 * 1.2
+	var ramp := Gradient.new()
+	ramp.colors = PackedColorArray([
+		Color(0.92, 0.94, 0.97, 0.0),
+		Color(0.9, 0.92, 0.96, alpha),
+		Color(0.82, 0.85, 0.9, alpha * 0.5),
+		Color(0.78, 0.8, 0.86, 0.0),
 	])
-	grad.offsets = PackedFloat32Array([0.0, 0.15, 0.55, 1.0])
-	particles.color_ramp = grad
-	particles.z_index = 2
-	add_child(particles)
-
-	## Soft animated billow polygons as backup visual
-	for i in 3:
-		var puff := Polygon2D.new()
-		puff.z_index = 1
-		puff.color = Color(0.88, 0.9, 0.93, 0.12)
-		puff.polygon = PackedVector2Array([
-			Vector2(-6, 0), Vector2(6, 0), Vector2(10, -14), Vector2(-10, -14)
-		])
-		puff.position = Vector2((i - 1) * 6.0, -8.0 - i * 4.0)
-		add_child(puff)
-		_animate_puff(puff, 0.4 * i)
+	ramp.offsets = PackedFloat32Array([0.0, 0.12, 0.6, 1.0])
+	p.color_ramp = ramp
+	p.z_index = 2
+	p.emitting = true
+	return p
 
 
-func _animate_puff(puff: Polygon2D, delay: float) -> void:
-	await get_tree().create_timer(delay).timeout
-	if not is_instance_valid(puff):
-		return
-	var base_y := puff.position.y
-	while is_instance_valid(puff):
-		var tw := create_tween()
-		puff.modulate.a = 0.0
-		puff.position.y = base_y
-		puff.scale = Vector2(0.7, 0.7)
-		tw.tween_property(puff, "modulate:a", 0.55, 0.35)
-		tw.parallel().tween_property(puff, "position:y", base_y - 36.0, 1.2)
-		tw.parallel().tween_property(puff, "scale", Vector2(1.6, 1.8), 1.2)
-		tw.tween_property(puff, "modulate:a", 0.0, 0.35)
-		await tw.finished
-		if not is_instance_valid(puff):
+static var _puff_tex: Texture2D
+
+
+static func _puff_texture() -> Texture2D:
+	if _puff_tex == null:
+		var g := GradientTexture2D.new()
+		g.width = 32
+		g.height = 32
+		g.fill = GradientTexture2D.FILL_RADIAL
+		g.fill_from = Vector2(0.5, 0.5)
+		g.fill_to = Vector2(1.0, 0.5)
+		var grad := Gradient.new()
+		grad.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+		grad.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+		g.gradient = grad
+		_puff_tex = g
+	return _puff_tex
+
+
+## Heavier puffs come in pulses, like a pressure valve letting go.
+func _pulse(p: CPUParticles2D) -> void:
+	while is_inside_tree():
+		p.emitting = true
+		await get_tree().create_timer(0.5).timeout
+		if not is_inside_tree():
 			return
-		await get_tree().create_timer(0.15).timeout
+		p.emitting = false
+		await get_tree().create_timer(randf_range(1.4, 2.6)).timeout

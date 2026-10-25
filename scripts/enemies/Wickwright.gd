@@ -6,6 +6,7 @@ class_name Wickwright
 signal defeated
 
 const MAX_HP := 160
+const WickwrightArtScript := preload("res://scripts/enemies/WickwrightArt.gd")
 const DIVE_DAMAGE := 18
 const SWEEP_DAMAGE := 14
 
@@ -30,6 +31,10 @@ var _body_poly: Polygon2D
 var _heart_poly: Polygon2D
 var _dial_label: Label
 var _wings: Array = []
+## 0 = original flat polygons; 1..3 = WickwrightArt looks.
+var art_style: int = 3
+var _art = null ## WickwrightArt
+var _dial_label_y: float = -56.0
 var _hurtbox: Hurtbox
 var _hitbox: Hitbox
 var _lamp_ids: PackedStringArray = PackedStringArray(["tower_lamp_a", "tower_lamp_b", "tower_lamp_c"])
@@ -171,8 +176,18 @@ func _build() -> void:
 	_heart_poly.position = Vector2(0, -2)
 	_visual.add_child(_heart_poly)
 
+	if GameState.has_meta("preview_boss_style"):
+		art_style = int(GameState.get_meta("preview_boss_style"))
+	if art_style > 0:
+		for c in _visual.get_children():
+			(c as CanvasItem).visible = false
+		_art = WickwrightArtScript.new()
+		_art.style = art_style
+		_visual.add_child(_art)
+		_dial_label_y = -92.0
+
 	_dial_label = Label.new()
-	_dial_label.position = Vector2(-40, -56)
+	_dial_label.position = Vector2(-40, _dial_label_y)
 	_dial_label.add_theme_font_size_override("font_size", 13)
 	_dial_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
 	_visual.add_child(_dial_label)
@@ -264,6 +279,40 @@ func _anim_wings(delta: float) -> void:
 	if _wings.size() >= 2:
 		_wings[0].position.y = flap
 		_wings[1].position.y = -flap * 0.5
+	if _art:
+		_pose_art(delta)
+
+
+func _pose_art(delta: float) -> void:
+	var tt := Time.get_ticks_msec() * 0.001
+	_art.t = tt
+	var want_flap := sin(tt * 7.0) * 0.45
+	var want_wind := 0.0
+	if not _awake:
+		want_flap = sin(tt * 2.2) * 0.2 + 0.25
+	elif _state == "dive":
+		if _state_t < 0.35:
+			want_flap = -0.75
+			want_wind = 1.0
+		else:
+			want_flap = 0.9 ## wings tucked for the strike
+			want_wind = 0.6
+	elif _state == "sweep":
+		want_flap = -0.1 + sin(tt * 22.0) * 0.12
+		want_wind = 0.4
+	elif _state == "flip":
+		want_flap = sin(tt * 12.0) * 0.6
+	elif _state == "cutscene":
+		want_flap = 0.8 + sin(tt * 5.0) * 0.1
+	_art.flap = lerpf(_art.flap, want_flap, clampf(14.0 * delta, 0.0, 1.0))
+	_art.windup = lerpf(_art.windup, want_wind, clampf(10.0 * delta, 0.0, 1.0))
+	_art.heart = lerpf(_art.heart, 1.0 if _heart_open else 0.0, clampf(6.0 * delta, 0.0, 1.0))
+	_art.hand_speed = 1.0 + float(phase) * 1.5
+	_art.damage = float(phase) / 2.0
+	_art.dying = _dying
+	var p = GameState.player
+	if p and is_instance_valid(p):
+		_art.look = (p.global_position - global_position).normalized()
 
 
 func _update_heart(delta: float) -> void:
@@ -407,8 +456,8 @@ func _on_hurt(amount: int, from: Node) -> void:
 	if not _heart_open:
 		dmg = maxi(1, int(amount * 0.2)) ## armor chip
 	hp -= dmg
-	EnemyHitFX.play(_body_poly, self, from)
-	if _heart_open:
+	EnemyHitFX.play(_art if _art else _body_poly, self, from)
+	if _heart_open and _art == null:
 		EnemyHitFX.play(_heart_poly, null, null)
 	_update_phase()
 	if hp <= 0:
@@ -450,6 +499,9 @@ func _start_defeat() -> void:
 	_dying = true
 	_state = "cutscene"
 	_hitbox.deactivate()
+	if _art:
+		_art.dying = true
+		_art.flap = 0.8
 	defeated.emit()
 	## Zone owns the full cutscene; we just freeze here.
 	set_physics_process(false)
