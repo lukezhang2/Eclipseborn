@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.54 — Backpack no-pause; Equipment + Consumables tabs; player preview + 3 accessory slots; `index-0_1_54.pck`
 - v0.1.52 — lantern wash: fix TAU-wrap rim scramble + keep corner grazes (no jagged shards); `index-0_1_52.pck`
 - v0.1.51 — Inventory on B (+ HUD Bag button) with shop-style fade; supplies stash/use, abilities + key items; `index-0_1_51.pck`
 - v0.1.50 — #0d020f fire-sky universal zone backdrop; `index-0_1_50.pck`

@@ -6,11 +6,14 @@ signal shade_changed(ratio: float)
 signal currency_changed(amount: int)
 signal currency_hud_reveal
 signal inventory_changed(items: Dictionary)
+signal equipment_changed(slots: Array)
 signal died
 signal respawned
 signal ability_unlocked(ability_id: String)
 signal room_entered(zone_id: String, room_id: String)
 signal pause_changed(paused: bool)
+
+const ACCESSORY_SLOT_COUNT := 3
 
 const SHADE_DRAIN_HEARTH := 1.0 / 1.5
 const SHADE_DRAIN_SUNSHAFT := 1.0 / 0.75
@@ -54,6 +57,8 @@ var currency: int = 0
 var currency_hud_unlocked: bool = false
 ## Bag counts for useable supplies: item_id -> int.
 var inventory: Dictionary = {}
+## Equipped accessory item ids (length ACCESSORY_SLOT_COUNT); "" = empty.
+var equipment_slots: Array = ["", "", ""]
 ## Remaining shop stock overrides: "zone/npc_id/item_id" -> int (−1 infinite, else remaining).
 var shop_stock: Dictionary = {}
 
@@ -113,6 +118,7 @@ func reset_run() -> void:
 	currency = 0
 	currency_hud_unlocked = false
 	inventory = {}
+	equipment_slots = ["", "", ""]
 	shop_stock = {}
 	has_double_jump = false
 	has_shadow_grip = false
@@ -139,6 +145,7 @@ func reset_run() -> void:
 	shade_changed.emit(shade)
 	currency_changed.emit(currency)
 	inventory_changed.emit(inventory)
+	equipment_changed.emit(equipment_slots)
 
 
 ## True after the Wickwright defeat cutscene has run (opens village descent hole).
@@ -216,6 +223,66 @@ func use_inventory_item(item_id: String) -> bool:
 		inventory[item_id] = left
 	inventory_changed.emit(inventory)
 	return true
+
+
+func _normalize_equipment_slots(raw: Variant) -> Array:
+	var out: Array = ["", "", ""]
+	if typeof(raw) != TYPE_ARRAY:
+		return out
+	for i in ACCESSORY_SLOT_COUNT:
+		if i < raw.size():
+			out[i] = str(raw[i])
+	return out
+
+
+func is_accessory_equipped(item_id: String) -> bool:
+	if item_id == "":
+		return false
+	return equipment_slots.has(item_id)
+
+
+func equip_accessory(item_id: String, slot: int = -1) -> bool:
+	## Place an owned ability into an accessory slot. Returns false if no room / invalid.
+	if item_id == "" or not ShopCatalog.owns_ability(item_id):
+		return false
+	if is_accessory_equipped(item_id):
+		return false
+	equipment_slots = _normalize_equipment_slots(equipment_slots)
+	var target := slot
+	if target < 0 or target >= ACCESSORY_SLOT_COUNT:
+		target = -1
+		for i in ACCESSORY_SLOT_COUNT:
+			if str(equipment_slots[i]) == "":
+				target = i
+				break
+	if target < 0:
+		return false
+	if str(equipment_slots[target]) != "":
+		return false
+	equipment_slots[target] = item_id
+	equipment_changed.emit(equipment_slots)
+	return true
+
+
+func unequip_accessory_slot(slot: int) -> bool:
+	equipment_slots = _normalize_equipment_slots(equipment_slots)
+	if slot < 0 or slot >= ACCESSORY_SLOT_COUNT:
+		return false
+	if str(equipment_slots[slot]) == "":
+		return false
+	equipment_slots[slot] = ""
+	equipment_changed.emit(equipment_slots)
+	return true
+
+
+func unequip_accessory(item_id: String) -> bool:
+	equipment_slots = _normalize_equipment_slots(equipment_slots)
+	for i in ACCESSORY_SLOT_COUNT:
+		if str(equipment_slots[i]) == item_id:
+			equipment_slots[i] = ""
+			equipment_changed.emit(equipment_slots)
+			return true
+	return false
 
 
 func shop_stock_key(shop_key: String, item_id: String) -> String:
