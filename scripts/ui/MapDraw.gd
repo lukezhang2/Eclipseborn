@@ -70,8 +70,11 @@ func _draw() -> void:
 		return
 	_draw_parchment(wr)
 	_draw_continuous_ground(wr)
-	_draw_landmarks()
+	## Silhouettes first so the whole zone reads as one picture under fog.
+	_draw_landmarks(false)
 	_draw_fog(wr)
+	## Known landmarks + labels on top of the veil.
+	_draw_landmarks(true)
 	_draw_frame(wr)
 	if has_player:
 		_draw_player_icon(_world_to_map(player_world))
@@ -131,18 +134,23 @@ func _draw_continuous_ground(wr: Vector2) -> void:
 		wx += step
 
 
-func _draw_landmarks() -> void:
+func _draw_landmarks(known_only: bool) -> void:
 	for lm in landmarks:
 		var id := str(lm.get("id", ""))
 		## Fog/detail keyed by containing room when provided (houses share a street room).
 		var room_key := str(lm.get("room", id))
 		var known := _room_known(room_key) if room_key != "" else true
-		## Always draw a faint silhouette so the map reads as one picture; detail only if known.
+		if known_only and not known:
+			continue
+		if not known_only and known:
+			## Known marks are drawn in the second pass (above fog).
+			continue
 		var wx := float(lm.get("x", 0))
 		var wy := float(lm.get("y", world_y_range.y))
 		var p := _world_to_map(Vector2(wx, wy))
 		var kind := str(lm.get("kind", "mark"))
-		var alpha := 1.0 if known else 0.28
+		## Unknown: readable silhouette under the veil. Known: full detail + label.
+		var alpha := 1.0 if known else 0.55
 		match kind:
 			"house":
 				_draw_house_mark(p, alpha)
@@ -205,7 +213,7 @@ func _draw_generic_mark(p: Vector2, a: float) -> void:
 
 
 func _draw_fog(wr: Vector2) -> void:
-	## Undiscovered x-spans get a dark veil so the picture still feels whole.
+	## Soft veil on undiscovered spans — panorama + silhouettes stay readable underneath.
 	if rooms.is_empty():
 		return
 	var pad := 28.0
@@ -218,9 +226,19 @@ func _draw_fog(wr: Vector2) -> void:
 		var w := maxf(4.0, x1 - x0)
 		draw_rect(
 			Rect2(Vector2(x0, pad), Vector2(w, wr.y - pad * 2.0)),
-			Color(0.04, 0.035, 0.05, 0.72),
+			Color(0.05, 0.04, 0.06, 0.38),
 			true
 		)
+		## Hatch marks so fogged span still feels mapped, not empty.
+		var hatch_y := pad + 10.0
+		while hatch_y < wr.y - pad - 8.0:
+			draw_line(
+				Vector2(x0 + 4.0, hatch_y),
+				Vector2(x0 + w - 4.0, hatch_y + 10.0),
+				Color(0.2, 0.17, 0.14, 0.18),
+				1.0
+			)
+			hatch_y += 18.0
 
 
 func _draw_frame(wr: Vector2) -> void:
