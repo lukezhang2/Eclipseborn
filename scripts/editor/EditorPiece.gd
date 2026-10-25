@@ -532,7 +532,8 @@ func _rebuild() -> void:
 	if kind == Kind.LIGHT:
 		var ring := Line2D.new()
 		ring.width = 1.0 + light_intensity * 0.5
-		ring.default_color = Color(1.0, 0.85, 0.4, clampf(0.35 + light_intensity * 0.2, 0.35, 0.85))
+		var kc := _light_kind_color()
+		ring.default_color = Color(kc.r, kc.g, kc.b, clampf(0.35 + light_intensity * 0.2, 0.35, 0.85))
 		for i in 24:
 			var a := TAU * float(i) / 24.0
 			## Match LightSource ring offset (burn center slightly above body).
@@ -548,7 +549,7 @@ func _rebuild() -> void:
 				var a := TAU * float(i) / 16.0
 				hot_pts.append(Vector2(cos(a), sin(a)) * hr + Vector2(0, -8))
 			hot.polygon = hot_pts
-			hot.color = Color(1.0, 0.9, 0.45, clampf(0.15 * (light_intensity - 0.5), 0.08, 0.4))
+			hot.color = Color(kc.r, kc.g, kc.b, clampf(0.15 * (light_intensity - 0.5), 0.08, 0.4))
 			_body.add_child(hot)
 
 	set_selected(is_selected)
@@ -720,14 +721,29 @@ func _make_bg_tex(w: int, h: int) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+func _light_kind_color() -> Color:
+	match light_kind:
+		GameState.LightKind.CANDLE:
+			return Color(1.0, 0.7, 0.4)
+		GameState.LightKind.MOON:
+			return Color(0.7, 0.85, 1.0)
+		GameState.LightKind.CRIMSON:
+			return Color(0.95, 0.2, 0.25)
+		GameState.LightKind.SUNSHAFT:
+			return Color(1.0, 1.0, 0.95)
+		_:
+			return Color(1.0, 0.78, 0.35)
+
+
 func _make_light_tex(w: int, h: int) -> ImageTexture:
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	var c := Vector2(w * 0.5, h * 0.5)
+	var kc := _light_kind_color()
 	for y in h:
 		for x in w:
 			var d := Vector2(x, y).distance_to(c) / (w * 0.5)
 			var a := clampf(1.0 - d, 0.0, 1.0)
-			img.set_pixel(x, y, Color(1.0, 0.8, 0.35, a))
+			img.set_pixel(x, y, Color(kc.r, kc.g, kc.b, a))
 	return ImageTexture.create_from_image(img)
 
 

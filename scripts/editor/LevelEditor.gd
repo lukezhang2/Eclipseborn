@@ -38,6 +38,8 @@ var _radius_spin: SpinBox
 var _radius_row: HBoxContainer
 var _intensity_spin: SpinBox
 var _intensity_row: HBoxContainer
+var _kind_row: HBoxContainer
+var _kind_option: OptionButton
 var _dialogue_row: VBoxContainer
 var _dialogue_edit: TextEdit
 var _shop_row: VBoxContainer
@@ -395,6 +397,33 @@ func _build_sidebar(col: VBoxContainer) -> void:
 			_selected.set_selected(true)
 	)
 	_intensity_row.add_child(_intensity_spin)
+
+	_kind_row = HBoxContainer.new()
+	_kind_row.visible = false
+	_pieces_block.add_child(_kind_row)
+	_kind_row.add_child(_lbl("Lantern kind"))
+	_kind_option = OptionButton.new()
+	_kind_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_kind_option.tooltip_text = "Moon is safe shade light; Hearth/Candle burn; Crimson is safe red; Sunshaft is harsh"
+	for pair in [
+		["Hearth", GameState.LightKind.HEARTH],
+		["Candle", GameState.LightKind.CANDLE],
+		["Moon", GameState.LightKind.MOON],
+		["Crimson", GameState.LightKind.CRIMSON],
+		["Sunshaft", GameState.LightKind.SUNSHAFT],
+	]:
+		_kind_option.add_item(str(pair[0]), int(pair[1]))
+	_kind_option.item_selected.connect(func(i: int) -> void:
+		if _syncing_light or _history_restoring:
+			return
+		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
+			_push_undo()
+			_selected.light_kind = _kind_option.get_item_id(i)
+			_selected._rebuild()
+			_selected.set_selected(true)
+			_status.text = "Lantern kind: %s" % _kind_option.get_item_text(i)
+	)
+	_kind_row.add_child(_kind_option)
 
 	_dialogue_row = VBoxContainer.new()
 	_dialogue_row.visible = false
@@ -850,6 +879,20 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_status.custom_minimum_size = Vector2(280, 90)
 	_status.text = "Use Copy Save Code to share levels. Docs: docs/LEVEL_EDITOR.md"
 	col.add_child(_status)
+
+
+func _light_kind_label(kind: int) -> String:
+	match kind:
+		GameState.LightKind.CANDLE:
+			return "candle"
+		GameState.LightKind.MOON:
+			return "moon"
+		GameState.LightKind.CRIMSON:
+			return "crimson"
+		GameState.LightKind.SUNSHAFT:
+			return "sun"
+		_:
+			return "hearth"
 
 
 func _lbl(t: String) -> Label:
@@ -1441,7 +1484,7 @@ func _refresh_list() -> void:
 		var p := _pieces[i]
 		var extra := ""
 		if p.kind == EditorPiece.Kind.LIGHT:
-			extra = "  r=%.0f i=%.2f" % [p.light_radius, p.light_intensity]
+			extra = "  r=%.0f i=%.2f %s" % [p.light_radius, p.light_intensity, _light_kind_label(p.light_kind)]
 		_piece_list.add_item("%s [%s]%s" % [p.display_name, p.piece_id, extra])
 		if p == _selected:
 			_piece_list.select(i)
@@ -1454,10 +1497,20 @@ func _update_inspector() -> void:
 	var is_light := _selected != null and _selected.kind == EditorPiece.Kind.LIGHT
 	_radius_row.visible = is_light
 	_intensity_row.visible = is_light
+	_kind_row.visible = is_light
 	if is_light:
 		_syncing_light = true
 		_radius_spin.value = _selected.light_radius
 		_intensity_spin.value = _selected.light_intensity
+		var lk := clampi(_selected.light_kind, 0, 4)
+		var found_kind := false
+		for i in _kind_option.item_count:
+			if _kind_option.get_item_id(i) == lk:
+				_kind_option.select(i)
+				found_kind = true
+				break
+		if not found_kind:
+			_kind_option.select(0)
 		_syncing_light = false
 	var is_npc := _selected != null and _selected.is_npc()
 	_shop_row.visible = is_npc
@@ -1974,6 +2027,7 @@ func _add_piece() -> void:
 	if _palette_id == "light":
 		d["radius"] = 280
 		d["intensity"] = 1.0
+		d["light_kind"] = GameState.LightKind.HEARTH
 		d["pushable"] = true
 	if _palette_id == "prop_npc":
 		d["is_shopkeeper"] = true
