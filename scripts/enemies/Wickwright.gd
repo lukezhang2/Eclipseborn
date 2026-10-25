@@ -5,7 +5,9 @@ class_name Wickwright
 
 signal defeated
 
-const MAX_HP := 160
+## Ten sword connects kill the boss (each swing = 1 HP).
+const MAX_HP := 10
+const HURT_IFRAMES := 0.35
 const WickwrightArtScript := preload("res://scripts/enemies/WickwrightArt.gd")
 const DIVE_DAMAGE := 18
 const SWEEP_DAMAGE := 14
@@ -198,9 +200,10 @@ func _build() -> void:
 	_hurtbox.owner_body = self
 	var hcs := CollisionShape2D.new()
 	var hr := RectangleShape2D.new()
-	hr.size = Vector2(40, 56)
+	## Cover the tall grandfather-clock body so sword swings connect.
+	hr.size = Vector2(56, 100)
 	hcs.shape = hr
-	hcs.position = Vector2(0, 0)
+	hcs.position = Vector2(0, -8)
 	_hurtbox.add_child(hcs)
 	_hurtbox.hurt.connect(_on_hurt)
 	add_child(_hurtbox)
@@ -450,12 +453,13 @@ func _yank_random_switch() -> void:
 
 
 func _on_hurt(amount: int, from: Node) -> void:
-	if _dying or not _awake:
+	if _dying or not _awake or _hurt_cd > 0.0:
 		return
-	var dmg := amount
-	if not _heart_open:
-		dmg = maxi(1, int(amount * 0.2)) ## armor chip
-	hp -= dmg
+	## Sword swings (and any other hit) each count as one wound toward MAX_HP.
+	if amount <= 0:
+		return
+	_hurt_cd = HURT_IFRAMES
+	hp -= 1
 	EnemyHitFX.play(_art if _art else _body_poly, self, from)
 	if _heart_open and _art == null:
 		EnemyHitFX.play(_heart_poly, null, null)

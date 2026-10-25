@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.77 — Wickwright takes full sword hits (10 to kill, larger hurtbox); `index-0_1_77.pck`
 - v0.1.76 — Enemies drop 2–3 silver gears on kill; gear pickup delay 0.25s; `index-0_1_76.pck`
 - v0.1.75 — sync clockwork_tower (gallery pushable lanterns, cloister floors, arena lamps 4–6, removed texts/practice lamps); `index-0_1_75.pck`
 - v0.1.74 — LightSource never builds a solid body / never pushable (hard disable); `index-0_1_74.pck`
