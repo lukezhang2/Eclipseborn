@@ -28,6 +28,8 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.72 — Playtest Zone shows session editor edits (trusted user:// mirror + sync tagged builtins on apply); `index-0_1_72.pck`
+- v0.1.71 — boot shows the real title behind the glass (no white flash); Clockwork crack look; particle steam vents; Wickwright redrawn as the Grandfather Wraith (animated wings, pendulum heart, eye tracking); `index-0_1_71.pck`
 - v0.1.70 — Clockwork Tower enemies visible/editable in Level Editor (catalog + LevelData spawn); `index-0_1_70.pck`
 - v0.1.69 — Editor Ctrl/Cmd multi-select (group move/dupe/delete/layer/light settings), top-layer click pick, Resize N/E/S/W edge grips; `index-0_1_69.pck`
 - v0.1.68 — Editor lantern kind (Moon / Hearth / Candle / Crimson / Sunshaft); `index-0_1_68.pck`

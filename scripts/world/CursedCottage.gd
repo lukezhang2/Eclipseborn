@@ -182,11 +182,13 @@ func _build_currency_breakables() -> void:
 
 
 func _spawn_breakable(id: String, pos: Vector2, drops: int, size: Vector2 = Vector2(28, 36)) -> void:
-	if GameState.is_broken(id):
+	if GameState.is_broken(id) or LevelData.is_removed("cursed_cottage", id):
 		return
 	var prop := BreakableProp.new()
 	prop.breakable_id = id
 	prop.position = pos
 	prop.prop_size = size
 	prop.currency_drops = drops
+	## catalog_id so LevelData.apply can sync editor moves onto this jar.
+	LevelData.tag(prop, id)
 	add_child(prop)

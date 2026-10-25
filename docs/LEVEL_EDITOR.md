@@ -30,6 +30,8 @@ Select a `prop_npc` piece â†’ **Shop inventory** (all catalog items, stock Inf/â
 
 Editor **Save (this session)** and auto-saves only last until you refresh the page. Refreshing clears `user://editor/` overlays so play uses repo `data/levels/` again. Use **Copy Save Code** (or commit JSON) to keep work.
 
+**Playtest Zone** saves the session overlay first, then loads the live room. Rooms call `LevelData.apply`, which spawns new (non-builtin) pieces and syncs editor fields onto catalog-tagged builtins (position, lantern kind/radius, house links, etc.). Same-tab playtest must show your edits; a page refresh still discards them.
+
 ### Tint color & text
 
 - Floors, walls, platforms, crates, pipes, backgrounds, and **Text label** (`prop_text`) show a **Tint color** picker (wheel + `#hex`).

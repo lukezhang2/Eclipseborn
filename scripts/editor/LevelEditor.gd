@@ -1307,6 +1307,21 @@ func _revert_spin_text(spin: SpinBox) -> void:
 	le.caret_column = le.text.length()
 
 
+func _flush_focused_spin_for_playtest() -> void:
+	## Playtest is an intentional commit — apply draft LineEdit text on the focused spin.
+	var focus := get_viewport().gui_get_focus_owner() if get_viewport() else null
+	if focus == null or not (focus is LineEdit):
+		return
+	var le := focus as LineEdit
+	var spin := le.get_parent()
+	if spin == null or not (spin is SpinBox):
+		return
+	var sb := spin as SpinBox
+	var raw := le.text.strip_edges()
+	if raw.is_valid_float():
+		sb.value = clampf(raw.to_float(), sb.min_value, sb.max_value)
+
+
 func _spin_row(parent: Control, label: String, mn: float, mx: float, step: float, val: float) -> SpinBox:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
@@ -2545,6 +2560,8 @@ func _save() -> void:
 
 
 func _playtest() -> void:
+	## Flush any focused spin so playtest sees the last typed number without requiring Enter.
+	_flush_focused_spin_for_playtest()
 	_save()
 	GameState.editor_playtesting = true
 	GameState.editor_playtest_zone = zone_id
