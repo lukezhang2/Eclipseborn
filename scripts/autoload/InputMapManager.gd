@@ -10,6 +10,7 @@ const ACTIONS := [
 	"look_down",
 	"crouch",
 	"pull",
+	"interact",
 	"run",
 	"jump",
 	"attack",
@@ -24,6 +25,7 @@ const DISPLAY_NAMES := {
 	"look_down": "Look Down",
 	"crouch": "Crouch",
 	"pull": "Pull Box",
+	"interact": "Interact",
 	"run": "Run",
 	"jump": "Jump",
 	"attack": "Attack",
@@ -63,6 +65,9 @@ func _ensure_extra_actions() -> void:
 		_set_slots("crouch", [KEY_S, KEY_NONE])
 	if InputMap.action_get_events("pull").is_empty():
 		_set_slots("pull", [KEY_V, KEY_NONE])
+	# Saved controls from before Interact existed: give it E unless the player rebound E elsewhere.
+	if InputMap.action_get_events("interact").is_empty() and not _key_in_use(KEY_E):
+		_set_slots("interact", [KEY_E, KEY_NONE])
 	# Ensure movement always has WASD + arrows when missing a slot.
 	_ensure_slot_key("move_left", 0, KEY_A)
 	_ensure_slot_key("move_left", 1, KEY_LEFT)
@@ -89,6 +94,14 @@ func _cap_all_to_slots() -> void:
 		InputMap.action_erase_events(action)
 		for i in MAX_SLOTS:
 			InputMap.action_add_event(action, events[i])
+
+
+func _key_in_use(keycode: Key) -> bool:
+	for action in ACTIONS:
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventKey and (ev as InputEventKey).physical_keycode == keycode:
+				return true
+	return false
 
 
 func _remove_key_from_action(action: String, keycode: Key) -> void:
@@ -183,6 +196,7 @@ func reset_defaults() -> void:
 	_set_slots("look_down", [KEY_DOWN, KEY_NONE])
 	_set_slots("crouch", [KEY_S, KEY_NONE])
 	_set_slots("pull", [KEY_V, KEY_NONE])
+	_set_slots("interact", [KEY_E, KEY_NONE])
 	_set_slots("run", [KEY_SHIFT, KEY_NONE])
 	_set_slots("jump", [KEY_SPACE, KEY_NONE])
 	_set_slots("attack", [KEY_F, KEY_NONE])

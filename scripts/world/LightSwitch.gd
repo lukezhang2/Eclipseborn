@@ -1,6 +1,6 @@
-extends Area2D
+extends Interactable
 class_name LightSwitch
-## Lever that turns linked lights on or off.
+## Lever that turns linked lights on or off. Press Interact (E) nearby to flip it.
 
 @export var target_light_paths: Array[NodePath] = []
 @export var starts_on: bool = true
@@ -10,29 +10,21 @@ var _visual: Polygon2D
 
 
 func _ready() -> void:
+	verb = "Flip"
+	super()
 	_on = starts_on
-	collision_layer = 0
-	collision_mask = 2
-	monitoring = true
-	body_entered.connect(_on_body)
 	_visual = Polygon2D.new()
 	_visual.polygon = PackedVector2Array([
 		Vector2(-8, -20), Vector2(8, -20), Vector2(6, 10), Vector2(-6, 10)
 	])
 	_visual.color = Color(0.5, 0.45, 0.3)
 	add_child(_visual)
-	var cs := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = Vector2(24, 40)
-	cs.shape = rect
-	add_child(cs)
 	_apply()
 
 
-func _on_body(body: Node) -> void:
-	if body is Player or body.is_in_group("player"):
-		_on = not _on
-		_apply()
+func interact() -> void:
+	_on = not _on
+	_apply()
 
 
 func _apply() -> void:

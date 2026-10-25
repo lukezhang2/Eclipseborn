@@ -32,11 +32,22 @@ _(none)_
 
 _(Claude: claim work below before coding. Do not take items listed as Active under Cursor.)_
 
+**Claude rules (every prompt):**
+- Read this file before planning or implementing anything.
+- If the request is already claimed by Cursor, or already listed under **Done recently** in either section, **stop** and tell the user.
+- Write the plan under **Active / claimed** before implementing.
+- On every update, bump `config/version` in `project.godot` by one patch (e.g. `0.1.4` → `0.1.5`) and log it in **Done recently** as `vX.Y.Z — …`.
+
 ### Active / claimed
-_(none)_
+- v0.1.6 — **E = Interact** for levers / switches / buttons
+  - New rebindable `interact` action (default E) in `project.godot` + `InputMapManager` (shows in Controls menus)
+  - `Interactable.gd` base: player-in-range check, "E — <verb>" prompt that follows the current binding, `interact()` hook
+  - `LightSwitch` uses it: press E to flip (no longer toggles just by walking into it)
+  - Bump version, re-export web build
+  - Status: code done + version bumped to 0.1.6; **not yet run in Godot or web-exported** (no Godot on this Mac)
 
 ### Queue
 _(none)_
 
 ### Done recently
-_(none)_
+- Added Claude rules above (rules only, no game change)
