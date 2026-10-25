@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.59 — Clockwork Tower boss resets on player death (HP/phase/gate/lamps); `index-0_1_59.pck`
 - v0.1.58 — Editor zone-link doors/houses/hatches + spawn more palette kinds (pipe/jar/enemy/tower); `index-0_1_58.pck`
 - v0.1.57 — Editor: shopkeeper sales default off + per-shop prices; piece color hex/wheel; RMB pan; prop_text + show text pieces; `index-0_1_57.pck`
 - v0.1.55 — player map: zone nameplate, plaque labels, reveal only the framed screen; `index-0_1_55.pck`

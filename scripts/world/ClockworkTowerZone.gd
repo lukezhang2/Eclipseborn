@@ -69,7 +69,77 @@ func _ready() -> void:
 	GameState.enter_room("clockwork_tower", _room_for_y(spawn.y))
 	if not GameState.editor_playtesting:
 		SaveManager.autosave()
+	if not GameState.respawned.is_connected(_on_player_respawned):
+		GameState.respawned.connect(_on_player_respawned)
+	if not GameState.died.is_connected(_on_player_died):
+		GameState.died.connect(_on_player_died)
 	call_deferred("_maybe_hint_ladder")
+
+
+func _exit_tree() -> void:
+	if GameState.respawned.is_connected(_on_player_respawned):
+		GameState.respawned.disconnect(_on_player_respawned)
+	if GameState.died.is_connected(_on_player_died):
+		GameState.died.disconnect(_on_player_died)
+
+
+func _on_player_died() -> void:
+	## Don't leave a half-finished victory cutscene running across respawn.
+	_cutscene_running = false
+	GameState.intro_cutscene_playing = false
+
+
+func _on_player_respawned() -> void:
+	if GameState.current_zone_id != "clockwork_tower":
+		return
+	if GameState.wickwright_defeated():
+		return
+	_reset_boss_encounter()
+
+
+func _reset_boss_encounter() -> void:
+	_boss_awake = false
+	_cutscene_running = false
+	_set_arena_gate_sealed(false)
+	if _boss == null or not is_instance_valid(_boss):
+		_boss = WickwrightScript.new()
+		_boss.position = Vector2(400, ARENA_TOP - 140)
+		add_child(_boss)
+		if _boss.has_signal("defeated"):
+			_boss.connect("defeated", _on_boss_defeated)
+	elif _boss.has_method("reset_encounter"):
+		_boss.call("reset_encounter")
+	_reset_arena_lamps()
+
+
+func _set_arena_gate_sealed(sealed: bool) -> void:
+	if _arena_gate == null:
+		return
+	for c in _arena_gate.get_children():
+		if c is CollisionShape2D:
+			(c as CollisionShape2D).disabled = not sealed
+		elif c is Polygon2D:
+			(c as Polygon2D).color.a = 0.9 if sealed else 0.0
+
+
+func _reset_arena_lamps() -> void:
+	var ids := ["tower_lamp_a", "tower_lamp_b", "tower_lamp_c"]
+	var switch_ids := ["tower_switch_a", "tower_switch_b", "tower_switch_c"]
+	var starts := [true, false, true]
+	for i in 3:
+		var sw := find_child(str(switch_ids[i]), true, false)
+		if sw == null:
+			continue
+		if sw.has_meta("smashed"):
+			sw.remove_meta("smashed")
+		sw.modulate = Color.WHITE
+		sw.set_process(true)
+		if sw.has_method("set_powered"):
+			sw.call("set_powered", starts[i], false)
+		else:
+			var lamp := find_child(str(ids[i]), true, false)
+			if lamp and lamp.has_method("set_on"):
+				lamp.call("set_on", starts[i])
 
 
 func _maybe_hint_ladder() -> void:
@@ -505,13 +575,7 @@ func _on_arena_entered(body: Node) -> void:
 	if not (body is Player or (body and body.is_in_group("player"))):
 		return
 	_boss_awake = true
-	## Seal exit back to antechamber.
-	if _arena_gate:
-		for c in _arena_gate.get_children():
-			if c is CollisionShape2D:
-				(c as CollisionShape2D).disabled = false
-			elif c is Polygon2D:
-				(c as Polygon2D).color.a = 0.9
+	_set_arena_gate_sealed(true)
 	## Force rest hearth to antechamber so death mid-fight resets there.
 	GameState.activate_checkpoint(
 		"tower_antechamber",
@@ -673,13 +737,7 @@ func _on_boss_defeated() -> void:
 	if _cutscene_running:
 		return
 	_cutscene_running = true
-	## Open the gate again after victory.
-	if _arena_gate:
-		for c in _arena_gate.get_children():
-			if c is CollisionShape2D:
-				(c as CollisionShape2D).disabled = true
-			elif c is Polygon2D:
-				(c as Polygon2D).color.a = 0.0
+	_set_arena_gate_sealed(false)
 	await _play_defeat_cutscene()
 
 

@@ -22,6 +22,7 @@ var _heart_t: float = 0.0
 var _target_pattern: Array = [true, false, true] ## A B C lamps that should be ON
 var _dying: bool = false
 var _awake: bool = false
+var _spawn_pos: Vector2 = Vector2.ZERO
 var _hover_origin: Vector2 = Vector2.ZERO
 var _dive_target: Vector2 = Vector2.ZERO
 var _visual: Node2D
@@ -39,6 +40,7 @@ func _ready() -> void:
 	hp = MAX_HP
 	collision_layer = 0
 	collision_mask = 0
+	_spawn_pos = global_position
 	_hover_origin = global_position
 	_build()
 	_roll_pattern()
@@ -58,7 +60,7 @@ func awaken() -> void:
 	_awake = true
 	_state = "hover"
 	_cooldown = 0.8
-	_hover_origin = global_position
+	_hover_origin = _spawn_pos
 	if _hurtbox:
 		_hurtbox.monitorable = true
 	if _dial_label:
@@ -66,6 +68,56 @@ func awaken() -> void:
 	var ui := get_tree().get_first_node_in_group("tutorial_hint")
 	if ui and ui.has_method("show_hint"):
 		ui.show_hint("The Wickwright stirs — match the Hour.", 3.5)
+
+
+## Player died mid-fight — restore dormant full-HP encounter.
+func reset_encounter() -> void:
+	_dying = false
+	_awake = false
+	hp = MAX_HP
+	phase = Phase.ONE
+	_state = "dormant"
+	_state_t = 0.0
+	_cooldown = 1.2
+	_hurt_cd = 0.0
+	_heart_open = false
+	_heart_t = 0.0
+	velocity = Vector2.ZERO
+	rotation = 0.0
+	modulate = Color.WHITE
+	global_position = _spawn_pos
+	_hover_origin = _spawn_pos
+	set_physics_process(true)
+	if _hitbox:
+		_hitbox.deactivate()
+	if _hurtbox:
+		_hurtbox.set_deferred("monitorable", false)
+	if _dial_label:
+		_dial_label.visible = false
+	if _heart_poly:
+		_heart_poly.color.a = 0.0
+	if _body_poly:
+		_body_poly.color = Color(0.32, 0.28, 0.24)
+	_restore_switches()
+	_roll_pattern()
+
+
+func _restore_switches() -> void:
+	var starts := [true, false, true]
+	var tree := get_tree()
+	if tree == null:
+		return
+	for i in _switch_ids.size():
+		var sid := str(_switch_ids[i])
+		var sw := tree.root.find_child(sid, true, false)
+		if sw == null:
+			continue
+		if sw.has_meta("smashed"):
+			sw.remove_meta("smashed")
+		sw.modulate = Color.WHITE
+		sw.set_process(true)
+		if sw.has_method("set_powered"):
+			sw.call("set_powered", bool(starts[i]) if i < starts.size() else true, false)
 
 
 func _build() -> void:
