@@ -51,6 +51,8 @@ var starts_on: bool = true
 var enemy_kind: String = "wander"
 var attack_damage: int = 10
 var damage_custom: bool = false
+var max_hp: int = 24
+var hp_custom: bool = false
 ## Degrees — used by Rotate tool / JSON `rotation`.
 var rotation_deg: float = 0.0
 ## Moving platform path/spin (prop_platform).
@@ -184,6 +186,8 @@ func to_dict() -> Dictionary:
 			d["enemy_kind"] = enemy_kind
 		if damage_custom:
 			d["damage"] = attack_damage
+		if hp_custom:
+			d["hp"] = max_hp
 	if catalog_kind == "prop_door" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_door"):
 		d["kind"] = "prop_door"
 		d["starts_open"] = starts_on
@@ -222,6 +226,8 @@ func apply_dict(d: Dictionary) -> void:
 		enemy_kind = str(d.get("enemy_kind", "wander"))
 		damage_custom = d.has("damage")
 		attack_damage = int(d.get("damage", PieceSpecs.creature_damage(enemy_kind)))
+		hp_custom = d.has("hp")
+		max_hp = int(d.get("hp", PieceSpecs.creature_hp(enemy_kind)))
 	rotation_deg = float(d.get("rotation", 0.0))
 	rotation_degrees = rotation_deg
 	## Legacy village platforms were saved as floor — promote so the inspector appears.

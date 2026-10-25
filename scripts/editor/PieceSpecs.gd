@@ -255,11 +255,11 @@ static func floor_top_for_zone(zone_id: String) -> float:
 ## Contact damage each creature script uses today. New pieces copy the editor default;
 ## pieces saved without a damage key keep these numbers.
 const CREATURES: Array = [
-	{"id": "wander", "label": "Wanderer", "damage": 10},
-	{"id": "mite", "label": "Rivet mite", "damage": 8},
-	{"id": "beetle", "label": "Fuse beetle", "damage": 10},
-	{"id": "pendulum", "label": "Pendulum", "damage": 14},
-	{"id": "lamplighter", "label": "Lamplighter", "damage": 15},
+	{"id": "wander", "label": "Wanderer", "damage": 10, "hp": 24},
+	{"id": "mite", "label": "Rivet mite", "damage": 8, "hp": 8},
+	{"id": "beetle", "label": "Fuse beetle", "damage": 10, "hp": 28},
+	{"id": "pendulum", "label": "Pendulum", "damage": 14, "hp": 40},
+	{"id": "lamplighter", "label": "Lamplighter", "damage": 15, "hp": 120},
 ]
 
 
@@ -268,3 +268,10 @@ static func creature_damage(kind: String) -> int:
 		if str(row.get("id", "")) == kind:
 			return int(row.get("damage", 10))
 	return 10
+
+
+static func creature_hp(kind: String) -> int:
+	for row in CREATURES:
+		if str(row.get("id", "")) == kind:
+			return int(row.get("hp", 24))
+	return 24

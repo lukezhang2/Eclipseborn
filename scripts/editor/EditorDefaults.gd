@@ -18,3 +18,17 @@ static func set_damage(creature: String, value: int) -> void:
 	cfg.load(PATH)
 	cfg.set_value("damage", creature, value)
 	cfg.save(PATH)
+
+
+static func hp_for(creature: String) -> int:
+	var cfg := ConfigFile.new()
+	if cfg.load(PATH) == OK and cfg.has_section_key("hp", creature):
+		return int(cfg.get_value("hp", creature))
+	return PieceSpecs.creature_hp(creature)
+
+
+static func set_hp(creature: String, value: int) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(PATH)
+	cfg.set_value("hp", creature, value)
+	cfg.save(PATH)

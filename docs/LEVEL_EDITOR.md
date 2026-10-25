@@ -48,12 +48,12 @@ Editor **Save (this session)** and auto-saves only last until you refresh the pa
 - Saved as `"target_ids": ["lamp_street", "door_street_1"]` plus `"starts_on"`.
 - Doors respond to `set_on` (open when powered). Checkpoints: Interact to rest and open **Fast Travel**.
 
-### Creature damage
+### Creature damage and HP
 
-- Select an **Enemy** → creature type and **Damage**.
-- Built-in defaults match the scripts: Wanderer 10, Rivet mite 8, Fuse beetle 10, Pendulum 14, Lamplighter 15.
-- **Make default** remembers that number for creatures you add afterward (`user://editor_defaults.cfg`). Pieces already in the level are not rewritten.
-- A piece only stores `"damage"` after you set it (or when you add a new creature). Older enemies with no key keep their script damage.
+- Select an **Enemy** → creature type, **Damage**, and **HP**. HP is for mobs only.
+- Built-in defaults match the scripts: Wanderer 10 dmg / 24 HP, Rivet mite 8 / 8, Fuse beetle 10 / 28, Pendulum 14 / 40, Lamplighter 15 / 120.
+- Each **Make default** remembers that number for creatures you add afterward (`user://editor_defaults.cfg`). Pieces already in the level are not rewritten.
+- A piece only stores `"damage"` or `"hp"` after you set it (or when you add a new creature). Older enemies with no key keep their script values.
 
 ### Moving platforms & rotate
 

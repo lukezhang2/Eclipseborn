@@ -464,7 +464,16 @@ static func spawn_creature(parent: Node, p: Dictionary, pos: Vector2) -> Node:
 	parent.add_child(enemy)
 	if p.has("damage"):
 		apply_attack_damage(enemy, int(p.get("damage")))
+	if p.has("hp"):
+		apply_max_hp(enemy, int(p.get("hp")))
 	return enemy
+
+
+static func apply_max_hp(enemy: Node, hp: int) -> void:
+	if enemy == null:
+		return
+	enemy.set("max_hp", hp)
+	enemy.set("hp", hp)
 
 
 static func apply_attack_damage(enemy: Node, dmg: int) -> void:

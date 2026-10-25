@@ -52,6 +52,7 @@ var _syncing_links: bool = false
 var _creature_row: VBoxContainer
 var _creature_option: OptionButton
 var _damage_spin: SpinBox
+var _hp_spin: SpinBox
 var _syncing_creature: bool = false
 var _platform_row: VBoxContainer
 var _plat_amp: SpinBox
@@ -601,10 +602,13 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		_selected.enemy_kind = kind
 		_selected.attack_damage = EditorDefaults.damage_for(kind)
 		_selected.damage_custom = true
+		_selected.max_hp = EditorDefaults.hp_for(kind)
+		_selected.hp_custom = true
 		_syncing_creature = true
 		_damage_spin.value = _selected.attack_damage
+		_hp_spin.value = _selected.max_hp
 		_syncing_creature = false
-		_status.text = "%s deals %d" % [_creature_option.get_item_text(idx), _selected.attack_damage]
+		_status.text = "%s deals %d and has %d HP" % [_creature_option.get_item_text(idx), _selected.attack_damage, _selected.max_hp]
 	)
 	_creature_row.add_child(_creature_option)
 	_damage_spin = _spin_row(_creature_row, "Damage", 0, 200, 1, 10)
@@ -620,8 +624,21 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	make_default.tooltip_text = "Creatures you add after this use this damage. Ones already placed stay as they are."
 	make_default.pressed.connect(_on_make_damage_default)
 	_creature_row.add_child(make_default)
+	_hp_spin = _spin_row(_creature_row, "HP", 1, 9999, 1, 24)
+	_hp_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_creature or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		_selected.max_hp = int(v)
+		_selected.hp_custom = true
+	)
+	var make_hp := Button.new()
+	make_hp.text = "Make default"
+	make_hp.tooltip_text = "Creatures you add after this use this HP. Ones already placed stay as they are."
+	make_hp.pressed.connect(_on_make_hp_default)
+	_creature_row.add_child(make_hp)
 	var creature_hint := Label.new()
-	creature_hint.text = "Make default applies only to creatures added afterward. Already placed creatures keep their own damage."
+	creature_hint.text = "Each Make default applies only to creatures added afterward. Already placed creatures keep their own damage and HP."
 	creature_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	creature_hint.add_theme_font_size_override("font_size", 11)
 	creature_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
@@ -1346,7 +1363,7 @@ func _load_zone() -> void:
 			for key in [
 				"x", "y", "w", "h", "name", "radius", "intensity", "light_kind", "pushable", "lines", "anchor",
 				"blocks_light", "layer", "target_ids", "starts_on", "starts_open", "rotation",
-				"damage", "enemy_kind",
+				"damage", "enemy_kind", "hp",
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
 				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
 				"is_shopkeeper", "shop_items", "color", "text", "font_size",
@@ -1447,6 +1464,8 @@ func _update_inspector() -> void:
 				break
 		var shown := _selected.attack_damage if _selected.damage_custom else PieceSpecs.creature_damage(kind)
 		_damage_spin.value = shown
+		var shown_hp := _selected.max_hp if _selected.hp_custom else PieceSpecs.creature_hp(kind)
+		_hp_spin.value = shown_hp
 		_syncing_creature = false
 	var is_plat := _selected != null and PieceSpecs.is_platform_kind(_selected.catalog_kind)
 	_platform_row.visible = is_plat
@@ -1565,6 +1584,20 @@ func _on_make_damage_default() -> void:
 			label = _creature_option.get_item_text(i)
 			break
 	_status.text = "New %s creatures will deal %d. Already placed creatures are unchanged." % [label, dmg]
+
+
+func _on_make_hp_default() -> void:
+	if _selected == null or _selected.catalog_kind != "prop_enemy":
+		return
+	var kind := _selected.enemy_kind if _selected.enemy_kind != "" else "wander"
+	var hp := int(_hp_spin.value)
+	EditorDefaults.set_hp(kind, hp)
+	var label := kind
+	for i in _creature_option.item_count:
+		if str(_creature_option.get_item_metadata(i)) == kind:
+			label = _creature_option.get_item_text(i)
+			break
+	_status.text = "New %s creatures will have %d HP. Already placed creatures are unchanged." % [label, hp]
 
 
 func _on_dialogue_changed() -> void:
@@ -1944,6 +1977,7 @@ func _add_piece() -> void:
 	if _palette_id == "prop_enemy":
 		d["enemy_kind"] = "wander"
 		d["damage"] = EditorDefaults.damage_for("wander")
+		d["hp"] = EditorDefaults.hp_for("wander")
 	if _palette_id == "prop_door":
 		d["starts_open"] = false
 	if _palette_id == "prop_platform":
