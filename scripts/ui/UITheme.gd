@@ -19,6 +19,10 @@ const EMBER := Color("c2412d")
 const INK := Color("6b4c9a")
 const INK_LIGHT := Color("b8a3e0")
 
+## Steampunk typefaces (SIL Open Font License; licenses sit next to the .ttf files).
+const TITLE_FONT := "res://assets/fonts/IMFellEnglishSC-Regular.ttf"
+const PROMPT_FONT := "res://assets/fonts/IMFellEnglishSC-Regular.ttf"
+
 static var _theme: Theme
 
 
@@ -91,9 +95,12 @@ static func _build() -> Theme:
 	return t
 
 
-## Letter-spaced brass lettering, like a cast nameplate.
+## Brass nameplate lettering in the steampunk display face (title + menu headings).
 static func style_title(label: Label, size: int = 64) -> void:
-	label.add_theme_font_override("font", spaced_font(10 if size >= 48 else 4, 0.9))
+	var f := FontVariation.new()
+	f.base_font = load(TITLE_FONT)
+	f.spacing_glyph = 6 if size >= 48 else 2
+	label.add_theme_font_override("font", f)
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", BRASS_LIGHT)
 	label.add_theme_color_override("font_outline_color", Color("1a1210"))
@@ -102,6 +109,34 @@ static func style_title(label: Label, size: int = 64) -> void:
 	label.add_theme_constant_override("shadow_offset_x", 0)
 	label.add_theme_constant_override("shadow_offset_y", 4)
 	label.add_theme_constant_override("shadow_outline_size", 18)
+
+
+## In-world "E — …" prompts: steampunk face on a light translucent plaque, drawn above the
+## scenery so houses and props never cover it. Use set_prompt_text() so it stays centered.
+static func style_prompt(label: Label, size: int = 13) -> void:
+	label.add_theme_font_override("font", load(PROMPT_FONT))
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", CREAM)
+	label.add_theme_color_override("font_outline_color", COAL)
+	label.add_theme_constant_override("outline_size", 3)
+	var plaque := _box(Color(0.05, 0.04, 0.05, 0.5), Color(BRASS, 0.5), 1, 3)
+	plaque.content_margin_left = 7
+	plaque.content_margin_right = 7
+	plaque.content_margin_top = 1
+	plaque.content_margin_bottom = 2
+	label.add_theme_stylebox_override("normal", plaque)
+	label.z_as_relative = false
+	label.z_index = 40
+	set_prompt_text(label, label.text)
+
+
+## Set a prompt's text and keep it centered over its object.
+static func set_prompt_text(label: Label, text: String) -> void:
+	if label.text == text and label.size.x > 0.0:
+		return
+	label.text = text
+	label.reset_size()
+	label.position.x = -label.size.x * 0.5
 
 
 ## Riveted iron plate drawn behind a container (containers lay out every child, so we draw instead).

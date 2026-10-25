@@ -4,7 +4,7 @@ class_name WorldArt
 ## Three style options per kind while we choose. Origins match the props they dress:
 ##   PLATFORM / CRATE: centered on `size`.  HOUSE / CHECKPOINT: bottom-center.  LANTERN: lamp body center.
 
-enum Kind { PLATFORM, CRATE, HOUSE, CHECKPOINT, LANTERN, POT, HATCH, BACKDROP, LEVER, WINDOW, BENCH, VALVE, VENT, CHAIN }
+enum Kind { PLATFORM, CRATE, HOUSE, CHECKPOINT, LANTERN, POT, HATCH, BACKDROP, LEVER, WINDOW, BENCH, VALVE, VENT, CHAIN, NPC, TOWER, DESK, SIGN, INTERIOR }
 
 @export var kind: Kind = Kind.PLATFORM
 @export var style: int = 0
@@ -41,6 +41,15 @@ const STONE_HI := Color("44595c")
 const STONE_LO := Color("1a2629")
 
 var _t: float = 0.0
+
+
+## NPC look for a name: each shopkeeper has their own outfit; other villagers alternate.
+static func npc_style_for(npc_name: String) -> int:
+	match npc_name:
+		"Keeper": return 0
+		"Gearwright": return 1
+		"Innkeep": return 2
+	return 3 + absi(hash(npc_name)) % 2
 
 
 ## Distance straight down from `n` to the first solid (layer 1) surface, or -1 if none in range.
@@ -90,7 +99,7 @@ static func _ray_distance(n: Node2D, dir: Vector2, start: Vector2 = Vector2.ZERO
 
 func _process(delta: float) -> void:
 	# Only things with flames or glow animate.
-	if kind in [Kind.LANTERN, Kind.CHECKPOINT, Kind.POT, Kind.BACKDROP, Kind.WINDOW, Kind.VENT]:
+	if kind in [Kind.LANTERN, Kind.CHECKPOINT, Kind.POT, Kind.BACKDROP, Kind.WINDOW, Kind.VENT, Kind.NPC, Kind.TOWER, Kind.INTERIOR, Kind.DESK]:
 		_t += delta
 		queue_redraw()
 
@@ -136,6 +145,11 @@ func _draw() -> void:
 		Kind.VALVE: _valve()
 		Kind.VENT: _vent()
 		Kind.CHAIN: _chain()
+		Kind.NPC: _npc()
+		Kind.TOWER: _tower()
+		Kind.DESK: _desk()
+		Kind.SIGN: _sign()
+		Kind.INTERIOR: _interior()
 
 
 # ---------------- PLATFORMS ----------------
@@ -1583,6 +1597,843 @@ func _window_dark_arch() -> void:
 	_arch(r, Color("4d6f8f"), 1)
 	draw_line(r.position + Vector2(6, size.x * 0.45), r.position + Vector2(12, size.x * 0.3), Color(0.85, 0.92, 1.0, 0.45), 2.0)
 	_rect(Rect2(r.position.x - 6, r.end.y + 2, size.x + 12, 4), STONE_HI)
+
+
+# ---------------- NPCs ----------------
+
+## Steampunk townsfolk, feet at the origin, about 56px tall. Flat colours with a dark outline.
+## 0 Keeper (lamplighter), 1 Gearwright (mechanic), 2 Innkeep, 3 clockwork automaton, 4 coal worker.
+func _npc() -> void:
+	var line := Color("1a1210")
+	var skin := Color("c9a080")
+	var breathe := sin(_t * 1.6) * 0.8
+	match style:
+		0:
+			# Keeper: tall top hat with goggles, long green coat, lamp pole with a little flame.
+			draw_line(Vector2(14, 0), Vector2(14, -62), line, 4.0)
+			draw_line(Vector2(14, 0), Vector2(14, -62), IRON_MID, 2.0)
+			draw_line(Vector2(14, -62), Vector2(8, -62), IRON_MID, 2.0)
+			draw_circle(Vector2(8, -58), 3.5, Color(LAMP, 0.9))
+			draw_circle(Vector2(8, -58), 1.6, LAMP_CORE)
+			_npc_body(Color("2f4a3a"), Color("243a2d"), 13.0, 34.0 + breathe, line)
+			_npc_legs(Color("2a2420"), line)
+			_npc_head(Vector2(0, -40 - breathe), skin, line)
+			_rect(Rect2(-8, -52 - breathe, 16, 2), line)
+			_rect(Rect2(-6, -66 - breathe, 12, 14), Color("1d1a1c"))
+			_outline(Rect2(-6, -66 - breathe, 12, 14), line, 1.5)
+			_rect(Rect2(-6, -56 - breathe, 12, 3), BRASS)
+			draw_circle(Vector2(-3, -59 - breathe), 2.2, Color("6fa8c7"))
+			draw_circle(Vector2(3, -59 - breathe), 2.2, Color("6fa8c7"))
+			_rect(Rect2(-9, -53 - breathe, 18, 2), Color("1d1a1c"))
+			draw_line(Vector2(-4, -20), Vector2(-4, -12), BRASS, 1.5)
+		1:
+			# Gearwright: leather apron, goggles up, brass mechanical arm, big wrench.
+			_npc_body(Color("6d4a2c"), Color("4e341e"), 12.0, 30.0 + breathe, line)
+			_rect(Rect2(-7, -26 - breathe, 14, 22), Color("8a6440"))
+			draw_line(Vector2(-7, -26 - breathe), Vector2(-9, -30 - breathe), Color("5a3e26"), 1.5)
+			draw_line(Vector2(7, -26 - breathe), Vector2(9, -30 - breathe), Color("5a3e26"), 1.5)
+			_npc_legs(Color("3a2e26"), line)
+			# Brass arm on the right, holding a wrench
+			draw_line(Vector2(10, -26), Vector2(15, -12), line, 5.0)
+			draw_line(Vector2(10, -26), Vector2(15, -12), BRASS, 3.0)
+			draw_circle(Vector2(10, -26), 2.5, BRASS_HI)
+			draw_line(Vector2(15, -12), Vector2(22, -26), IRON_HI, 3.0)
+			draw_arc(Vector2(23, -28), 3.0, PI * 0.2, PI * 1.6, 8, IRON_HI, 2.5)
+			_npc_head(Vector2(0, -36 - breathe), skin, line)
+			_rect(Rect2(-7, -46 - breathe, 14, 4), Color("4a3a2e"))
+			draw_circle(Vector2(-3, -46 - breathe), 2.6, BRASS)
+			draw_circle(Vector2(3, -46 - breathe), 2.6, BRASS)
+			draw_circle(Vector2(-3, -46 - breathe), 1.5, Color("7fc0d8"))
+			draw_circle(Vector2(3, -46 - breathe), 1.5, Color("7fc0d8"))
+			draw_line(Vector2(-4, -30 - breathe), Vector2(4, -30 - breathe), Color("3a2a20"), 1.5)
+		2:
+			# Innkeep: stout, bowler hat, waistcoat, watch chain, mustache, tankard.
+			var belly := PackedVector2Array([Vector2(-12, -8), Vector2(-15, -20), Vector2(-11, -32 - breathe),
+				Vector2(11, -32 - breathe), Vector2(15, -20), Vector2(12, -8)])
+			draw_colored_polygon(_grow_poly(belly, 1.5), line)
+			draw_colored_polygon(belly, Color("e8dcc0"))
+			draw_colored_polygon(PackedVector2Array([Vector2(-12, -8), Vector2(-14, -20), Vector2(-10, -31 - breathe),
+				Vector2(-3, -31 - breathe), Vector2(0, -12), Vector2(3, -31 - breathe), Vector2(10, -31 - breathe),
+				Vector2(14, -20), Vector2(12, -8)]), Color("6b2a2a"))
+			draw_arc(Vector2(4, -18), 5.0, PI * 0.1, PI * 0.9, 8, BRASS_HI, 1.2)
+			draw_circle(Vector2(8, -16), 1.6, BRASS_HI)
+			_npc_legs(Color("2a2420"), line)
+			_rect(Rect2(-20, -22, 7, 9), Color("8a8d90"))
+			_outline(Rect2(-20, -22, 7, 9), line, 1.0)
+			_rect(Rect2(-20, -24, 7, 3), Color("f2f2e8"))
+			_npc_head(Vector2(0, -38 - breathe), skin, line)
+			draw_line(Vector2(-5, -34 - breathe), Vector2(5, -34 - breathe), Color("4a3020"), 2.5)
+			draw_colored_polygon(PackedVector2Array([Vector2(-7, -45 - breathe), Vector2(7, -45 - breathe),
+				Vector2(5, -51 - breathe), Vector2(-5, -51 - breathe)]), Color("2a2224"))
+			draw_circle(Vector2(0, -50 - breathe), 5.0, Color("2a2224"))
+			_rect(Rect2(-9, -46 - breathe, 18, 2), Color("2a2224"))
+		3:
+			# Clockwork automaton: brass barrel body, porthole face, wind-up key.
+			var key_a := _t * 2.0
+			draw_line(Vector2(-12, -24), Vector2(-17, -24), IRON_HI, 2.0)
+			draw_line(Vector2(-17, -24 + 4 * cos(key_a)), Vector2(-17, -24 - 4 * cos(key_a)), BRASS_HI, 3.0)
+			_rect(Rect2(-10, -34, 20, 26), line)
+			_rect(Rect2(-9, -33, 18, 24), BRASS)
+			for yy in [-28, -20, -12]:
+				draw_line(Vector2(-9, yy), Vector2(9, yy), BRASS_LO, 1.5)
+			draw_circle(Vector2(0, -22), 3.0, IRON)
+			_rect(Rect2(-6, -8, 4, 8), IRON_MID)
+			_rect(Rect2(2, -8, 4, 8), IRON_MID)
+			draw_circle(Vector2(0, -42), 8.5, line)
+			draw_circle(Vector2(0, -42), 7.5, BRASS_LO)
+			draw_circle(Vector2(0, -42), 5.5, Color("1d2d3d"))
+			draw_circle(Vector2(-2, -43), 1.4, Color(LAMP, 0.6 + 0.4 * sin(_t * 3.0)))
+			draw_circle(Vector2(2, -43), 1.4, Color(LAMP, 0.6 + 0.4 * sin(_t * 3.0)))
+			draw_line(Vector2(0, -50), Vector2(0, -55), IRON_HI, 1.5)
+			draw_circle(Vector2(0, -56), 1.6, EMBER)
+		_:
+			# Coal worker: flat cap, sooty jacket, scarf, shovel.
+			draw_line(Vector2(13, 0), Vector2(13, -30), WOOD_HI, 2.5)
+			draw_colored_polygon(PackedVector2Array([Vector2(9, 0), Vector2(17, 0), Vector2(16, 6), Vector2(10, 6)]), IRON_HI)
+			_npc_body(Color("3b3d40"), Color("2c2e31"), 12.0, 30.0 + breathe, line)
+			_rect(Rect2(-8, -31 - breathe, 16, 4), EMBER)
+			_npc_legs(Color("2a2420"), line)
+			_npc_head(Vector2(0, -36 - breathe), skin.darkened(0.15), line)
+			draw_circle(Vector2(-3, -33 - breathe), 1.5, Color(0.1, 0.1, 0.1, 0.4))
+			draw_colored_polygon(PackedVector2Array([Vector2(-7, -42 - breathe), Vector2(7, -42 - breathe),
+				Vector2(10, -40 - breathe), Vector2(6, -47 - breathe), Vector2(-6, -47 - breathe)]), Color("4a4038"))
+
+
+func _npc_body(coat: Color, coat_lo: Color, half_w: float, height: float, line: Color) -> void:
+	var b := PackedVector2Array([Vector2(-half_w, -6), Vector2(half_w, -6), Vector2(half_w - 2, -height), Vector2(-half_w + 2, -height)])
+	draw_colored_polygon(_grow_poly(b, 1.5), line)
+	draw_colored_polygon(b, coat)
+	draw_line(Vector2(0, -6), Vector2(0, -height), coat_lo, 1.5)
+
+
+func _npc_legs(col: Color, line: Color) -> void:
+	for x in [-6.0, 2.0]:
+		_rect(Rect2(x - 0.5, -7, 5, 7), line)
+		_rect(Rect2(x, -7, 4, 6), col)
+
+
+func _npc_head(c: Vector2, skin: Color, line: Color) -> void:
+	draw_circle(c, 7.5, line)
+	draw_circle(c, 6.5, skin)
+	draw_circle(c + Vector2(-2.5, -1), 1.0, line)
+	draw_circle(c + Vector2(2.5, -1), 1.0, line)
+
+
+func _grow_poly(poly: PackedVector2Array, d: float) -> PackedVector2Array:
+	var grown := Geometry2D.offset_polygon(poly, d)
+	return grown[0] if grown.size() > 0 else poly
+
+
+# ---------------- clockwork tower ----------------
+
+## The Clockwork Tower complex, origin = floor at the entrance. The main tower rises ~1100px
+## (well past the top of the camera); factory wings spread left/right with stacks and pipes.
+func _tower() -> void:
+	var stone := Color("2a2729")
+	var stone_hi := Color("3a3638")
+	var stone_lo := Color("1c1a1c")
+	var spin := _t * 0.35
+	# The camera stops at the map's right edge, so the complex sits LEFT of the entrance:
+	# everything below is drawn shifted by ox, and the entrance gatehouse stays at the origin.
+	var ox := -190.0
+	draw_set_transform(Vector2(ox, 0))
+	# --- far back: second spire and skybridge (darker, reads as depth) ---
+	_rect(Rect2(-250, -980, 70, 980), stone_lo)
+	draw_colored_polygon(PackedVector2Array([Vector2(-256, -980), Vector2(-174, -980), Vector2(-215, -1080)]), stone_lo)
+	_rect(Rect2(-180, -620, 110, 14), stone_lo)
+	# --- left wing: factory hall with sawtooth roof and two smokestacks ---
+	_rect(Rect2(-300, -230, 200, 230), stone)
+	for k in 4:
+		var x0 := -300.0 + k * 50.0
+		draw_colored_polygon(PackedVector2Array([Vector2(x0, -230), Vector2(x0 + 50, -230), Vector2(x0 + 50, -262)]), stone_hi)
+		draw_line(Vector2(x0 + 50, -230), Vector2(x0 + 50, -262), Color(LAMP, 0.45), 2.0)
+	for sx in [-280.0, -235.0]:
+		_rect(Rect2(sx, -420, 22, 190), BRICK)
+		_rect(Rect2(sx - 3, -426, 28, 8), IRON)
+		for k in 3:
+			var f := fmod(_t * 0.3 + k * 0.33 + (0.5 if sx > -250.0 else 0.0), 1.0)
+			draw_circle(Vector2(sx + 11 + sin(f * 5.0) * 6.0, -436 - f * 90.0), 10.0 + f * 16.0, Color(0.55, 0.55, 0.58, 0.18 * (1.0 - f)))
+	_window_grid(Rect2(-288, -200, 176, 120), 5, 3)
+	# --- main tower: tall shaft, buttresses, rows of windows ---
+	var tw := 190.0
+	var top := -1100.0
+	draw_colored_polygon(PackedVector2Array([Vector2(-tw * 0.5 - 20, 0), Vector2(tw * 0.5 + 20, 0),
+		Vector2(tw * 0.5, top), Vector2(-tw * 0.5, top)]), stone_hi)
+	for bx in [-tw * 0.5 - 20, tw * 0.5 + 8]:
+		draw_colored_polygon(PackedVector2Array([Vector2(bx, 0), Vector2(bx + 12, 0), Vector2(bx + 12 - (6 if bx > 0 else -6), top * 0.6),
+			Vector2(bx - (6 if bx > 0 else -6), top * 0.6)]), stone)
+	var ly := -140.0
+	while ly > top + 60:
+		draw_line(Vector2(-tw * 0.5, ly), Vector2(tw * 0.5, ly), stone_lo, 3.0)
+		for wx in [-50.0, 0.0, 50.0]:
+			_rect(Rect2(wx - 9, ly - 46, 18, 30), stone_lo)
+			_rect(Rect2(wx - 7, ly - 44, 14, 26), Color(LAMP, 0.55) if int(ly + wx) % 3 != 0 else Color("1b2230"))
+		ly -= 90.0
+	# Copper pipes running up the tower face
+	for px in [-tw * 0.5 + 14, tw * 0.5 - 14]:
+		draw_line(Vector2(px, -40), Vector2(px, top), Color("8a5a35"), 7.0)
+		draw_line(Vector2(px - 2, -40), Vector2(px - 2, top), Color("b07a4c"), 1.5)
+		var fy := -120.0
+		while fy > top:
+			_rect(Rect2(px - 6, fy, 12, 5), IRON_HI)
+			fy -= 140.0
+	# Great clock with exposed gears
+	var cc := Vector2(0, -360)
+	_gear(cc + Vector2(-70, 40), 34.0, BRASS_LO, 12)
+	_gear(cc + Vector2(72, -30), 26.0, BRASS_LO, 10)
+	draw_circle(cc, 74.0, IRON)
+	draw_circle(cc, 68.0, BRASS)
+	draw_circle(cc, 60.0, Color("e8dcc0"))
+	for k in 12:
+		var a := TAU * k / 12.0
+		draw_line(cc + Vector2(cos(a), sin(a)) * 50.0, cc + Vector2(cos(a), sin(a)) * 58.0, IRON, 3.0)
+	draw_line(cc, cc + Vector2(cos(spin * 0.2 - PI * 0.5), sin(spin * 0.2 - PI * 0.5)) * 40.0, IRON, 4.0)
+	draw_line(cc, cc + Vector2(cos(spin - PI * 0.5), sin(spin - PI * 0.5)) * 52.0, IRON, 2.5)
+	draw_circle(cc, 6.0, BRASS_LO)
+	# Catwalk across the tower with a railing
+	_rect(Rect2(-tw * 0.5 - 40, -540, tw + 80, 8), IRON_MID)
+	var rx := -tw * 0.5 - 40
+	while rx <= tw * 0.5 + 40:
+		draw_line(Vector2(rx, -540), Vector2(rx, -556), IRON_HI, 2.0)
+		rx += 12.0
+	draw_line(Vector2(-tw * 0.5 - 40, -556), Vector2(tw * 0.5 + 40, -556), IRON_HI, 2.0)
+	draw_set_transform(Vector2.ZERO)
+	# Gatehouse joining the tower base to the entrance (at the origin, where the door has always been)
+	_rect(Rect2(ox + 80, -150, -ox - 30, 150), stone)
+	_rect(Rect2(-60, -170, 110, 170), stone_hi)
+	draw_colored_polygon(PackedVector2Array([Vector2(-66, -170), Vector2(56, -170), Vector2(-5, -214)]), stone)
+	_gear(Vector2(-5, -186), 12.0, BRASS, 10)
+	draw_circle(Vector2(-5, -186), 5.0, stone)
+	# Grand arched entrance (door stays where the old one was)
+	_rect(Rect2(-34, -76, 68, 76), stone_lo)
+	draw_circle(Vector2(0, -76), 34.0, stone_lo)
+	_rect(Rect2(-26, -70, 52, 70), Color(LAMP, 0.45))
+	draw_circle(Vector2(0, -70), 26.0, Color(LAMP, 0.45))
+	_rect(Rect2(-20, -64, 40, 64), Color("3a2717"))
+	draw_circle(Vector2(0, -64), 20.0, Color("3a2717"))
+	draw_line(Vector2(0, -84), Vector2(0, 0), Color("2a1c10"), 2.0)
+	draw_colored_polygon(PackedVector2Array([Vector2(-6, -114), Vector2(6, -114), Vector2(4, -104), Vector2(-4, -104)]), BRASS)
+	_rect(Rect2(-48, -6, 96, 6), stone_hi)
+
+
+func _window_grid(r: Rect2, cols: int, rows: int) -> void:
+	var cw := r.size.x / cols
+	var ch := r.size.y / rows
+	for y in rows:
+		for x in cols:
+			var pane := Rect2(r.position.x + x * cw + 4, r.position.y + y * ch + 4, cw - 8, ch - 8)
+			_rect(pane.grow(1), Color("1c1a1c"))
+			_rect(pane, Color(LAMP, 0.5) if (x * 7 + y * 3) % 5 != 0 else Color("1b2230"))
+
+
+# ---------------- shop desks ----------------
+
+## Shop counter, origin = floor at its center, `size` = counter width x height (about 200 x 40).
+## 0 brass display counter, 1 tavern bar, 2 lamplighter's workbench, 3 iron counter + register,
+## 4 apothecary drawers.
+func _desk() -> void:
+	var w := size.x
+	var h := size.y
+	var r := Rect2(-w * 0.5, -h, w, h)
+	var line := COAL
+	match style:
+		0:
+			# Brass shop counter: glass display case of gears on a dark wood base.
+			_rect(r, Color("3a2716"))
+			_rect(Rect2(r.position.x, -h, w, 5), BRASS)
+			var glass := Rect2(r.position.x + 10, -h + 9, w - 20, h * 0.5)
+			_rect(glass, Color(0.55, 0.7, 0.75, 0.25))
+			_outline(glass, BRASS_LO, 2.0)
+			for k in 5:
+				_gear(Vector2(glass.position.x + 18 + k * (glass.size.x - 36) / 4.0, glass.get_center().y + 2), 6.0, BRASS if k % 2 == 0 else IRON_HI, 8)
+			_rect(Rect2(r.position.x, -6, w, 6), Color("2a1c10"))
+			_outline(r, line, 2.0)
+		1:
+			# Tavern bar: polished top with a brass foot rail, a beer tap and two mugs.
+			_rect(r, Color("4a2e1a"))
+			var x := r.position.x + 16
+			while x < r.end.x - 10:
+				_rect(Rect2(x, -h + 10, 2, h - 14), Color("3a2414"))
+				x += 32.0
+			_rect(Rect2(r.position.x - 6, -h - 4, w + 12, 7), Color("6b4228"))
+			draw_line(Vector2(r.position.x, -6), Vector2(r.end.x, -6), BRASS, 3.0)
+			_rect(Rect2(-w * 0.2, -h - 20, 6, 16), BRASS)
+			_rect(Rect2(-w * 0.2 - 4, -h - 24, 14, 5), BRASS_HI)
+			for mx in [w * 0.15, w * 0.28]:
+				_rect(Rect2(mx, -h - 14, 9, 10), Color("c9b98f"))
+				_rect(Rect2(mx, -h - 15, 9, 3), Color("f2ecd8"))
+				draw_arc(Vector2(mx + 10, -h - 9), 3.0, -PI * 0.5, PI * 0.5, 6, Color("c9b98f"), 1.5)
+			_outline(r, line, 2.0)
+		2:
+			# Lamplighter's workbench: low rough boards so the keeper shows from the waist up;
+			# the half-built lantern, oil can and wick spool sit out at the ends.
+			_rect(r, Color("5a3e26"))
+			_rect(Rect2(r.position.x - 4, -h - 3, w + 8, 6), Color("7a5634"))
+			for lx in [r.position.x + 8, r.end.x - 14]:
+				_rect(Rect2(lx, -h + 3, 6, h - 3), Color("3a2717"))
+			var lx2 := -w * 0.38
+			_rect(Rect2(lx2 - 8, -h - 21, 16, 18), Color(LAMP, 0.6))
+			for bx in [-8.0, -2.5, 2.5, 8.0]:
+				draw_line(Vector2(lx2 + bx, -h - 21), Vector2(lx2 + bx, -h - 3), BRASS_LO, 1.5)
+			_rect(Rect2(lx2 - 10, -h - 24, 20, 4), BRASS)
+			draw_colored_polygon(PackedVector2Array([Vector2(w * 0.3, -h - 3), Vector2(w * 0.38, -h - 3), Vector2(w * 0.37, -h - 16), Vector2(w * 0.31, -h - 16)]), Color("8a5a35"))
+			draw_line(Vector2(w * 0.37, -h - 14), Vector2(w * 0.43, -h - 20), Color("8a5a35"), 2.0)
+			draw_circle(Vector2(-w * 0.24, -h - 7), 5.0, Color("d9c9a3"))
+			draw_circle(Vector2(-w * 0.24, -h - 7), 1.8, WOOD_LO)
+			_outline(r, line, 2.0)
+		3:
+			# Riveted iron counter with a brass cash register.
+			_rect(r, IRON_MID)
+			var px := r.position.x
+			while px < r.end.x:
+				draw_line(Vector2(px, -h), Vector2(px, 0), IRON, 2.0)
+				_rivet(Vector2(px + 5, -h + 6), 1.4)
+				_rivet(Vector2(px + 5, -6), 1.4)
+				px += 40.0
+			_rect(Rect2(r.position.x - 3, -h - 3, w + 6, 6), IRON_HI)
+			var reg := Rect2(w * 0.12, -h - 26, 34, 23)
+			_rect(reg, BRASS)
+			_outline(reg, BRASS_LO, 1.5)
+			_rect(Rect2(reg.position.x + 4, reg.position.y + 3, 26, 7), Color("1b2230"))
+			for k in 3:
+				for j in 2:
+					draw_circle(Vector2(reg.position.x + 8 + k * 9, reg.position.y + 14 + j * 5), 1.6, Color("e8dcc0"))
+			_outline(r, line, 2.0)
+		_:
+			# Apothecary counter: rows of little drawers with brass knobs, labels and a few jars on top.
+			_rect(r, Color("4a3220"))
+			var cols := int(w / 26.0)
+			var cw := w / cols
+			for row in 2:
+				for c in cols:
+					var d := Rect2(r.position.x + c * cw + 2, -h + 8 + row * (h - 10) * 0.5, cw - 4, (h - 10) * 0.5 - 3)
+					_rect(d, Color("5e4129"))
+					_rect(Rect2(d.get_center().x - 5, d.position.y + 2, 10, 3), Color("d9c9a3"))
+					draw_circle(Vector2(d.get_center().x, d.end.y - 4), 1.6, BRASS_HI)
+			_rect(Rect2(r.position.x - 3, -h - 3, w + 6, 6), Color("6b4a2c"))
+			for jx in [-w * 0.3, -w * 0.22, w * 0.25]:
+				_rect(Rect2(jx, -h - 14, 9, 11), Color(0.55, 0.7, 0.75, 0.45))
+				_rect(Rect2(jx, -h - 16, 9, 3), WOOD_HI)
+			_outline(r, line, 2.0)
+
+
+# ---------------- interior title signs ----------------
+
+## Board behind a room title; origin = top-center where it hangs, size = board width x height.
+## 0 hanging brass plaque, 1 carved wooden signboard on a bracket, 2 gilded cloth banner.
+func _sign() -> void:
+	var w := size.x
+	var h := size.y
+	var r := Rect2(-w * 0.5, 22, w, h)
+	match style:
+		0:
+			for cx in [r.position.x + 18, r.end.x - 18]:
+				var y := 0.0
+				var k := 0
+				while y < 22.0:
+					if k % 2 == 0:
+						draw_arc(Vector2(cx, y + 3), 2.2, 0, TAU, 8, IRON_HI, 1.3)
+					y += 5.0
+					k += 1
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = BRASS_LO
+			sb.set_corner_radius_all(4)
+			draw_style_box(sb, r)
+			_rect(r.grow(-3), BRASS)
+			_outline(r.grow(-6), BRASS_LO, 1.5)
+			for c in _corners(r, 7):
+				_rivet(c, 2.0)
+		1:
+			draw_line(Vector2(r.position.x - 20, 6), Vector2(r.end.x + 6, 6), IRON_HI, 3.0)
+			draw_line(Vector2(r.position.x - 20, 6), Vector2(r.position.x + 10, 30), IRON_HI, 2.0)
+			for cx in [r.position.x + 16, r.end.x - 16]:
+				draw_line(Vector2(cx, 6), Vector2(cx, 22), IRON_MID, 2.0)
+			_rect(r, Color("3a2717"))
+			_rect(r.grow(-3), Color("6b4a2c"))
+			var y2 := r.position.y + 8
+			while y2 < r.end.y - 4:
+				draw_line(Vector2(r.position.x + 5, y2), Vector2(r.end.x - 5, y2), Color("5a3e26"), 1.0)
+				y2 += 6.0
+			_outline(r.grow(-6), Color("3a2717"), 1.5)
+		_:
+			draw_line(Vector2(r.position.x - 6, 20), Vector2(r.end.x + 6, 20), BRASS, 3.0)
+			draw_circle(Vector2(r.position.x - 8, 20), 3.0, BRASS_HI)
+			draw_circle(Vector2(r.end.x + 8, 20), 3.0, BRASS_HI)
+			var pts := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), Vector2(r.end.x, r.end.y + 6),
+				Vector2(r.get_center().x, r.end.y - 6), Vector2(r.position.x, r.end.y + 6)])
+			draw_colored_polygon(pts, Color("6b1f1f"))
+			draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[4], pts[0]]), BRASS_HI, 2.0)
+
+
+# ---------------- themed interiors ----------------
+
+## Back-wall dressing for a shop, origin = floor center, size = wall area (about 560 x 300).
+## Lantern Keep: 0 lamp shop, 1 lighthouse office, 2 oil & wick store.
+## Gearwright: 3 gear workshop, 4 clockmaker's atelier, 5 foundry corner.
+## Shade Inn: 6 tavern bar, 7 hearth lodge, 8 steam diner.
+func _interior() -> void:
+	var w := size.x
+	var h := size.y
+	var l := -w * 0.5
+	var r := w * 0.5
+	var flick := 0.85 + 0.15 * sin(_t * 5.0)
+	_rect(Rect2(l, -h, w, h), Color("2a201c"))
+	_rect(Rect2(l, -48, w, 48), Color("221a16"))
+	draw_line(Vector2(l, -48), Vector2(r, -48), Color("3a2a22"), 3.0)
+	match style:
+		0:
+			# Lamp shop (K1a): three shelves of mixed lantern types.
+			_lamp_shelves(l, r, -h + 70, 3)
+		9:
+			# Lamp shop (K1b): two mixed shelves, plus lanterns hanging from the ceiling.
+			_lamp_shelves(l, r, -h + 150, 2)
+			var hx := l + 70.0
+			var k := 0
+			while hx < r - 50:
+				var drop := 14.0 + float((k * 37) % 36)
+				var cy := -h + 4.0
+				while cy < -h + drop:
+					draw_arc(Vector2(hx, cy + 3), 2.0, 0, TAU, 8, IRON_HI, 1.2)
+					cy += 7.0
+				_shop_lantern(Vector2(hx, -h + drop + 40), 0.8, k % 5, k % 3 != 1)
+				hx += 64.0
+				k += 1
+		10:
+			# Lamp shop (K1c): shelves sorted by size around a big centerpiece lantern on a stand.
+			for side: float in [-1.0, 1.0]:
+				for row in 3:
+					var sy := -h + 80 + row * 62
+					var x0 := side * 70.0
+					var x1 := (r - 30.0) * side
+					_rect(Rect2(minf(x0, x1), sy, absf(x1 - x0), 6), WOOD)
+					var n := 4
+					for k2 in n:
+						var x := lerpf(x0, x1, (k2 + 0.5) / n)
+						_shop_lantern(Vector2(x, sy - 2), 0.45 + 0.08 * row, (k2 + row) % 5, (k2 + row) % 3 != 2)
+			_rect(Rect2(-6, -150, 12, 102), IRON_MID)
+			_rect(Rect2(-22, -54, 44, 6), IRON_HI)
+			_shop_lantern(Vector2(0, -150), 1.5, 0, true)
+			draw_circle(Vector2(0, -180), 50.0, Color(LAMP, 0.08 * flick))
+		1:
+			# Lighthouse office: big brass lens, a wall map, ship's wheel, logbook stand.
+			draw_circle(Vector2(l + 120, -h * 0.55), 58.0, BRASS_LO)
+			for k in 5:
+				draw_arc(Vector2(l + 120, -h * 0.55), 14.0 + k * 9.0, 0, TAU, 28, Color(0.75, 0.9, 1.0, 0.35), 2.0)
+			draw_circle(Vector2(l + 120, -h * 0.55), 10.0, Color(LAMP, 0.6 * flick))
+			_rect(Rect2(l + 230, -h + 50, 150, 100), Color("d9c9a3"))
+			_outline(Rect2(l + 230, -h + 50, 150, 100), WOOD_LO, 3.0)
+			draw_polyline(PackedVector2Array([Vector2(l + 250, -h + 120), Vector2(l + 280, -h + 80), Vector2(l + 320, -h + 110), Vector2(l + 360, -h + 70)]), Color("4a6a8a"), 2.0)
+			draw_circle(Vector2(l + 340, -h + 95), 4.0, EMBER)
+			_valve_wheel(Vector2(r - 90, -h * 0.5), 34.0, WOOD_HI)
+		2:
+			# Oil & wick store: stacked barrels, oil cans, wick spools on pegs.
+			for k in 4:
+				_barrel(Vector2(l + 60 + k * 50, -48), 22.0, 44.0)
+			for k in 3:
+				_barrel(Vector2(l + 85 + k * 50, -92), 22.0, 44.0)
+			for k in 5:
+				var cx := r - 200 + k * 34
+				draw_colored_polygon(PackedVector2Array([Vector2(cx, -150), Vector2(cx + 20, -150), Vector2(cx + 18, -182), Vector2(cx + 2, -182)]), Color("8a5a35"))
+				draw_line(Vector2(cx + 18, -178), Vector2(cx + 26, -188), Color("8a5a35"), 2.0)
+			_rect(Rect2(r - 210, -146, 190, 5), WOOD)
+			for k in 4:
+				draw_circle(Vector2(r - 190 + k * 46, -h + 80), 12.0, Color("d9c9a3"))
+				draw_circle(Vector2(r - 190 + k * 46, -h + 80), 4.0, WOOD_LO)
+		3:
+			# Gear workshop: gear rack shelves, turning wall gears and a chain hoist.
+			_gear_wall_feature(l, h, 1)
+			var sp := _t * 0.6
+			_spin_gear(Vector2(r - 150, -h * 0.55), 48.0, sp, BRASS_LO)
+			_spin_gear(Vector2(r - 80, -h * 0.55 - 52), 28.0, -sp * 1.7, BRASS)
+			_spin_gear(Vector2(r - 70, -h * 0.55 + 40), 22.0, -sp * 2.2, IRON_HI)
+			var cy := -h + 10.0
+			while cy < -120.0:
+				draw_arc(Vector2(l + 300, cy), 3.0, 0, TAU, 8, IRON_HI, 1.5)
+				cy += 8.0
+			draw_arc(Vector2(l + 300, -112), 8.0, 0, PI, 8, IRON_HI, 3.0)
+		4:
+			# Clockmaker's atelier: a wall of clocks, pendulums swinging.
+			var k := 0
+			for cy2 in [-h + 60, -h + 150]:
+				for cx2 in range(int(l + 60), int(r - 40), 82):
+					var c := Vector2(cx2, cy2)
+					var rad := 22.0 + float(k % 3) * 6.0
+					draw_circle(c, rad + 3, WOOD_LO if k % 2 == 0 else BRASS_LO)
+					draw_circle(c, rad, Color("e8dcc0"))
+					var a := _t * (0.3 + 0.1 * k) + k
+					draw_line(c, c + Vector2(cos(a), sin(a)) * rad * 0.8, IRON, 2.0)
+					draw_line(c, c + Vector2(cos(a * 0.1), sin(a * 0.1)) * rad * 0.5, IRON, 3.0)
+					if k % 3 == 0:
+						var sw := sin(_t * 2.0 + k) * 0.35
+						draw_line(c + Vector2(0, rad), c + Vector2(0, rad) + Vector2(sin(sw), cos(sw)) * 34.0, BRASS, 2.0)
+						draw_circle(c + Vector2(0, rad) + Vector2(sin(sw), cos(sw)) * 34.0, 5.0, BRASS)
+					k += 1
+		15, 16, 17, 18:
+			# G1 with a different left-wall feature replacing the pegboard (R1-R4 options).
+			_gear_wall_feature(l, h, style - 14)
+			var sp2 := _t * 0.6
+			_spin_gear(Vector2(r - 150, -h * 0.55), 48.0, sp2, BRASS_LO)
+			_spin_gear(Vector2(r - 80, -h * 0.55 - 52), 28.0, -sp2 * 1.7, BRASS)
+			_spin_gear(Vector2(r - 70, -h * 0.55 + 40), 22.0, -sp2 * 2.2, IRON_HI)
+			var cy2 := -h + 10.0
+			while cy2 < -120.0:
+				draw_arc(Vector2(l + 300, cy2), 3.0, 0, TAU, 8, IRON_HI, 1.5)
+				cy2 += 8.0
+			draw_arc(Vector2(l + 300, -112), 8.0, 0, PI, 8, IRON_HI, 3.0)
+		11:
+			# Engine repair bay (G1 vibe): pegboard, an engine on a stand under a chain hoist.
+			_pegboard(Rect2(l + 30, -h + 40, 170, 140))
+			var ex := r - 190.0
+			_rect(Rect2(ex - 70, -110, 140, 62), IRON_MID)
+			_outline(Rect2(ex - 70, -110, 140, 62), COAL, 2.0)
+			for k in 4:
+				var bob := sin(_t * 3.0 + k * 1.6) * 5.0
+				_rect(Rect2(ex - 58 + k * 32, -140 + bob, 20, 32), IRON_HI)
+				_rect(Rect2(ex - 54 + k * 32, -146 + bob, 12, 6), BRASS)
+			_spin_gear(Vector2(ex + 82, -80), 20.0, _t * 1.4, BRASS_LO)
+			# Engine stand legs down to the floor
+			for lx in [ex - 60, ex + 52]:
+				_rect(Rect2(lx, -48, 8, 48), IRON)
+			var cy := -h + 10.0
+			while cy < -160.0:
+				draw_arc(Vector2(ex, cy), 3.0, 0, TAU, 8, IRON_HI, 1.5)
+				cy += 8.0
+			draw_arc(Vector2(ex, -152), 8.0, 0, PI, 8, IRON_HI, 3.0)
+			_rect(Rect2(l + 220, -h + 20, 30, 40), Color(LAMP, 0.15))
+		12:
+			# Blueprint workshop (G1 vibe): pegboard, pinned blueprints, turning wall gears.
+			_pegboard(Rect2(l + 30, -h + 40, 150, 140))
+			for k in 3:
+				var bp := Rect2(l + 200 + k * 92, -h + 46 + (k % 2) * 16, 80, 60)
+				_rect(bp, Color("2b4c7a"))
+				draw_arc(bp.get_center(), 16.0, 0, TAU, 16, Color(1, 1, 1, 0.75), 1.5)
+				draw_line(bp.position + Vector2(8, 44), bp.position + Vector2(70, 44), Color(1, 1, 1, 0.6), 1.0)
+				draw_line(bp.position + Vector2(10, 10), bp.position + Vector2(30, 10), Color(1, 1, 1, 0.6), 1.0)
+				draw_circle(bp.position + Vector2(40, 2), 2.5, EMBER)
+			var sp := _t * 0.6
+			_spin_gear(Vector2(r - 110, -h * 0.4), 40.0, sp, BRASS_LO)
+			_spin_gear(Vector2(r - 52, -h * 0.4 - 46), 24.0, -sp * 1.7, BRASS)
+			_rect(Rect2(l + 200, -h + 150, 260, 5), WOOD)
+			for k2 in 6:
+				_gear(Vector2(l + 215 + k2 * 42, -h + 140), 9.0 + (k2 % 3) * 2.0, [BRASS, IRON_HI, BRASS_LO][k2 % 3], 8)
+		13:
+			# Belt-drive workshop (G1 vibe): overhead line shaft whose belts turn the wall gears.
+			_pegboard(Rect2(l + 30, -h + 70, 170, 130))
+			draw_line(Vector2(l + 20, -h + 30), Vector2(r - 20, -h + 30), IRON_HI, 6.0)
+			for px in [l + 240, l + 360, r - 70]:
+				var c := Vector2(px, -h + 30)
+				_spin_gear(c, 14.0, _t * 2.0, IRON_MID)
+				var g := Vector2(px, -h * 0.5 + 10)
+				draw_line(c + Vector2(-12, 0), g + Vector2(-28, 0), Color("3a2717"), 3.0)
+				draw_line(c + Vector2(12, 0), g + Vector2(28, 0), Color("3a2717"), 3.0)
+				_spin_gear(g, 30.0, -_t * 0.9, BRASS_LO)
+			_rect(Rect2(l + 220, -95, 200, 6), WOOD)
+			_rect(Rect2(l + 230, -89, 8, 41), WOOD_LO)
+			_rect(Rect2(l + 402, -89, 8, 41), WOOD_LO)
+			_rect(Rect2(l + 260, -112, 40, 17), IRON_MID)
+		14:
+			# Automaton workshop (G1 vibe): half-built automaton on a stand, parts shelf, gears.
+			_pegboard(Rect2(l + 30, -h + 40, 150, 130))
+			var ax := l + 300.0
+			_rect(Rect2(ax - 4, -110, 8, 62), IRON_MID)
+			_rect(Rect2(ax - 30, -54, 60, 6), IRON_HI)
+			_rect(Rect2(ax - 22, -176, 44, 66), BRASS)
+			_outline(Rect2(ax - 22, -176, 44, 66), BRASS_LO, 2.0)
+			_spin_gear(Vector2(ax, -146), 12.0, _t * 1.2, BRASS_LO)
+			draw_circle(Vector2(ax, -196), 16.0, BRASS_LO)
+			draw_circle(Vector2(ax, -196), 11.0, Color("1d2d3d"))
+			draw_circle(Vector2(ax - 4, -198), 2.0, Color(LAMP, 0.6 + 0.4 * sin(_t * 2.0)))
+			draw_line(Vector2(ax + 22, -170), Vector2(ax + 48, -150), IRON_HI, 4.0)
+			draw_line(Vector2(ax - 22, -170), Vector2(ax - 40, -136), IRON_HI, 4.0)
+			_rect(Rect2(r - 200, -h + 70, 170, 6), WOOD)
+			_rect(Rect2(r - 200, -h + 140, 170, 6), WOOD)
+			for k in 5:
+				_gear(Vector2(r - 185 + k * 34, -h + 60), 9.0, BRASS if k % 2 == 0 else IRON_HI, 8)
+				_rect(Rect2(r - 192 + k * 34, -h + 118, 16, 22), IRON_MID)
+		5:
+			# Foundry corner: furnace with molten glow, anvil, hanging molds.
+			_rect(Rect2(r - 200, -h + 30, 150, h - 78), BRICK)
+			var mouth := Rect2(r - 165, -160, 80, 60)
+			_rect(mouth, COAL)
+			_rect(mouth.grow(-6), Color(EMBER, 0.75 * flick))
+			_rect(mouth.grow(-14), Color(LAMP, 0.7 * flick))
+			_rect(Rect2(r - 150, -h, 50, 30), BRICK_HI)
+			draw_colored_polygon(PackedVector2Array([Vector2(l + 120, -48), Vector2(l + 170, -48), Vector2(l + 160, -70), Vector2(l + 190, -76), Vector2(l + 100, -76), Vector2(l + 128, -70)]), IRON)
+			for k2 in 4:
+				var mx := l + 70 + k2 * 55
+				draw_line(Vector2(mx, -h + 10), Vector2(mx, -h + 60), IRON_HI, 1.5)
+				_rect(Rect2(mx - 14, -h + 60, 28, 18), IRON_MID)
+		6:
+			# Tavern bar: bottle shelves, mugs on hooks, barrels, a table with stools.
+			for row in 2:
+				var sy2 := -h + 70 + row * 55
+				_rect(Rect2(l + 40, sy2, w - 80, 6), WOOD)
+				var x2 := l + 54
+				var k3 := 0
+				while x2 < r - 50:
+					var bc: Color = [Color("2f6a3a"), Color("6b2a2a"), Color("8a6a2a"), Color("3a4a6a")][k3 % 4]
+					_rect(Rect2(x2, sy2 - 26, 9, 26), bc)
+					_rect(Rect2(x2 + 3, sy2 - 33, 3, 7), bc)
+					x2 += 20.0
+					k3 += 1
+			for k4 in 6:
+				var hx := l + 90 + k4 * 70
+				draw_line(Vector2(hx, -h + 172), Vector2(hx, -h + 180), IRON_HI, 1.5)
+				_rect(Rect2(hx - 5, -h + 180, 10, 12), Color("c9b98f"))
+			_barrel(Vector2(r - 70, -48), 26.0, 50.0)
+			_barrel(Vector2(l + 70, -48), 26.0, 50.0)
+		7:
+			# Hearth lodge: panelled walls + wallpaper, ceiling beams, stone fireplace with a painting,
+			# armchair and candle table on a rug, bookshelf, sconces, and stairs built into the right wall.
+			_rect(Rect2(l, -h, w, h - 48), Color("3a2a24"))
+			var sx := l + 10.0
+			while sx < r:
+				_rect(Rect2(sx, -h, 9, h - 120), Color("43312a"))
+				sx += 22.0
+			_rect(Rect2(l, -120, w, 72), Color("4a3220"))
+			var px := l
+			while px < r:
+				_outline(Rect2(px + 6, -112, 52, 56), Color("3a2717"), 2.0)
+				px += 64.0
+			_rect(Rect2(l, -124, w, 5), Color("6b4a2c"))
+			for bx in [l + 40, l + 220, r - 230]:
+				_rect(Rect2(bx, -h, 18, 14), Color("2a1c10"))
+			_rect(Rect2(l, -h, w, 8), Color("2a1c10"))
+			# Fireplace
+			var fx := l + 140.0
+			_rect(Rect2(fx - 75, -170, 150, 122), Color("5a5350"))
+			var by := -170.0
+			while by < -48:
+				draw_line(Vector2(fx - 75, by), Vector2(fx + 75, by), Color("4a4442"), 1.0)
+				by += 14.0
+			_rect(Rect2(fx - 86, -178, 172, 10), Color("6b4a2c"))
+			var fm := Rect2(fx - 40, -118, 80, 70)
+			_rect(fm, COAL)
+			draw_circle(Vector2(fx, -48), 30.0, Color(EMBER, 0.35 * flick))
+			draw_circle(Vector2(fx - 10, -56), 9.0, Color(LAMP, 0.55 * flick))
+			draw_circle(Vector2(fx + 9, -58), 7.0, Color(EMBER, 0.7 * flick))
+			_rect(Rect2(fx - 30, -54, 60, 6), Color("2a1c10"))
+			var pic := Rect2(fx - 40, -240, 80, 52)
+			_rect(pic.grow(4), BRASS_LO)
+			_rect(pic, Color("2f4a3a"))
+			draw_colored_polygon(PackedVector2Array([pic.position + Vector2(0, 52), pic.position + Vector2(30, 22), pic.position + Vector2(50, 38), pic.position + Vector2(80, 14), pic.position + Vector2(80, 52)]), Color("1f3328"))
+			draw_circle(pic.position + Vector2(62, 14), 6.0, Color("e8dcc0"))
+			# Sconces
+			for scx in [fx - 110, fx + 110]:
+				_rect(Rect2(scx - 2, -200, 4, 14), BRASS_LO)
+				draw_circle(Vector2(scx, -204), 5.0, Color(LAMP, 0.7 * flick))
+				draw_circle(Vector2(scx, -204), 16.0, Color(LAMP, 0.08))
+			# Rug, armchair, candle table
+			draw_colored_polygon(_ellipse(Vector2(l + 330, -6), 90, 10), Color("6b1f1f"))
+			draw_colored_polygon(_ellipse(Vector2(l + 330, -6), 78, 7), Color("8a3a2a"))
+			var ch := Rect2(l + 270, -92, 54, 48)
+			_rect(Rect2(ch.position.x, ch.position.y - 30, 54, 34), Color("6b2a2a"))
+			_rect(ch, Color("7a3030"))
+			_rect(Rect2(ch.position.x - 8, ch.position.y + 4, 12, 40), Color("6b2a2a"))
+			_rect(Rect2(ch.end.x - 4, ch.position.y + 4, 12, 40), Color("6b2a2a"))
+			_rect(Rect2(l + 345, -78, 34, 5), WOOD)
+			_rect(Rect2(l + 359, -73, 6, 25), WOOD_LO)
+			_rect(Rect2(l + 358, -92, 8, 14), Color("efe6d6"))
+			draw_circle(Vector2(l + 362, -96), 3.0, Color(LAMP, flick))
+			# Bookshelf
+			_rect(Rect2(l + 400, -230, 80, 182), WOOD_LO)
+			for row2 in 4:
+				_rect(Rect2(l + 404, -186 + row2 * 44, 72, 4), WOOD)
+				var bkx := l + 407.0
+				var kk := 0
+				while bkx < l + 470:
+					var bh := 26.0 + float((kk * 5) % 10)
+					_rect(Rect2(bkx, -186 + row2 * 44 - bh, 7, bh), [Color("6b2a2a"), Color("2f4a3a"), Color("8a6a2a"), Color("3a4a6a")][kk % 4])
+					bkx += 9.0
+					kk += 1
+			# Stairs built into the right wall, rising to a railed landing
+			var steps := 7
+			var sw := 22.0
+			var sh := (h - 110) / steps
+			var pts := PackedVector2Array([Vector2(r, 0), Vector2(r - steps * sw, 0)])
+			for k in steps:
+				pts.append(Vector2(r - (steps - k) * sw, -(k + 1) * sh))
+				pts.append(Vector2(r - (steps - k - 1) * sw, -(k + 1) * sh))
+			pts.append(Vector2(r, -steps * sh))
+			draw_colored_polygon(pts, Color("5a3e26"))
+			for k in steps:
+				_rect(Rect2(r - (steps - k) * sw, -(k + 1) * sh, sw, 4), Color("7a5634"))
+			_rect(Rect2(r - 70, -steps * sh - 6, 70, 8), Color("7a5634"))
+			draw_line(Vector2(r - steps * sw, -28), Vector2(r - 70, -steps * sh - 30), WOOD_LO, 4.0)
+			for k in range(0, steps, 2):
+				var rx := r - (steps - k) * sw + 10
+				draw_line(Vector2(rx, -(k + 1) * sh), Vector2(rx, -(k + 1) * sh - 26), WOOD_LO, 2.0)
+			draw_line(Vector2(r - 70, -steps * sh - 30), Vector2(r, -steps * sh - 30), WOOD_LO, 4.0)
+			_rect(Rect2(r - 6, -h, 6, h), Color("2a1c10"))
+		_:
+			# Steam diner: a brass boiler urn, menu chalkboard, booth seats.
+			_rect(Rect2(l + 60, -h + 50, 140, 110), Color("1f2a24"))
+			_outline(Rect2(l + 60, -h + 50, 140, 110), WOOD, 5.0)
+			for k5 in 5:
+				draw_line(Vector2(l + 75, -h + 72 + k5 * 18), Vector2(l + 75 + 60 + (k5 % 3) * 15, -h + 72 + k5 * 18), Color(0.9, 0.9, 0.85, 0.7), 1.5)
+			draw_circle(Vector2(l + 330, -150), 36.0, BRASS)
+			_rect(Rect2(l + 300, -150, 60, 60), BRASS)
+			_rect(Rect2(l + 296, -96, 68, 6), BRASS_LO)
+			draw_circle(Vector2(l + 330, -150), 10.0, Color("e8dcc0"))
+			draw_circle(Vector2(l + 330, -h + 60 - fmod(_t * 18.0, 30.0)), 10.0, Color(0.9, 0.9, 0.95, 0.15))
+			for bx2 in [r - 180, r - 90]:
+				_rect(Rect2(bx2, -110, 70, 62), Color("6b2a2a"))
+				_rect(Rect2(bx2, -60, 70, 12), Color("4a1e1e"))
+
+
+func _lamp_shelves(l: float, r: float, top: float, rows: int) -> void:
+	for row in rows:
+		var sy := top + row * 62
+		_rect(Rect2(l + 30, sy, r - l - 60, 6), WOOD)
+		var x := l + 50
+		var k := 0
+		while x < r - 40:
+			_shop_lantern(Vector2(x, sy - 2), 0.5 + 0.08 * ((k + row) % 3), (k + row * 2) % 5, (k + row) % 4 != 1)
+			x += 40.0
+			k += 1
+
+
+## Left-wall feature of the gear workshop. 0 none, 1 gear rack, 2 brass schematic,
+## 3 lathe bench, 4 gauge wall. Area roughly x l+30..l+250, y -h+40..-48.
+func _gear_wall_feature(l: float, h: float, which: int) -> void:
+	match which:
+		1:
+			for row in 3:
+				var sy := -h + 80 + row * 50
+				_rect(Rect2(l + 30, sy, 220, 5), WOOD)
+				for k in 6:
+					var gx := l + 48 + k * 36
+					if (k + row) % 3 == 2:
+						for c in 4:
+							draw_arc(Vector2(gx, sy - 6 - c * 5), 5.0, 0, PI, 8, IRON_HI, 1.5)
+					else:
+						_gear(Vector2(gx, sy - 12), 8.0 + float((k + row) % 2) * 3.0, [BRASS, IRON_HI, BRASS_LO][(k + row) % 3], 8)
+		2:
+			var fr := Rect2(l + 30, -h + 40, 220, 150)
+			_rect(fr.grow(5), BRASS_LO)
+			_rect(fr, Color("2b4c7a"))
+			var ink := Color(1, 1, 1, 0.75)
+			draw_arc(fr.get_center() + Vector2(-40, 0), 40.0, 0, TAU, 32, ink, 1.5)
+			draw_arc(fr.get_center() + Vector2(-40, 0), 26.0, 0, TAU, 24, ink, 1.0)
+			draw_arc(fr.get_center() + Vector2(45, -25), 24.0, 0, TAU, 24, ink, 1.5)
+			draw_line(fr.get_center() + Vector2(-40, 0), fr.get_center() + Vector2(45, -25), ink, 1.0)
+			draw_line(fr.position + Vector2(12, fr.size.y - 16), fr.position + Vector2(fr.size.x - 12, fr.size.y - 16), ink, 1.0)
+			for k in 4:
+				draw_line(fr.position + Vector2(140, 100 + k * 8), fr.position + Vector2(200, 100 + k * 8), Color(ink, 0.5), 1.0)
+			for c in _corners(fr, 0):
+				_rivet(c, 2.5)
+		3:
+			_rect(Rect2(l + 30, -96, 220, 8), WOOD)
+			for lx in [l + 38, l + 236]:
+				_rect(Rect2(lx, -88, 8, 40), WOOD_LO)
+			_rect(Rect2(l + 50, -128, 40, 32), IRON_MID)
+			_rect(Rect2(l + 44, -134, 52, 8), IRON_HI)
+			draw_line(Vector2(l + 70, -134), Vector2(l + 70, -146), IRON_HI, 3.0)
+			_rect(Rect2(l + 120, -122, 110, 22), IRON)
+			var rot := _t * 6.0
+			draw_circle(Vector2(l + 140, -111), 12.0, IRON_HI)
+			draw_line(Vector2(l + 140, -111), Vector2(l + 140, -111) + Vector2(cos(rot), sin(rot)) * 11.0, COAL, 2.0)
+			_rect(Rect2(l + 152, -114, 60, 6), BRASS)
+			_rect(Rect2(l + 212, -118, 14, 14), IRON_MID)
+			_rect(Rect2(l + 40, -h + 60, 200, 5), WOOD)
+			for k in 5:
+				_gear(Vector2(l + 60 + k * 40, -h + 50), 7.0, BRASS_LO, 8)
+		4:
+			draw_line(Vector2(l + 30, -h + 30), Vector2(l + 30, -48), Color("8a5a35"), 8.0)
+			draw_line(Vector2(l + 30, -h + 100), Vector2(l + 250, -h + 100), Color("8a5a35"), 8.0)
+			draw_line(Vector2(l + 250, -h + 30), Vector2(l + 250, -48), Color("8a5a35"), 8.0)
+			for k in 6:
+				var gc := Vector2(l + 70 + (k % 3) * 70, -h + 60 + (k / 3) * 90)
+				draw_circle(gc, 18.0, BRASS_LO)
+				draw_circle(gc, 15.0, Color("e8dcc0"))
+				var a := PI + PI * (0.3 + 0.4 * (0.5 + 0.5 * sin(_t * (1.0 + k * 0.4) + k)))
+				draw_line(gc, gc + Vector2(cos(a), sin(a)) * 12.0, EMBER, 1.5)
+				draw_circle(gc, 2.0, IRON)
+			_valve_wheel(Vector2(l + 250, -h + 150), 12.0, EMBER)
+
+
+func _pegboard(r: Rect2) -> void:
+	_rect(r, Color("6b5a44"))
+	var y := r.position.y + 10
+	while y < r.end.y:
+		var x := r.position.x + 10
+		while x < r.end.x:
+			draw_circle(Vector2(x, y), 1.2, Color("4a3e30"))
+			x += 15.0
+		y += 20.0
+	var k := 0
+	var tx := r.position.x + 20
+	while tx < r.end.x - 10:
+		draw_line(Vector2(tx, r.position.y + 20), Vector2(tx + 8, r.position.y + r.size.y * 0.7), IRON_HI, 4.0)
+		draw_circle(Vector2(tx, r.position.y + 20), 5.0 if k % 2 == 0 else 3.0, IRON_HI)
+		tx += 36.0
+		k += 1
+
+
+## Shop-shelf lantern, origin = base center. Types: 0 caged brass, 1 gas street lamp,
+## 2 ship's globe, 3 tall candle lantern, 4 storm lantern.
+func _shop_lantern(base: Vector2, s: float, type: int, lit: bool) -> void:
+	var g := Color(LAMP, 0.85) if lit else Color("1b2230")
+	var core := Color(LAMP_CORE, 0.9) if lit else Color("2b3440")
+	match type:
+		0:
+			_mini_lantern(base, s, lit)
+		1:
+			draw_colored_polygon(PackedVector2Array([base + Vector2(-11, -34) * s, base + Vector2(11, -34) * s, base + Vector2(8, -6) * s, base + Vector2(-8, -6) * s]), g)
+			draw_colored_polygon(PackedVector2Array([base + Vector2(-14, -34) * s, base + Vector2(14, -34) * s, base + Vector2(6, -44) * s, base + Vector2(-6, -44) * s]), IRON_HI)
+			draw_circle(base + Vector2(0, -47) * s, 2.5 * s, BRASS)
+			_rect(Rect2(base + Vector2(-9, -6) * s, Vector2(18, 6) * s), IRON_HI)
+			draw_line(base + Vector2(0, -34) * s, base + Vector2(0, -6) * s, IRON, 1.5)
+		2:
+			draw_circle(base + Vector2(0, -18) * s, 13.0 * s, g)
+			draw_circle(base + Vector2(0, -18) * s, 6.0 * s, core)
+			draw_arc(base + Vector2(0, -18) * s, 13.0 * s, 0, TAU, 16, BRASS_LO, 1.5)
+			_rect(Rect2(base + Vector2(-9, -5) * s, Vector2(18, 5) * s), BRASS)
+			_rect(Rect2(base + Vector2(-9, -34) * s, Vector2(18, 5) * s), BRASS)
+			draw_arc(base + Vector2(0, -36) * s, 6.0 * s, PI, TAU, 8, BRASS_LO, 1.5)
+		3:
+			_rect(Rect2(base + Vector2(-7, -46) * s, Vector2(14, 42) * s), Color(g, 0.55))
+			_rect(Rect2(base + Vector2(-2, -24) * s, Vector2(4, 18) * s), Color("efe6d6"))
+			if lit:
+				draw_circle(base + Vector2(0, -28) * s, 3.0 * s, core)
+			_outline(Rect2(base + Vector2(-7, -46) * s, Vector2(14, 42) * s), IRON, 1.5)
+			_rect(Rect2(base + Vector2(-9, -50) * s, Vector2(18, 5) * s), IRON_HI)
+			_rect(Rect2(base + Vector2(-9, -5) * s, Vector2(18, 5) * s), IRON_HI)
+		_:
+			draw_colored_polygon(_ellipse(base + Vector2(0, -20) * s, 11.0 * s, 15.0 * s), Color(g, 0.7))
+			if lit:
+				draw_circle(base + Vector2(0, -22) * s, 4.0 * s, core)
+			_rect(Rect2(base + Vector2(-12, -7) * s, Vector2(24, 7) * s), Color("8a3a2a"))
+			_rect(Rect2(base + Vector2(-8, -38) * s, Vector2(16, 4) * s), Color("8a3a2a"))
+			draw_arc(base + Vector2(0, -38) * s, 10.0 * s, PI, TAU, 10, IRON_HI, 1.5)
+
+
+func _mini_lantern(base: Vector2, s: float, lit: bool) -> void:
+	var g := Color(LAMP, 0.85) if lit else Color("1b2230")
+	_rect(Rect2(base.x - 10 * s, base.y - 36 * s, 20 * s, 30 * s), g)
+	for bx in [-10.0, -3.5, 3.5, 10.0]:
+		draw_line(Vector2(base.x + bx * s, base.y - 36 * s), Vector2(base.x + bx * s, base.y - 6 * s), BRASS_LO, 1.5)
+	_rect(Rect2(base.x - 12 * s, base.y - 42 * s, 24 * s, 7 * s), BRASS)
+	_rect(Rect2(base.x - 10 * s, base.y - 6 * s, 20 * s, 6 * s), BRASS)
+
+
+func _barrel(base: Vector2, rad: float, height: float) -> void:
+	var r := Rect2(base.x - rad, base.y - height, rad * 2, height)
+	_rect(r, Color("5a3e26"))
+	for yy in [r.position.y + 6, r.end.y - 9]:
+		_rect(Rect2(r.position.x - 1, yy, r.size.x + 2, 3), IRON_HI)
+	var x := r.position.x + 7
+	while x < r.end.x - 2:
+		draw_line(Vector2(x, r.position.y), Vector2(x, r.end.y), Color("3a2717"), 1.0)
+		x += 8.0
+	_outline(r, COAL, 1.5)
+
+
+func _spin_gear(c: Vector2, rad: float, angle: float, col: Color) -> void:
+	draw_set_transform(c, angle)
+	_gear(Vector2.ZERO, rad, col, int(rad / 3.0))
+	draw_circle(Vector2.ZERO, rad * 0.35, col.darkened(0.45))
+	draw_set_transform(Vector2.ZERO)
 
 
 # ---------------- chain ----------------

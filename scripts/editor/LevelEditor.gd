@@ -595,27 +595,11 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	col.add_child(snap_btn)
 
 	_pieces_block.add_child(_section("Add"))
-	var add_row := HBoxContainer.new()
-	_pieces_block.add_child(add_row)
-	var add_opt := OptionButton.new()
-	add_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for item in [
-		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Crate"],
-		["light", "Lantern"], ["prop_switch", "Lever"], ["prop_door", "Door (switchable)"],
-		["prop_platform", "Moving platform"], ["prop_vent", "Steam vent"],
-		["prop_ladder", "Ladder"], ["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
-		["prop_npc", "NPC / Shopkeeper"], ["prop_desk", "Desk"],
-	]:
-		add_opt.add_item(item[1])
-		add_opt.set_item_metadata(add_opt.item_count - 1, item[0])
-	add_opt.item_selected.connect(func(i: int) -> void:
-		_palette_id = str(add_opt.get_item_metadata(i))
-	)
-	add_row.add_child(add_opt)
+	_pieces_block.add_child(_build_add_palette())
 	var add_btn := Button.new()
-	add_btn.text = "Add"
+	add_btn.text = "Add selected piece"
 	add_btn.pressed.connect(_add_piece)
-	add_row.add_child(add_btn)
+	_pieces_block.add_child(add_btn)
 
 	var save_btn := Button.new()
 	save_btn.text = "Save (this browser)"
@@ -806,6 +790,160 @@ func _refresh_sky_preview() -> void:
 	if _bg:
 		var vc := BlackFireSky._color_from(_backdrop.get("void_color", null), BlackFireSky.DEFAULT_VOID)
 		_bg.color = vc
+
+
+## Add palette: [tab title, [[kind, label], ...]]. Only kinds LevelData can spawn (plus the desk).
+const ADD_CATEGORIES := [
+	["Build", [["floor", "Steel floor"], ["prop_platform", "Moving platform"], ["wall", "Wall"], ["prop_door", "Door (switchable)"], ["prop_ladder", "Ladder"]]],
+	["Lights", [["light", "Lantern"], ["prop_switch", "Lever"]]],
+	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"]]],
+	["Decor", [["prop_window", "Window"], ["prop_bg_gear", "Background gear"]]],
+	["People", [["prop_checkpoint", "Checkpoint"], ["prop_npc", "NPC / Shopkeeper"], ["prop_pickup", "Shadow crystal"]]],
+]
+
+
+## Category tabs of picture buttons; picking one sets the kind "Add selected piece" creates.
+func _build_add_palette() -> Control:
+	var tabs := TabContainer.new()
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Five tabs must fit the narrow sidebar without scroll arrows.
+	tabs.add_theme_font_size_override("font_size", 12)
+	for sb_name in ["tab_selected", "tab_unselected", "tab_hovered"]:
+		var sb := tabs.get_theme_stylebox(sb_name).duplicate() as StyleBox
+		sb.content_margin_left = 6
+		sb.content_margin_right = 6
+		tabs.add_theme_stylebox_override(sb_name, sb)
+	var group := ButtonGroup.new()
+	for cat in ADD_CATEGORIES:
+		var list := VBoxContainer.new()
+		list.add_theme_constant_override("separation", 2)
+		tabs.add_child(list)
+		tabs.set_tab_title(tabs.get_tab_count() - 1, str(cat[0]))
+		for item in cat[1]:
+			var kind: String = item[0]
+			var b := Button.new()
+			b.toggle_mode = true
+			b.button_group = group
+			b.text = str(item[1])
+			b.icon = _palette_preview(kind)
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.custom_minimum_size = Vector2(0, 46)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			b.button_pressed = kind == _palette_id
+			b.toggled.connect(func(on: bool) -> void:
+				if on:
+					_palette_id = kind
+			)
+			list.add_child(b)
+	return tabs
+
+
+## Small live render of a piece's in-game art for the Add palette.
+func _palette_preview(kind: String) -> Texture2D:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(48, 40)
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+	var holder := Node2D.new()
+	holder.position = Vector2(24, 20)
+	vp.add_child(holder)
+	var art := WorldArt.new()
+	var scale := 1.0
+	var offset := Vector2.ZERO
+	match kind:
+		"floor", "prop_platform":
+			art.kind = WorldArt.Kind.PLATFORM
+			art.style = LevelCommon.platform_style
+			art.size = Vector2(100, 18)
+			scale = 0.42
+		"wall":
+			art.kind = WorldArt.Kind.BACKDROP
+			art.size = Vector2(26, 36)
+			offset = Vector2(0, 18)
+		"prop_door":
+			art = null
+			holder.add_child(_preview_poly([Vector2(-10, 17), Vector2(10, 17), Vector2(10, -17), Vector2(-10, -17)], Color(0.14, 0.13, 0.12)))
+			holder.add_child(_preview_poly([Vector2(-7, 17), Vector2(7, 17), Vector2(7, -14), Vector2(-7, -14)], Color(0.24, 0.16, 0.09)))
+		"light":
+			art.kind = WorldArt.Kind.LANTERN
+			scale = 0.85
+			offset = Vector2(0, 2)
+		"prop_switch":
+			art.kind = WorldArt.Kind.LEVER
+			art.style = 1
+			scale = 1.2
+			offset = Vector2(0, 8)
+		"crate":
+			art.kind = WorldArt.Kind.CRATE
+			art.style = 7
+			art.size = Vector2(58, 58)
+			scale = 0.55
+		"prop_crate":
+			art.kind = WorldArt.Kind.CRATE
+			art.style = 9
+			art.size = Vector2(40, 30)
+			scale = 0.8
+		"prop_bench":
+			art.kind = WorldArt.Kind.BENCH
+			art.style = 5
+			scale = 0.65
+			offset = Vector2(0, 12)
+		"prop_vent":
+			art.kind = WorldArt.Kind.VENT
+			art.style = 1
+			art.steam_preview = true
+			scale = 0.9
+			offset = Vector2(0, 14)
+		"prop_ladder":
+			art = null
+			for rx in [-8.0, 8.0]:
+				holder.add_child(_preview_poly([Vector2(rx - 1.5, 18), Vector2(rx + 1.5, 18), Vector2(rx + 1.5, -18), Vector2(rx - 1.5, -18)], Color(0.48, 0.34, 0.2)))
+			for k in 5:
+				var ry := -14.0 + k * 7.0
+				holder.add_child(_preview_poly([Vector2(-8, ry - 1), Vector2(8, ry - 1), Vector2(8, ry + 1), Vector2(-8, ry + 1)], Color(0.6, 0.44, 0.27)))
+		"prop_desk":
+			art = null
+			holder.add_child(_preview_poly([Vector2(-20, 4), Vector2(20, 4), Vector2(20, -4), Vector2(-20, -4)], Color(0.36, 0.25, 0.15)))
+			holder.add_child(_preview_poly([Vector2(-18, 14), Vector2(18, 14), Vector2(18, 4), Vector2(-18, 4)], Color(0.22, 0.16, 0.12)))
+		"prop_window":
+			art.kind = WorldArt.Kind.WINDOW
+			art.style = 10
+			art.size = Vector2(44, 60)
+			scale = 0.5
+		"prop_bg_gear":
+			art = null
+			var pts: Array = []
+			for i in 24:
+				var a := TAU * float(i) / 24.0
+				pts.append(Vector2(cos(a), sin(a)) * (14.0 if i % 2 == 0 else 17.0))
+			holder.add_child(_preview_poly(pts, Color(0.23, 0.18, 0.13)))
+		"prop_checkpoint":
+			art.kind = WorldArt.Kind.CHECKPOINT
+			art.style = 6
+			art.on = true
+			scale = 0.45
+			offset = Vector2(0, 16)
+		"prop_npc":
+			art.kind = WorldArt.Kind.NPC
+			art.style = 0
+			scale = 0.55
+			offset = Vector2(0, 18)
+		"prop_pickup":
+			art = null
+			holder.add_child(_preview_poly([Vector2(0, -15), Vector2(9, 0), Vector2(0, 15), Vector2(-9, 0)], Color(0.55, 0.4, 0.85)))
+	if art:
+		art.position = offset
+		art.scale = Vector2.ONE * scale
+		holder.add_child(art)
+	return vp.get_texture()
+
+
+func _preview_poly(pts: Array, col: Color) -> Polygon2D:
+	var poly := Polygon2D.new()
+	poly.polygon = PackedVector2Array(pts)
+	poly.color = col
+	return poly
 
 
 func _section(t: String) -> Label:

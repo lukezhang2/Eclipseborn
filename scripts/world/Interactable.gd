@@ -13,10 +13,9 @@ var _prompt: Label
 func _ready() -> void:
 	_prompt = Label.new()
 	_prompt.position = prompt_offset
-	_prompt.add_theme_font_size_override("font_size", 12)
-	_prompt.add_theme_color_override("font_color", Color(0.85, 0.8, 0.65))
 	_prompt.visible = false
 	add_child(_prompt)
+	UITheme.style_prompt(_prompt)
 
 
 func _process(_delta: float) -> void:
@@ -30,7 +29,7 @@ func _process(_delta: float) -> void:
 	if not near:
 		return
 	# Read the binding each frame so a rebind in the pause menu shows up right away.
-	_prompt.text = "%s — %s" % [InputMapManager.get_slot_text("interact", 0), verb]
+	UITheme.set_prompt_text(_prompt, "%s — %s" % [InputMapManager.get_slot_text("interact", 0), verb])
 	if GameState.can_interact() and Input.is_action_just_pressed("interact"):
 		interact()
 

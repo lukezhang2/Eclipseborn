@@ -60,11 +60,10 @@ func _build() -> void:
 
 	_prompt = Label.new()
 	_prompt.text = ""
-	_prompt.position = Vector2(-70, -36)
-	_prompt.add_theme_font_size_override("font_size", 14)
-	_prompt.add_theme_color_override("font_color", Color(0.92, 0.88, 0.7))
+	_prompt.position = Vector2(0, -44)
 	_prompt.visible = false
 	add_child(_prompt)
+	UITheme.style_prompt(_prompt)
 
 
 func _process(_delta: float) -> void:
@@ -72,7 +71,7 @@ func _process(_delta: float) -> void:
 		return
 	var p = GameState.player
 	if p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 48.0:
-		_prompt.text = "Press S to enter"
+		UITheme.set_prompt_text(_prompt, "Press S to enter")
 		_prompt.visible = true
 	else:
 		_prompt.visible = false

@@ -182,12 +182,29 @@ func _build_occ_cache() -> void:
 			edges.append([poly[i], poly[(i + 1) % n]])
 		_occ_cache.append({
 			"occ": occ,
+			"self_rids": _own_body_rids(occ),
 			"poly": poly,
 			"aabb": aabb,
 			"edges": edges,
 			"gameplay": gameplay,
 			"cast_umbra": gameplay and not is_slab and not is_huge,
 		})
+
+
+## Physics bodies that belong to the same object as `occ` (its parent body, or the
+## LightOnlyBody next to it). Shadow clip rays start on that object's outline, so they must
+## ignore it — otherwise rays leaving a roof corner "hit" the house itself after ~1px and the
+## shadow comes out stubbed and blocky at the corners.
+func _own_body_rids(occ: Node) -> Array:
+	var rids: Array = []
+	var parent := occ.get_parent()
+	if parent is CollisionObject2D:
+		rids.append((parent as CollisionObject2D).get_rid())
+	if parent:
+		for sib in parent.get_children():
+			if sib is CollisionObject2D and sib.has_meta("light_only_blocker"):
+				rids.append((sib as CollisionObject2D).get_rid())
+	return rids
 
 
 func _geometry_segment_blocked(from: Vector2, to: Vector2) -> bool:
@@ -538,6 +555,7 @@ func _draw_umbra_wedge(
 	## Uses the same two physics clips per edge — no extra raycasts.
 	var poly: PackedVector2Array = entry["poly"]
 	var n := poly.size()
+	var clip_exclude: Array = exclude + entry.get("self_rids", [])
 	var aabb: Rect2 = entry["aabb"]
 	if aabb.get_area() < 280.0:
 		return
@@ -554,8 +572,8 @@ func _draw_umbra_wedge(
 			continue
 		var da := (a - light_pos).normalized()
 		var db := (b - light_pos).normalized()
-		var far_a := _clip_shadow_extent(space, a, da, max_len, exclude)
-		var far_b := _clip_shadow_extent(space, b, db, max_len, exclude)
+		var far_a := _clip_shadow_extent(space, a, da, max_len, clip_exclude)
+		var far_b := _clip_shadow_extent(space, b, db, max_len, clip_exclude)
 		var len_a := far_a.distance_to(a)
 		var len_b := far_b.distance_to(b)
 		if len_a < 4.0 and len_b < 4.0:

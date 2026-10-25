@@ -94,6 +94,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.53 — editor Add tabs (Build/Lights/Props/Decor/People) w/ art previews; steampunk NPCs; themed shops (lamp shop / gear rack workshop / hearth lodge) + low D3 desks (keeper behind) + brass title signs; IM Fell font for title/headings/"E —" plaques; mirrored clockwork tower complex (door left, MAP_W-500); enemy black-box fix; house shadow corners (clip ignores own body); removed intro "boiler-house" hint; `index-0_1_53.pck`
 - v0.1.36 — fixed rooms crashing on load: v0.1.34 id renumbering also renamed code names (`map_min_x`→`map_min_24`, `MAP_W`→`MAP_23`…) in LanternVillage/CursedCottage/ZoneCatalog; restored (string ids kept). Village polish: wash light gap closed; house light blockers = walls+roof (no eave/hull wedges); chains on all fixed lamps; dark-oak decor crates; unsquished jars; bench/vent nudged clear of houses; `index-0_1_36.pck`
 - v0.1.29 — Brass & Rivets UI theme (`UITheme`) + world art restyle (`WorldArt`): platforms, crates, houses, rest posts, caged lanterns, jars, hatch, lever, windows, bench, valve, vents; `index-0_1_29.pck`
 - v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause

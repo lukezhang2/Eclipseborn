@@ -88,10 +88,12 @@ func _make_grub_tex(frame: int) -> ImageTexture:
 		var lx := 12 + i * 6
 		_fill_oval(img, lx + leg_shift, 28, 2, 4, outline)
 		_fill_oval(img, lx + 4 - leg_shift, 28, 2, 4, outline)
-	# Soft outline rim
+	# Soft outline rim. Read from a snapshot: checking the image being edited let each new outline
+	# pixel count as "solid", so the rim flooded the rest of the texture into a dark box.
+	var src := img.duplicate() as Image
 	for y in 36:
 		for x in 40:
-			if img.get_pixel(x, y).a < 0.1:
+			if src.get_pixel(x, y).a < 0.1:
 				continue
 			for oy in range(-1, 2):
 				for ox in range(-1, 2):

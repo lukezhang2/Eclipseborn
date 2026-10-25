@@ -30,47 +30,13 @@ func _build() -> void:
 	wall.add_child(cs)
 	add_child(wall)
 
-	var body := Polygon2D.new()
-	body.color = Color(0.22, 0.2, 0.24)
-	body.polygon = PackedVector2Array([
-		Vector2(-hx * 0.7, 0), Vector2(hx * 0.7, 0),
-		Vector2(hx * 0.55, -tower_height), Vector2(-hx * 0.55, -tower_height)
-	])
-	add_child(body)
-	var peak := Polygon2D.new()
-	peak.color = Color(0.35, 0.28, 0.2)
-	peak.polygon = PackedVector2Array([
-		Vector2(-hx * 0.6, -tower_height), Vector2(hx * 0.6, -tower_height),
-		Vector2(0, -tower_height - 48)
-	])
-	add_child(peak)
-	var face := Polygon2D.new()
-	face.position = Vector2(0, -tower_height * 0.55)
-	face.color = Color(0.55, 0.5, 0.4)
-	var pts := PackedVector2Array()
-	for i in 16:
-		var a := TAU * float(i) / 16.0
-		pts.append(Vector2(cos(a), sin(a)) * 28.0)
-	face.polygon = pts
-	add_child(face)
-	var hand := Line2D.new()
-	hand.width = 3.0
-	hand.default_color = Color(0.15, 0.12, 0.1)
-	hand.add_point(Vector2(0, -tower_height * 0.55))
-	hand.add_point(Vector2(10, -tower_height * 0.55 - 18))
-	add_child(hand)
-	var door := Polygon2D.new()
-	door.color = Color(0.08, 0.07, 0.09)
-	door.polygon = PackedVector2Array([
-		Vector2(-16, 0), Vector2(16, 0), Vector2(14, -40), Vector2(-14, -40)
-	])
-	add_child(door)
-	var glow := Polygon2D.new()
-	glow.color = Color(0.7, 0.55, 0.25, 0.35)
-	glow.polygon = PackedVector2Array([
-		Vector2(-12, -4), Vector2(12, -4), Vector2(10, -36), Vector2(-10, -36)
-	])
-	add_child(glow)
+	# The visible complex is much bigger than the collision column; it runs off the top of the screen.
+	# Mirrored so the entrance is on the LEFT and the factory wing on the right.
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.TOWER
+	art.scale = Vector2(-1, 1)
+	art.z_index = -7
+	add_child(art)
 
 	var sense := CollisionShape2D.new()
 	var sense_r := RectangleShape2D.new()
@@ -80,12 +46,11 @@ func _build() -> void:
 	add_child(sense)
 
 	_prompt = Label.new()
-	_prompt.text = "F — Ascend"
-	_prompt.position = Vector2(-48, -56)
-	_prompt.add_theme_font_size_override("font_size", 14)
-	_prompt.add_theme_color_override("font_color", Color(0.92, 0.85, 0.65))
+	_prompt.position = Vector2(0, -130)
 	_prompt.visible = false
 	add_child(_prompt)
+	UITheme.style_prompt(_prompt)
+	UITheme.set_prompt_text(_prompt, "F — Ascend")
 
 
 func _process(_delta: float) -> void:

@@ -20,7 +20,7 @@ func _ready() -> void:
 	verb = "Rest"
 	## Wide interact so the prompt is easy while near / above the hearth.
 	interact_range = 96.0
-	prompt_offset = Vector2(-36, -96)
+	prompt_offset = Vector2(0, -118)
 	if checkpoint_name == "Rest" and checkpoint_id != "" and checkpoint_id != "default":
 		checkpoint_name = checkpoint_id.replace("_", " ").capitalize()
 	_build_visual()
@@ -59,10 +59,15 @@ func _build_visual() -> void:
 	add_child(_art)
 	var label := Label.new()
 	label.text = checkpoint_name
-	label.position = Vector2(-28, -74)
+	# Brass caption centered over the posts; the "E — Rest" plaque sits above it.
+	label.add_theme_font_override("font", load(UITheme.PROMPT_FONT))
 	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
+	label.add_theme_color_override("font_color", UITheme.BRASS_LIGHT)
+	label.add_theme_color_override("font_outline_color", UITheme.COAL)
+	label.add_theme_constant_override("outline_size", 3)
 	add_child(label)
+	label.reset_size()
+	label.position = Vector2(-label.size.x * 0.5, -80)
 
 
 func _restore_from_save() -> void:

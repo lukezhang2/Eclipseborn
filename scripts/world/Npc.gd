@@ -8,6 +8,8 @@ class_name NPC
 @export var is_shopkeeper: bool = false
 ## Array of {id, stock} — stock −1 = infinite. Empty + shopkeeper → catalog defaults.
 @export var shop_items: Array = []
+## WorldArt NPC look; -1 picks one from the name (shopkeepers get their own outfit).
+@export var art_style: int = -1
 
 var shop_key: String = ""
 var _prompt: Label
@@ -28,18 +30,10 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var body := Polygon2D.new()
-	body.color = Color(0.25, 0.22, 0.28)
-	body.polygon = PackedVector2Array([
-		Vector2(-10, 0), Vector2(10, 0), Vector2(8, -28), Vector2(0, -36), Vector2(-8, -28)
-	])
-	add_child(body)
-	var head := Polygon2D.new()
-	head.color = Color(0.55, 0.5, 0.48)
-	head.polygon = PackedVector2Array([
-		Vector2(-7, -36), Vector2(7, -36), Vector2(7, -48), Vector2(-7, -48)
-	])
-	add_child(head)
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.NPC
+	art.style = art_style if art_style >= 0 else WorldArt.npc_style_for(npc_name)
+	add_child(art)
 	var cs := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = 36.0
@@ -47,11 +41,10 @@ func _build() -> void:
 	cs.position = Vector2(0, -20)
 	add_child(cs)
 	_prompt = Label.new()
-	_prompt.position = Vector2(-36, -58)
-	_prompt.add_theme_font_size_override("font_size", 12)
-	_prompt.add_theme_color_override("font_color", Color(0.85, 0.8, 0.65))
+	_prompt.position = Vector2(0, -78)
 	_prompt.visible = false
 	add_child(_prompt)
+	UITheme.style_prompt(_prompt)
 	_bubble = Label.new()
 	_bubble.position = Vector2(-80, -92)
 	_bubble.custom_minimum_size = Vector2(160, 40)
@@ -68,10 +61,10 @@ func _process(delta: float) -> void:
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 48.0
 	var shop_open := _is_shop_open()
 	if near and not shop_open and (not _bubble.visible or is_shopkeeper):
-		_prompt.text = "%s — %s" % [
+		UITheme.set_prompt_text(_prompt, "%s — %s" % [
 			InputMapManager.get_slot_text("interact", 0),
 			"Shop" if is_shopkeeper else "Talk",
-		]
+		])
 		_prompt.visible = true
 	else:
 		_prompt.visible = false

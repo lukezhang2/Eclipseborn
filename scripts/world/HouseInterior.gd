@@ -14,6 +14,13 @@ var keeper_shop_items: Array = []
 var return_spawn: Vector2 = Vector2(520, 460)
 var _npc_id: String = "npc_shop"
 
+## Per-shop look: WorldArt INTERIOR / DESK / SIGN styles.
+const SHOP_LOOK := {
+	"house_keep": {"interior": 0, "desk": 2, "sign": 0},
+	"house_gear": {"interior": 3, "desk": 2, "sign": 0},
+	"house_inn": {"interior": 7, "desk": 2, "sign": 0},
+}
+
 
 func _ready() -> void:
 	if GameState.has_meta("pending_house_id"):
@@ -71,22 +78,24 @@ func _apply_house_profile() -> void:
 			keeper_shop_items = ShopCatalog.default_shop_stock()
 
 
+func _look() -> Dictionary:
+	var look: Dictionary = SHOP_LOOK.get(house_id, {"interior": 0, "desk": 0, "sign": 0}).duplicate()
+	## Review tool only: GameState meta "preview_shop_look" overrides SHOP_LOOK.
+	if GameState.has_meta("preview_shop_look"):
+		look.merge(GameState.get_meta("preview_shop_look"), true)
+	return look
+
+
 func _build_room() -> void:
-	# Back wall shelves
-	var shelf := Polygon2D.new()
-	shelf.color = Color(0.2, 0.16, 0.14)
-	shelf.polygon = PackedVector2Array([
-		Vector2(80, FLOOR_Y - 40), Vector2(MAP_W - 80, FLOOR_Y - 40),
-		Vector2(MAP_W - 80, FLOOR_Y - 200), Vector2(80, FLOOR_Y - 200)
-	])
-	shelf.z_index = -8
-	add_child(shelf)
-	var title := Label.new()
-	title.text = house_title
-	title.position = Vector2(MAP_W * 0.5 - 80, 200)
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.85, 0.78, 0.6))
-	add_child(title)
+	# Themed back wall (shelves, gears, bar...) matching what the shop is.
+	var wall := WorldArt.new()
+	wall.kind = WorldArt.Kind.INTERIOR
+	wall.style = int(_look()["interior"])
+	wall.size = Vector2(MAP_W - 160, FLOOR_Y - 200)
+	wall.position = Vector2(MAP_W * 0.5, FLOOR_Y)
+	wall.z_index = -8
+	add_child(wall)
+	_build_title_sign()
 	# Dim safe moon lamp in the corner (shop is mostly shade).
 	var lamp := LightSource.new()
 	lamp.position = Vector2(MAP_W - 100, 260)
@@ -100,26 +109,21 @@ func _build_room() -> void:
 func _build_desk_and_keeper() -> void:
 	# Desk blocks the mid floor — keeper stands BEHIND it (further from door = higher Y negative / left-right center).
 	var desk := StaticBody2D.new()
-	desk.position = Vector2(MAP_W * 0.5, FLOOR_Y - 8)
+	desk.position = Vector2(MAP_W * 0.5, FLOOR_Y)
 	desk.collision_layer = 1
 	var dcs := CollisionShape2D.new()
 	var drect := RectangleShape2D.new()
-	drect.size = Vector2(200, 28)
+	drect.size = Vector2(200, 26)
 	dcs.shape = drect
-	dcs.position = Vector2(0, -14)
+	dcs.position = Vector2(0, -13)
 	desk.add_child(dcs)
-	var top := Polygon2D.new()
-	top.color = Color(0.32, 0.24, 0.16)
-	top.polygon = PackedVector2Array([
-		Vector2(-100, 0), Vector2(100, 0), Vector2(100, -28), Vector2(-100, -28)
-	])
-	desk.add_child(top)
-	var front := Polygon2D.new()
-	front.color = Color(0.22, 0.16, 0.12)
-	front.polygon = PackedVector2Array([
-		Vector2(-96, 0), Vector2(96, 0), Vector2(90, 18), Vector2(-90, 18)
-	])
-	desk.add_child(front)
+	# Counter art is drawn in front of the shopkeeper (who stands behind it on the floor).
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.DESK
+	art.style = int(_look()["desk"])
+	art.size = Vector2(200, 26)
+	desk.add_child(art)
+	desk.z_index = 2
 	add_child(desk)
 
 	if LevelData.is_removed(house_id, _npc_id):
@@ -133,15 +137,38 @@ func _build_desk_and_keeper() -> void:
 		npc_pos.x = float(saved.get("x"))
 	if saved.has("y"):
 		npc_pos.y = float(saved.get("y"))
+	# Standing behind the low counter: visible from the waist up.
+	npc_pos.y = FLOOR_Y - 4
 	npc.position = npc_pos
 	npc.npc_name = keeper_name
 	npc.lines = keeper_lines
 	npc.is_shopkeeper = true
 	npc.shop_items = keeper_shop_items if not keeper_shop_items.is_empty() else ShopCatalog.default_shop_stock()
 	npc.shop_key = "%s/%s" % [house_id, _npc_id]
-	npc.z_index = -1
+	npc.z_index = 1
 	LevelData.tag(npc, _npc_id)
 	add_child(npc)
+
+
+## Shop name on a sign hanging from the ceiling, in the steampunk display face.
+func _build_title_sign() -> void:
+	var title := Label.new()
+	title.text = house_title
+	title.add_theme_font_override("font", load(UITheme.TITLE_FONT))
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color("2a1a0e") if int(_look()["sign"]) != 2 else UITheme.BRASS_LIGHT)
+	title.add_theme_color_override("font_outline_color", Color(1, 0.9, 0.7, 0.35) if int(_look()["sign"]) != 2 else UITheme.COAL)
+	title.add_theme_constant_override("outline_size", 2)
+	add_child(title)
+	title.reset_size()  # Measure after it is in the tree so the steampunk font is used.
+	var sign := WorldArt.new()
+	sign.kind = WorldArt.Kind.SIGN
+	sign.style = int(_look()["sign"])
+	sign.size = Vector2(title.size.x + 48, title.size.y + 10)
+	sign.position = Vector2(MAP_W * 0.5, 198)
+	add_child(sign)
+	title.position = Vector2(MAP_W * 0.5 - title.size.x * 0.5, 198 + 22 + 5)
+	move_child(title, -1)
 
 
 func _build_exit() -> void:

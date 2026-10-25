@@ -46,10 +46,6 @@ func play(player: Player) -> void:
 	await tw.finished
 	await get_tree().create_timer(0.25).timeout
 
-	var hint := player.get_tree().get_first_node_in_group("tutorial_hint")
-	if hint and hint.has_method("show_hint"):
-		hint.show_hint("The boiler-house remembers you.")
-
 	layer.queue_free()
 	burst.queue_free()
 	player.set_control_locked(false)

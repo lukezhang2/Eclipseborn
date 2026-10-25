@@ -38,11 +38,10 @@ func _build() -> void:
 	_apply_light_block(hx)
 
 	_prompt = Label.new()
-	_prompt.position = Vector2(-70, -48)
-	_prompt.add_theme_font_size_override("font_size", 13)
-	_prompt.add_theme_color_override("font_color", Color(0.92, 0.86, 0.7))
+	_prompt.position = Vector2(0, -60)
 	_prompt.visible = false
 	add_child(_prompt)
+	UITheme.style_prompt(_prompt)
 
 
 func _pick_style() -> int:
@@ -69,7 +68,7 @@ func _process(_delta: float) -> void:
 	_prompt.visible = near and GameState.can_interact()
 	if not near:
 		return
-	_prompt.text = "%s — Enter %s" % [InputMapManager.get_slot_text("interact", 0), house_name]
+	UITheme.set_prompt_text(_prompt, "%s — Enter %s" % [InputMapManager.get_slot_text("interact", 0), house_name])
 	if GameState.can_interact() and Input.is_action_just_pressed("interact"):
 		_enter()
 
