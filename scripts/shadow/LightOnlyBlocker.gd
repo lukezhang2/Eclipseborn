@@ -36,5 +36,8 @@ static func attach(parent: Node2D, local_poly: PackedVector2Array, enabled: bool
 	occ.name = "LightOnlyOccluder"
 	occ.set_meta("light_only_blocker", true)
 	occ.local_polygon = local_poly
+	## BG gears spin every frame — circular hull doesn't need dirty on rotate.
+	if parent.has_meta("bg_gear_speed"):
+		occ.ignore_rotation = true
 	parent.add_child(occ)
 	ShadowWorld.mark_dirty()

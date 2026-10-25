@@ -66,4 +66,4 @@ func _physics_process(delta: float) -> void:
 		_bg.rotation = _t * rotate_speed
 	if rotate_platform:
 		_linked.rotation = _t * rotate_speed
-	ShadowWorld.mark_dirty()
+	## ShadowWorld picks up platform motion via ShadowOccluder.did_move (throttled).

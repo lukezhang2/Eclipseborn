@@ -256,10 +256,11 @@ static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float
 		Vector2(-hx, hy - 40), Vector2(hx, hy - 40), Vector2(hx, hy), Vector2(-hx, hy)
 	])
 	face.add_child(fade)
-	## Visual-only: washes + cast shadows stop on the mural; player burns ignore it.
+	## Visual-only: washes stop on the mural; player burns ignore it.
 	var occ := ShadowOccluder.new()
 	occ.local_polygon = bg.polygon
 	occ.blocks_gameplay = false
+	occ.ignore_rotation = true
 	face.add_child(occ)
 	parent.add_child(face)
 

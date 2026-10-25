@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.35 — ShadowWorld perf: 12Hz throttle, poly cache, physics umbra clip, node pool, no spin dirty; `index-0_1_35.pck`
 - v0.1.34 — editor Duplicate + Move axis arrows; piece ids numbered (not lettered); levels updated
 - v0.1.33 — shop GUI fade (gear prices + editor stock Inf/N); fast-travel fade polish; no shopkeeper dialogue
 - v0.1.32 — sync lantern_village: bench 455, vent 1053, platform A travel 200 at x=1278, hearth lamp r=300, shade heart above platform B, extra steam vent; `index-0_1_32.pck`

@@ -7,6 +7,8 @@ class_name ShadowOccluder
 	Vector2(-24, -24), Vector2(24, -24), Vector2(24, 24), Vector2(-24, 24)
 ])
 @export var blocks_gameplay: bool = true
+## Circular / symmetric props (BG gears): spin does not change the silhouette.
+@export var ignore_rotation: bool = false
 
 var _last_pos: Vector2 = Vector2.ZERO
 var _last_rot: float = 0.0
@@ -28,8 +30,10 @@ func blocks_gameplay_light() -> bool:
 
 
 func did_move() -> bool:
-	if global_position.distance_squared_to(_last_pos) > 0.25 \
-			or absf(global_rotation - _last_rot) > 0.01:
+	var moved := global_position.distance_squared_to(_last_pos) > 0.25
+	if not ignore_rotation and absf(global_rotation - _last_rot) > 0.02:
+		moved = true
+	if moved:
 		_last_pos = global_position
 		_last_rot = global_rotation
 		return true
