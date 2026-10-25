@@ -386,13 +386,8 @@ func _recompute_light_state() -> void:
 
 
 func _occluded(from: Vector2, to: Vector2) -> bool:
-	## Any solid (world platforms/walls OR crates) between light and body = safe cover.
-	var space := get_world_2d().direct_space_state
-	var q := PhysicsRayQueryParameters2D.create(from, to)
-	q.collision_mask = 1 | 8
-	q.exclude = [self]
-	var hit := space.intersect_ray(q)
-	return not hit.is_empty()
+	## World(1) + crates(8) + light-only houses(128) — same mask as ShadowWorld washes.
+	return ShadowWorld.segment_occluded(from, to, [get_rid()])
 
 
 func _on_light_area_entered(_area: Area2D) -> void:

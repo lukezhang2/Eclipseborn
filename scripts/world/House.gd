@@ -57,7 +57,6 @@ func _build() -> void:
 	_apply_light_block(hx)
 
 	_prompt = Label.new()
-	_prompt.text = "F — Enter %s" % house_name
 	_prompt.position = Vector2(-70, -48)
 	_prompt.add_theme_font_size_override("font_size", 13)
 	_prompt.add_theme_color_override("font_color", Color(0.92, 0.86, 0.7))
@@ -72,6 +71,7 @@ func set_blocks_light(on: bool) -> void:
 
 
 func _apply_light_block(hx: float) -> void:
+	## Full facade + roof — must match visual footprint so cover is real, not paint-only.
 	var poly := PackedVector2Array([
 		Vector2(-hx - 8, 0), Vector2(hx + 8, 0), Vector2(hx + 8, -height),
 		Vector2(0, -height - 36), Vector2(-hx - 8, -height)
@@ -83,13 +83,17 @@ func _process(_delta: float) -> void:
 	var p = GameState.player
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 42.0
 	_prompt.visible = near
-	if near and Input.is_action_just_pressed("attack"):
+	if not near:
+		return
+	_prompt.text = "%s — Enter %s" % [InputMapManager.get_slot_text("interact", 0), house_name]
+	if Input.is_action_just_pressed("interact"):
 		_enter()
 
 
 func _enter() -> void:
 	GameState.set_meta("pending_house_id", house_id)
-	GameState.pending_spawn = Vector2(120, 460)
+	## Land next to the left-wall exit door inside.
+	GameState.pending_spawn = Vector2(110, 460)
 	GameState.current_zone_id = house_id
 	GameState.last_position = GameState.pending_spawn
 	get_tree().change_scene_to_file(interior_scene)

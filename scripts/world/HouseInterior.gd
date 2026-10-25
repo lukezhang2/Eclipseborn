@@ -36,9 +36,10 @@ func _ready() -> void:
 	LevelData.apply(self, house_id)
 	LevelData.prune_removed(self, house_id)
 
-	var spawn := Vector2(120, FLOOR_Y - 40)
+	## Spawn by the left exit door.
+	var spawn := Vector2(110, FLOOR_Y - 40)
 	if GameState.pending_spawn != Vector2.ZERO:
-		spawn = Vector2(GameState.pending_spawn.x, FLOOR_Y - 40)
+		spawn = Vector2(clampf(GameState.pending_spawn.x, 80.0, MAP_W - 80.0), FLOOR_Y - 40)
 		GameState.pending_spawn = Vector2.ZERO
 	var player := LevelCommon.spawn_player(self, spawn)
 	LevelCommon.configure_camera(player, 160.0, FLOOR_Y + 60.0, GameState.map_min_x, GameState.map_max_x)
@@ -132,32 +133,8 @@ func _build_desk_and_keeper() -> void:
 
 
 func _build_exit() -> void:
-	var door := Area2D.new()
-	door.position = Vector2(80, FLOOR_Y)
-	door.collision_layer = 0
-	door.collision_mask = 2
-	door.monitoring = true
-	var cs := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = Vector2(40, 50)
-	cs.shape = rect
-	cs.position = Vector2(0, -25)
-	door.add_child(cs)
-	var visual := Polygon2D.new()
-	visual.color = Color(0.1, 0.08, 0.07)
-	visual.polygon = PackedVector2Array([
-		Vector2(-16, 0), Vector2(16, 0), Vector2(14, -40), Vector2(-14, -40)
-	])
-	door.add_child(visual)
-	var prompt := Label.new()
-	prompt.name = "ExitPrompt"
-	prompt.text = "F — Leave"
-	prompt.position = Vector2(-36, -58)
-	prompt.add_theme_font_size_override("font_size", 13)
-	prompt.add_theme_color_override("font_color", Color(0.92, 0.86, 0.7))
-	prompt.visible = false
-	door.add_child(prompt)
-	door.set_meta("prompt", prompt)
-	door.set_meta("exit", true)
+	## Exit is always on the left wall (street door).
+	var door := HouseExitDoor.new()
+	door.position = Vector2(64, FLOOR_Y)
+	door.name = "ExitDoor"
 	add_child(door)
-	door.set_script(load("res://scripts/world/HouseExitDoor.gd"))

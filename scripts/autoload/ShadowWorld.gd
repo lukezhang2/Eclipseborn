@@ -1,13 +1,14 @@
 extends Node
-## Hard-cut lantern washes. Corner-aware rays so silhouettes stay closed (no random pie gaps).
+## Lantern washes: closed hard-cut polygons from corner-aware rays.
+## Physics occluders: world(1) + crates(8) + light-only houses(128).
 
 
 signal shadows_rebuilt
 
-const RAY_COUNT := 96
-const CORNER_EPS := 0.0015 ## radians — rays just past each occluder vertex
-## 1 = world, 8 = crates, 128 = LightOnlyBlocker — never player-collidable.
-const OCCLUDER_MASK := 1 | 8 | 128 ## keep in sync with PieceSpecs.LIGHT_BLOCK_PHYSICS_LAYER
+const RAY_COUNT := 128
+const CORNER_EPS := 0.002 ## radians — rays just inside / outside each vertex
+## Keep in sync with PieceSpecs.LIGHT_BLOCK_PHYSICS_LAYER (128).
+const OCCLUDER_MASK := 1 | 8 | 128
 
 var lights: Array = []
 var occluders: Array = []
@@ -83,24 +84,45 @@ func rebuild() -> void:
 	shadows_rebuilt.emit()
 
 
+## Shared gameplay + visual query: true if solid cover sits between from→to.
+func segment_occluded(from: Vector2, to: Vector2, exclude: Array = []) -> bool:
+	if _root == null or not is_instance_valid(_root):
+		return false
+	var world := _root.get_world_2d()
+	if world == null:
+		return false
+	var space := world.direct_space_state
+	var q := PhysicsRayQueryParameters2D.create(from, to)
+	q.collision_mask = OCCLUDER_MASK
+	q.exclude = exclude
+	q.hit_from_inside = true
+	var hit := space.intersect_ray(q)
+	return not hit.is_empty()
+
+
+func is_point_in_light(origin: Vector2, radius: float, point: Vector2, exclude: Array = []) -> bool:
+	if point.distance_to(origin) > radius:
+		return false
+	return not segment_occluded(origin, point, exclude)
+
+
 func _collect_ray_angles(origin: Vector2, radius: float) -> Array:
-	## Uniform fan + rays aimed at nearby occluder corners (and epsilon offsets).
 	var angles: Array = []
 	for i in RAY_COUNT:
 		angles.append(TAU * float(i) / float(RAY_COUNT))
 
-	var r2 := radius * radius * 1.21
+	var r2 := radius * radius * 1.35
 	for occ in occluders:
 		if not is_instance_valid(occ) or not occ.has_method("get_world_polygon"):
 			continue
 		var poly: PackedVector2Array = occ.get_world_polygon()
 		if poly.size() < 3:
 			continue
-		## Skip huge floors/walls — they only need the uniform fan.
 		var aabb := Rect2(poly[0], Vector2.ZERO)
 		for p in poly:
 			aabb = aabb.expand(p)
-		if aabb.size.x > 400.0 or aabb.size.y > 400.0:
+		## Skip only huge floors/ceilings — houses and props always get corner rays.
+		if aabb.size.x > 600.0 or aabb.size.y > 600.0:
 			continue
 		for p in poly:
 			if origin.distance_squared_to(p) > r2:
@@ -111,12 +133,11 @@ func _collect_ray_angles(origin: Vector2, radius: float) -> Array:
 			angles.append(a + CORNER_EPS)
 
 	angles.sort()
-	## Deduplicate near-identical angles.
 	var unique: Array = []
 	var last := -999.0
 	for a in angles:
 		var ang: float = fposmod(float(a), TAU)
-		if unique.is_empty() or absf(ang - last) > 0.0004:
+		if unique.is_empty() or absf(ang - last) > 0.00035:
 			unique.append(ang)
 			last = ang
 	if unique.size() >= 2 and absf(float(unique[0]) + TAU - float(unique[unique.size() - 1])) < 0.0004:
@@ -125,12 +146,11 @@ func _collect_ray_angles(origin: Vector2, radius: float) -> Array:
 
 
 func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, radius: float, exclude: Array) -> Vector2:
-	## dir must be normalized.
-	var from := origin + dir * 1.5
+	var from := origin + dir * 1.25
 	var to := origin + dir * radius
 	var q := PhysicsRayQueryParameters2D.create(from, to)
 	q.collision_mask = OCCLUDER_MASK
-	q.hit_from_inside = false
+	q.hit_from_inside = true
 	q.exclude = exclude
 	var hit := space.intersect_ray(q)
 	if hit.is_empty():
@@ -138,9 +158,9 @@ func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, 
 	var hit_pos: Vector2 = hit.position
 	var dist := origin.distance_to(hit_pos)
 	if dist < 2.0:
-		## Almost inside geometry — tiny stub, not a hole to the far radius.
 		return origin + dir * 2.0
-	return hit_pos - dir * 0.5
+	## Nudge back so the fill edge sits on the occluder face, not past it.
+	return hit_pos - dir * 0.75
 
 
 func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D) -> void:
@@ -172,9 +192,9 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D) -> void
 
 	if pts.size() < 4:
 		pts = PackedVector2Array([origin])
-		for i in 24:
-			var a := TAU * float(i) / 24.0
-			pts.append(origin + Vector2(cos(a), sin(a)) * mini(radius, 40.0))
+		for i in 32:
+			var a := TAU * float(i) / 32.0
+			pts.append(origin + Vector2.from_angle(a) * mini(radius, 48.0))
 
 	var fill := Polygon2D.new()
 	fill.color = core
@@ -199,7 +219,7 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D) -> void
 
 
 func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float) -> void:
-	## Soft shadow behind small occluders. Ray fan already hard-cuts the wash.
+	## Soft ink behind small/medium occluders (houses, crates). Ray fan is the hard cut.
 	if not occ.has_method("get_world_polygon"):
 		return
 	var poly: PackedVector2Array = occ.get_world_polygon()
@@ -208,11 +228,12 @@ func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float
 	var aabb := Rect2(poly[0], Vector2.ZERO)
 	for p in poly:
 		aabb = aabb.expand(p)
-	if aabb.size.x > 220.0 or aabb.size.y > 220.0:
+	## Allow village houses (~130–160 wide); skip only huge floor/wall slabs.
+	if aabb.size.x > 280.0 or aabb.size.y > 280.0:
 		return
 	var near := false
 	for p in poly:
-		if p.distance_to(light_pos) <= radius * 1.05:
+		if p.distance_to(light_pos) <= radius * 1.08:
 			near = true
 			break
 	if not near:
@@ -229,38 +250,22 @@ func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float
 			continue
 		var edge_dir := (b - a).normalized()
 		var normal := Vector2(-edge_dir.y, edge_dir.x)
-		## Only faces pointing away from the light (back side).
-		if normal.dot(to_mid.normalized()) <= 0.35:
+		if normal.dot(to_mid.normalized()) <= 0.25:
 			continue
 		var da := (a - light_pos).normalized() * max_len
 		var db := (b - light_pos).normalized() * max_len
 		var far_a := a + da
 		var far_b := b + db
-		## Reject wedges that fold back toward the lamp (gap artifacts).
 		if far_a.distance_to(light_pos) < mid.distance_to(light_pos):
 			continue
 		if far_b.distance_to(light_pos) < mid.distance_to(light_pos):
 			continue
 		var ink := Polygon2D.new()
-		ink.color = Color(0.04, 0.02, 0.07, 0.32)
+		ink.color = Color(0.04, 0.02, 0.07, 0.36)
 		ink.z_index = -11
 		ink.polygon = PackedVector2Array([a, b, far_b, far_a])
 		_root.add_child(ink)
 		_visuals.append(ink)
-
-
-func is_point_in_light(origin: Vector2, radius: float, point: Vector2, exclude: Array = []) -> bool:
-	if point.distance_to(origin) > radius:
-		return false
-	var space := _root.get_world_2d().direct_space_state if _root else null
-	if space == null:
-		return true
-	var q := PhysicsRayQueryParameters2D.create(origin, point)
-	q.collision_mask = OCCLUDER_MASK
-	q.exclude = exclude
-	q.hit_from_inside = false
-	var hit := space.intersect_ray(q)
-	return hit.is_empty()
 
 
 func _clear_visuals() -> void:

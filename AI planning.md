@@ -15,13 +15,13 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 ## Cursor
 
 ### Active / claimed
-- House real light occlusion + left exit door + rebuild lantern washes; continuous map lands with v0.1.12 (main already at 0.1.11).
+_(none)_
 
 ### Queue
 _(none)_
 
 ### Done recently
-- Continuous zone-map panorama + live player icon (`ZoneMap`/`MapDraw`) — on branch, ships with v0.1.12
+- v0.1.12 — house light occlusion (layer 128 burns), left Interact exit, rebuilt lantern washes, continuous zone map
 - v0.1.10 — sync lantern_village from editor save (switch/lamp/crate/platform); `index-0_1_10.pck`
 - v0.1.8 — corner-aware lantern rays + safer umbra (closes random light gaps); `index-0_1_8.pck`
 - v0.1.7 — default `blocks_light` ON for most piece kinds
