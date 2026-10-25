@@ -22,12 +22,13 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 - Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
 
 ### Active / claimed
-- Ship player hitbox diagram fix as v0.1.18 (rebase onto remote v0.1.17, re-export, push main)
+_(none)_
 
 ### Queue
 _(none)_
 
 ### Done recently
+- v0.1.18 — player hitboxes: flush red attack boxes, inset yellow hurtbox, enemies no longer body-block; `index-0_1_18.pck`
 - v0.1.17 — Cursor workflow: always export+push main; sync version past Claude Done history
 - v0.1.16 — house fade + interact lock; editor platform path/spin + rotate tool; steam vents (includes village lamp sync)
 - v0.1.15 — sync lantern_village: remove door_street_a, lever→street+square only, lamp radii/pos; `index-0_1_15.pck`
