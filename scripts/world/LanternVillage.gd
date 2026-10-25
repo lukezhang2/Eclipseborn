@@ -265,9 +265,9 @@ func _build_wander_enemies() -> void:
 
 func _build_clockwork_tower() -> void:
 	var tower := ClockworkTower.new()
-	## The door is on the tower's left and the complex spreads right, so it sits 500px in from
+	## The door is on the tower's left and the complex spreads right, so it sits well in from
 	## the map edge to stay on screen.
-	var door_x := MAP_W - 500.0
+	var door_x := ClockworkTower.VILLAGE_DOOR_X
 	tower.position = Vector2(door_x, FLOOR_TOP)
 	add_child(tower)
 	## After the Wickwright falls, a breach opens just before the tower door.

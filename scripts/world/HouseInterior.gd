@@ -107,23 +107,16 @@ func _build_room() -> void:
 
 
 func _build_desk_and_keeper() -> void:
-	# Desk blocks the mid floor — keeper stands BEHIND it (further from door = higher Y negative / left-right center).
-	var desk := StaticBody2D.new()
+	# Walk-through counter (no collision). Draw order: keeper (-2) behind the counter (-1),
+	# and the player (0) passes in front of it.
+	var desk := Node2D.new()
 	desk.position = Vector2(MAP_W * 0.5, FLOOR_Y)
-	desk.collision_layer = 1
-	var dcs := CollisionShape2D.new()
-	var drect := RectangleShape2D.new()
-	drect.size = Vector2(200, 26)
-	dcs.shape = drect
-	dcs.position = Vector2(0, -13)
-	desk.add_child(dcs)
-	# Counter art is drawn in front of the shopkeeper (who stands behind it on the floor).
 	var art := WorldArt.new()
 	art.kind = WorldArt.Kind.DESK
 	art.style = int(_look()["desk"])
 	art.size = Vector2(200, 26)
 	desk.add_child(art)
-	desk.z_index = 2
+	desk.z_index = -1
 	add_child(desk)
 
 	if LevelData.is_removed(house_id, _npc_id):
@@ -145,7 +138,7 @@ func _build_desk_and_keeper() -> void:
 	npc.is_shopkeeper = true
 	npc.shop_items = keeper_shop_items if not keeper_shop_items.is_empty() else ShopCatalog.default_shop_stock()
 	npc.shop_key = "%s/%s" % [house_id, _npc_id]
-	npc.z_index = 1
+	npc.z_index = -2
 	LevelData.tag(npc, _npc_id)
 	add_child(npc)
 

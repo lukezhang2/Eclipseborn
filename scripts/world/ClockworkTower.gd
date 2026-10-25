@@ -3,6 +3,10 @@ class_name ClockworkTower
 ## Village exterior — enter the Clockwork Tower climb zone.
 
 
+## Where the tower's door stands in Lantern Village. The village places the tower here and the
+## tower's exit back to the village spawns the player just left of it.
+const VILLAGE_DOOR_X := 2700.0
+
 @export var tower_width: float = 160.0
 @export var tower_height: float = 280.0
 
@@ -19,18 +23,8 @@ func _ready() -> void:
 
 
 func _build() -> void:
-	var hx := tower_width * 0.5
-	var wall := StaticBody2D.new()
-	wall.collision_layer = 1
-	wall.position = Vector2(0, -tower_height * 0.5)
-	var cs := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = Vector2(tower_width * 0.55, tower_height)
-	cs.shape = rect
-	wall.add_child(cs)
-	add_child(wall)
-
-	# The visible complex is much bigger than the collision column; it runs off the top of the screen.
+	# No solid wall: the player walks in front of the tower; the door is entered with Interact.
+	# The visible complex runs off the top of the screen.
 	# Mirrored so the entrance is on the LEFT and the factory wing on the right.
 	var art := WorldArt.new()
 	art.kind = WorldArt.Kind.TOWER

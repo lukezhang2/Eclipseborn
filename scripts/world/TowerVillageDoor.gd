@@ -41,5 +41,5 @@ func _process(_delta: float) -> void:
 		GameState.change_zone(
 			"res://scenes/rooms/LanternVillage.tscn",
 			"Back to Lantern Village…",
-			Vector2(2780, 460)
+			Vector2(ClockworkTower.VILLAGE_DOOR_X - 80.0, 460)
 		)
