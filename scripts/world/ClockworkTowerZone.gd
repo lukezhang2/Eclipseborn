@@ -330,13 +330,12 @@ func _build_side_workshop() -> void:
 func _build_pendulum_cloister() -> void:
 	LevelCommon.make_room_trigger(self, Vector2(430, 1960), Vector2(640, 280), "clockwork_tower", "pendulum", "Pendulum Cloister", "")
 	_story(STORY_CLOISTER, 560.0, 400.0, [580.0])
-	_ladder(240, STORY_CLOISTER, STORY_PENDULUM)
+	_ladder(_piece_pos("ladder_cloister", Vector2(246, STORY_CLOISTER)).x, STORY_CLOISTER, STORY_PENDULUM)
 	_spawn_catalog_enemy("enemy_cloister", "beetle", Vector2(420, STORY_CLOISTER - 24))
 
-	## Split floors with a jumpable gap under swinging pendulums + hatch at 240 for ladder.
-	_floor_at(STORY_PENDULUM + FLOOR_H * 0.5, 180.0, 200.0)
-	_floor_at(STORY_PENDULUM + FLOOR_H * 0.5, 220.0, 560.0)
-	_ledge(390, STORY_PENDULUM - 4.0, 100.0)
+	## Split floors (overlay can resize L/R; middle plate is non-builtin floor_cloister_19).
+	_floor_from_piece("floor_cloister_l", Vector2(168.322952270508, STORY_PENDULUM + FLOOR_H * 0.5), 115.354095458984)
+	_floor_from_piece("floor_cloister_r", Vector2(560, STORY_PENDULUM + FLOOR_H * 0.5), 220.0)
 	_ladder(560, STORY_PENDULUM, STORY_FLUE_1)
 	var cloister_lamp := _make_hanging_lamp("cloister_lamp", Vector2(390, STORY_PENDULUM - 100), 160.0, true)
 	if cloister_lamp:
@@ -418,16 +417,8 @@ func _build_switch_gallery() -> void:
 	_story(STORY_GALLERY, 560.0, 400.0, [240.0])
 	_ladder(560, STORY_GALLERY, STORY_PRE_GATE)
 	var floor_top := STORY_GALLERY
-	var la := _make_floor_lamp("practice_a", Vector2(260, floor_top - 8), 100.0, true)
-	var lb := _make_floor_lamp("practice_b", Vector2(400, floor_top - 8), 100.0, false)
-	var lc := _make_floor_lamp("practice_c", Vector2(540, floor_top - 8), 100.0, true)
-	if la:
-		add_child(la)
-	if lb:
-		add_child(lb)
-	if lc:
-		add_child(lc)
-	for pair in [["practice_sw_a", "practice_a", 220.0, true], ["practice_sw_b", "practice_b", 360.0, false], ["practice_sw_c", "practice_c", 500.0, true]]:
+	## Practice lamps removed — pushable lantern_1/2/3 come from the overlay via apply().
+	for pair in [["practice_sw_a", "lantern_3", 220.0, true], ["practice_sw_b", "lantern_2", 358.0, false], ["practice_sw_c", "lantern_1", 478.0, true]]:
 		var sid := str(pair[0])
 		if LevelData.is_removed("clockwork_tower", sid):
 			continue
@@ -436,6 +427,15 @@ func _build_switch_gallery() -> void:
 		s.name = sid
 		s.starts_on = bool(pair[3])
 		s.target_ids = PackedStringArray([str(pair[1])])
+		var saved := LevelData.merged_piece("clockwork_tower", sid)
+		if saved.has("starts_on"):
+			s.starts_on = bool(saved.get("starts_on"))
+		if saved.has("target_ids"):
+			var tids: PackedStringArray = PackedStringArray()
+			for t in saved.get("target_ids", []):
+				tids.append(str(t))
+			if not tids.is_empty():
+				s.target_ids = tids
 		LevelData.tag(s, sid)
 		add_child(s)
 	_spawn_world_text(
@@ -491,7 +491,7 @@ func _build_arena() -> void:
 	var xs := [250.0, 400.0, 550.0]
 	var starts := [true, false, true]
 	for i in 3:
-		var lamp := _make_floor_lamp(ids[i], Vector2(xs[i], ARENA_TOP - 8), 130.0, starts[i])
+		var lamp := _make_floor_lamp(ids[i], Vector2(xs[i], ARENA_TOP - 8), 100.0, starts[i])
 		if lamp:
 			add_child(lamp)
 
@@ -500,10 +500,10 @@ func _build_arena() -> void:
 	_ledge(250, lever_y, 90.0)
 	_ledge(400, lever_y, 90.0)
 	_ledge(550, lever_y, 90.0)
-	## Short ladders up to each lever ledge (ledges are open at the ends).
-	_ladder(220, ARENA_TOP, lever_y)
-	_ladder(400, ARENA_TOP, lever_y)
-	_ladder(580, ARENA_TOP, lever_y)
+	## Short ladders up to each lever ledge (overlay x: 310 / 459 / 609).
+	_ladder(_piece_pos("ladder_lever_a", Vector2(310, ARENA_TOP)).x, ARENA_TOP, lever_y)
+	_ladder(_piece_pos("ladder_lever_b", Vector2(459, ARENA_TOP)).x, ARENA_TOP, lever_y)
+	_ladder(_piece_pos("ladder_lever_c", Vector2(609, ARENA_TOP)).x, ARENA_TOP, lever_y)
 	var switch_ids := ["tower_switch_a", "tower_switch_b", "tower_switch_c"]
 	for i in 3:
 		var sw_id: String = str(switch_ids[i])
@@ -619,6 +619,26 @@ func _piece_pos(catalog_id: String, fallback: Vector2) -> Vector2:
 	if saved.has("x") and saved.has("y"):
 		return Vector2(float(saved.get("x")), float(saved.get("y")))
 	return fallback
+
+
+func _floor_from_piece(catalog_id: String, fallback_center: Vector2, fallback_w: float) -> void:
+	if LevelData.is_removed("clockwork_tower", catalog_id):
+		return
+	var saved := LevelData.merged_piece("clockwork_tower", catalog_id)
+	var cx := fallback_center.x
+	var cy := fallback_center.y
+	var w := fallback_w
+	var h := FLOOR_H
+	if not saved.is_empty():
+		if saved.has("x"):
+			cx = float(saved.get("x"))
+		if saved.has("y"):
+			cy = float(saved.get("y"))
+		if saved.has("w"):
+			w = float(saved.get("w"))
+		if saved.has("h"):
+			h = maxf(float(saved.get("h")), 16.0)
+	LevelCommon.add_steel_floor(self, cx, cy, w, h)
 
 
 func _spawn_world_text(

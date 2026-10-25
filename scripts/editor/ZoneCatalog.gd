@@ -156,7 +156,7 @@ static func _tower() -> Array:
 	out.append(_plight("lobby_lamp", "Lobby Lamp", 420, LOBBY_TOP - 120, 180))
 	out.append(_p("vent_lobby", "prop_vent", "Lobby Steam Vent", 520, LOBBY_TOP, 36, 16))
 	out.append(_p("bench_lobby", "prop_bench", "Lobby Bench", 340, LOBBY_TOP, 60, 20))
-	out.append(_pexit("exit_village", "Village Door", 110, LOBBY_TOP - 8, "lantern_village", ClockworkTower.VILLAGE_DOOR_X - 80.0, 460.0, "Back to Lantern Village…"))
+	out.append(_pexit("exit_village", "Village Door", 106, LOBBY_TOP, "lantern_village", ClockworkTower.VILLAGE_DOOR_X - 80.0, 460.0, "Back to Lantern Village…"))
 	out.append(_p("ladder_lobby", "prop_ladder", "Lobby Ladder", 600, LOBBY_TOP, 28, STORY_GAP))
 	## Matches ClockworkTowerZone._spawn_* positions (grubs = wander).
 	out.append(_penemy("enemy_lobby_a", "Lobby Grub A", "wander", 480, LOBBY_TOP - 18))
@@ -177,13 +177,12 @@ static func _tower() -> Array:
 	out.append(_p("bench_workshop", "prop_bench", "Workshop Bench", 940, STORY_SHAFT_2, 60, 20))
 	out.append(_p("jar_workshop", "prop_breakable", "Workshop Jar", 1020, STORY_SHAFT_2 - 8, 28, 36))
 	out.append(_penemy("enemy_workshop", "Workshop Rivet Mite", "mite", 980, STORY_SHAFT_2 - 16))
-	out.append(_ptext("text_workshop", "Workshop alcove", 980, STORY_SHAFT_2 - 90, 160, 24, 12, "a69473"))
 
 	## Pendulum cloister.
 	out.append(_p("floor_cloister", "floor", "Cloister Story", 400, STORY_CLOISTER + FLOOR_H * 0.5, 560, FLOOR_H))
-	out.append(_p("ladder_cloister", "prop_ladder", "Cloister Ladder", 240, STORY_CLOISTER, 28, STORY_GAP))
+	out.append(_p("ladder_cloister", "prop_ladder", "Cloister Ladder", 246, STORY_CLOISTER, 28, STORY_GAP))
 	out.append(_penemy("enemy_cloister", "Cloister Fuse Beetle", "beetle", 420, STORY_CLOISTER - 24))
-	out.append(_p("floor_cloister_l", "floor", "Cloister Floor L", 220, STORY_PENDULUM + FLOOR_H * 0.5, 220, FLOOR_H))
+	out.append(_p("floor_cloister_l", "floor", "Cloister Floor L", 168.322952270508, STORY_PENDULUM + FLOOR_H * 0.5, 115.354095458984, FLOOR_H))
 	out.append(_p("floor_cloister_r", "floor", "Cloister Floor R", 560, STORY_PENDULUM + FLOOR_H * 0.5, 220, FLOOR_H))
 	out.append(_p("ladder_pendulum", "prop_ladder", "Pendulum Ladder", 560, STORY_PENDULUM, 28, STORY_GAP))
 	out.append(_plight("cloister_lamp", "Cloister Lamp", 390, STORY_PENDULUM - 100, 160))
@@ -215,19 +214,12 @@ static func _tower() -> Array:
 	out.append(_penemy("enemy_archive", "Archive Rivet Mite", "mite", 180, STORY_ARCHIVE - 16))
 	out.append(_p("floor_gallery", "floor", "Gallery Floor", 400, STORY_GALLERY + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_gallery", "prop_ladder", "Gallery Ladder", 560, STORY_GALLERY, 28, STORY_GAP))
-	out.append(_plight("practice_a", "Practice Lamp A", 260, STORY_GALLERY - 8, 100))
-	out.append(_plight("practice_b", "Practice Lamp B", 400, STORY_GALLERY - 8, 100))
-	out.append(_plight("practice_c", "Practice Lamp C", 540, STORY_GALLERY - 8, 100))
-	for pair in [["practice_sw_a", "practice_a", 220.0, true], ["practice_sw_b", "practice_b", 360.0, false], ["practice_sw_c", "practice_c", 500.0, true]]:
+	## Gallery lanterns are overlay non-builtins (lantern_1/2/3); practice_* / texts removed.
+	for pair in [["practice_sw_a", "lantern_3", 220.0, true], ["practice_sw_b", "lantern_2", 358.0, false], ["practice_sw_c", "lantern_1", 478.0, true]]:
 		var psw := _p(str(pair[0]), "prop_switch", "Practice Lever", float(pair[2]), STORY_GALLERY, 24, 40)
 		psw["starts_on"] = bool(pair[3])
 		psw["target_ids"] = [str(pair[1])]
 		out.append(psw)
-	out.append(_ptext(
-		"text_gallery",
-		"Practice the Hour — flip levers to match lamp patterns.",
-		360, STORY_GALLERY - 70, 320, 28, 13, "bfad80"
-	))
 	out.append(_penemy("enemy_gallery_a", "Gallery Fuse Beetle A", "beetle", 320, STORY_GALLERY - 18))
 	out.append(_penemy("enemy_gallery_b", "Gallery Fuse Beetle B", "beetle", 480, STORY_GALLERY - 18))
 	out.append(_p("floor_pre_gate", "floor", "Pre-Gate Landing", 400, STORY_PRE_GATE + FLOOR_H * 0.5, 520, FLOOR_H))
@@ -239,16 +231,22 @@ static func _tower() -> Array:
 	out.append(_p("checkpoint_antechamber", "prop_checkpoint", "Dial Gate", 220, ANTECHAMBER_TOP, 56, 24))
 	out.append(_p("ladder_arena", "prop_ladder", "Arena Ladder", 480, ANTECHAMBER_TOP, 28, ANTECHAMBER_TOP - ARENA_TOP))
 	out.append(_p("floor_arena", "floor", "Dial Arena Floor", 400, ARENA_FLOOR, 620, FLOOR_H))
-	out.append(_plight("tower_lamp_a", "Arena Lamp A", 250, ARENA_TOP - 8, 130))
-	out.append(_plight("tower_lamp_b", "Arena Lamp B", 400, ARENA_TOP - 8, 130))
-	out.append(_plight("tower_lamp_c", "Arena Lamp C", 550, ARENA_TOP - 8, 130))
+	var tla := _plight("tower_lamp_a", "Arena Lamp A", 250, ARENA_TOP - 8, 100)
+	var tlb := _plight("tower_lamp_b", "Arena Lamp B", 400, ARENA_TOP - 8, 100)
+	var tlc := _plight("tower_lamp_c", "Arena Lamp C", 550, ARENA_TOP - 8, 100)
+	tla["intensity"] = 0.5
+	tlb["intensity"] = 0.5
+	tlc["intensity"] = 0.5
+	out.append(tla)
+	out.append(tlb)
+	out.append(tlc)
 	var lever_y := ARENA_TOP - 110.0
 	out.append(_p("ledge_lever_a", "floor", "Lever Ledge A", 250, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
 	out.append(_p("ledge_lever_b", "floor", "Lever Ledge B", 400, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
 	out.append(_p("ledge_lever_c", "floor", "Lever Ledge C", 550, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
-	out.append(_p("ladder_lever_a", "prop_ladder", "Lever Ladder A", 250, ARENA_TOP, 28, ARENA_TOP - lever_y))
-	out.append(_p("ladder_lever_b", "prop_ladder", "Lever Ladder B", 400, ARENA_TOP, 28, ARENA_TOP - lever_y))
-	out.append(_p("ladder_lever_c", "prop_ladder", "Lever Ladder C", 550, ARENA_TOP, 28, ARENA_TOP - lever_y))
+	out.append(_p("ladder_lever_a", "prop_ladder", "Lever Ladder A", 310, ARENA_TOP, 28, ARENA_TOP - lever_y))
+	out.append(_p("ladder_lever_b", "prop_ladder", "Lever Ladder B", 459, ARENA_TOP, 28, ARENA_TOP - lever_y))
+	out.append(_p("ladder_lever_c", "prop_ladder", "Lever Ladder C", 609, ARENA_TOP, 28, ARENA_TOP - lever_y))
 	for pair2 in [["tower_switch_a", "tower_lamp_a", 250.0, true], ["tower_switch_b", "tower_lamp_b", 400.0, false], ["tower_switch_c", "tower_lamp_c", 550.0, true]]:
 		var asw := _p(str(pair2[0]), "prop_switch", "Arena Lever", float(pair2[2]), lever_y, 24, 40)
 		asw["starts_on"] = bool(pair2[3])

@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.75 — sync clockwork_tower (gallery pushable lanterns, cloister floors, arena lamps 4–6, removed texts/practice lamps); `index-0_1_75.pck`
 - v0.1.74 — LightSource never builds a solid body / never pushable (hard disable); `index-0_1_74.pck`
 - v0.1.73 — Lanterns never collide with player; editor/LevelData lights default non-pushable; `index-0_1_73.pck`
 - v0.1.72 — Playtest Zone shows session editor edits (trusted user:// mirror + sync tagged builtins on apply); `index-0_1_72.pck`
