@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.36 — editor Undo/Redo buttons + Ctrl+Z/Y/Shift+Z; snapshot history for move/resize/rotate/inspector; `index-0_1_36.pck`
 - v0.1.35 — ShadowWorld perf: 12Hz throttle, poly cache, physics umbra clip, node pool, no spin dirty; `index-0_1_35.pck`
 - v0.1.34 — editor Duplicate + Move axis arrows; piece ids numbered (not lettered); levels updated
 - v0.1.33 — shop GUI fade (gear prices + editor stock Inf/N); fast-travel fade polish; no shopkeeper dialogue
