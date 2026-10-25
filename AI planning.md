@@ -22,12 +22,14 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 - Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
 
 ### Active / claimed
-_(none)_
+- Editor number fields commit only on Enter. Clicking away restores the previous value so a new lantern does not inherit the last field text.
+- Editor: Ctrl/Cmd multi-select (+ duplicate/settings), top-layer click pick, N/E/S/W resize edges → take next patch after 0.1.65
 
 ### Queue
 _(none)_
 
 ### Done recently
+- v0.1.65 — sync cursed_cottage (backdrop JSON, moon lamp → mid hall, hatch spawn 520/460); `index-0_1_65.pck`
 - v0.1.64 — Editor mob HP (script defaults; Make default for new mobs only); `index-0_1_64.pck`
 - v0.1.63 — Editor creature damage (script defaults; Make default for new creatures only) and lever Starts on; `index-0_1_63.pck`
 - v0.1.62 — Session-only editor overlays (clear on refresh); brick/backdrop Background palette; `index-0_1_62.pck`
