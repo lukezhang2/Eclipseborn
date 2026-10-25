@@ -19,11 +19,12 @@ func setup(width: float, floor_y_top: float, roof_y_top: float = 180.0) -> void:
 
 
 func _build() -> void:
-	# Void + fire only ABOVE the roof — never under the floor.
+	## Deep void behind the whole playfield (down to the floor line) so removing
+	## brick/city murals still leaves the black-fire backdrop readable.
 	var void_poly := Polygon2D.new()
 	void_poly.polygon = PackedVector2Array([
 		Vector2(-200, -120), Vector2(map_width + 200, -120),
-		Vector2(map_width + 200, roof_top), Vector2(-200, roof_top)
+		Vector2(map_width + 200, floor_top + 8.0), Vector2(-200, floor_top + 8.0)
 	])
 	void_poly.color = Color(0.02, 0.01, 0.03, 1.0)
 	add_child(void_poly)

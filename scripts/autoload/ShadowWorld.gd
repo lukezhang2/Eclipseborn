@@ -31,6 +31,7 @@ var _dirty: bool = true
 var _visuals: Array = []
 var _pool_poly: Array = []
 var _pool_line: Array = []
+var _pool_fan: Array = []
 var _rebuild_cooldown: float = 0.0
 ## Per-rebuild cache: [{occ, poly, aabb, edges, gameplay, cast_umbra}]
 var _occ_cache: Array = []
@@ -243,6 +244,9 @@ func _collect_ray_angles(origin: Vector2, radius: float, view: Rect2) -> PackedF
 		return PackedFloat32Array(angles)
 
 	for e in _occ_cache:
+		## Match burn occlusion — decorative BG occluders must not reshape the AoE.
+		if not e.get("gameplay", true):
+			continue
 		var aabb: Rect2 = e["aabb"]
 		if aabb.size.x > 600.0 or aabb.size.y > 600.0:
 			continue
@@ -275,8 +279,10 @@ func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, 
 	var start := origin + dir * 1.5
 	var ray_aabb := Rect2(start, Vector2.ZERO).expand(to)
 
-	## Geometry against cached edges (AABB broadphase).
+	## Geometry against gameplay occluders only (same set as burns).
 	for e in _occ_cache:
+		if not e.get("gameplay", true):
+			continue
 		var aabb: Rect2 = e["aabb"]
 		if not ray_aabb.intersects(aabb):
 			continue
@@ -332,8 +338,7 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		exclude = light.get_exclude_rids()
 
 	var angles := _collect_ray_angles(origin, radius, view)
-	## Ray end points only. With the origin as the first vertex, the polygon's closing edge ran
-	## back to the origin and left the wedge between the last and first ray (angle 0) unlit.
+	## Rim points only — filled as a triangle fan from `origin` so the middle stays solid.
 	var pts := PackedVector2Array()
 	for i in angles.size():
 		var dir := Vector2.from_angle(angles[i])
@@ -345,54 +350,48 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
 
-	## z −3/−2/−1 sits above floors (−4) and below the player (0) so AoE reads on the ground.
-	## Soft outer shell ≈ area-light penumbra (reuse silhouette; no new rays).
-	var soft := _take_poly()
-	soft.color = Color(core.r, core.g, core.b, core.a * 0.45)
-	soft.z_index = -3
-	soft.polygon = _scale_ring(origin, pts, WASH_PENUMBRA_SCALE)
-	_root.add_child(soft)
-	_visuals.append(soft)
-
-	## Main occluded wash — this is the readable danger/safe zone.
-	var fill := _take_poly()
-	fill.color = Color(core.r, core.g, core.b, mini(0.78, core.a * 0.95))
-	fill.z_index = -2
-	fill.polygon = pts
-	_root.add_child(fill)
-	_visuals.append(fill)
-
-	## Brighter near the lamp (cheap 1/r-ish falloff via a scaled inner ring).
-	var inner := _take_poly()
-	inner.color = Color(
-		mini(1.0, core.r + 0.1),
-		mini(1.0, core.g + 0.08),
-		mini(1.0, core.b + 0.04),
-		mini(0.82, core.a * 1.2)
+	## z −3/−2/−1 sits above floors (−4) and below the player (0).
+	## Soft outer shell (penumbra) → main wash → bright core (depth toward the lamp).
+	_add_wash_fan(
+		origin,
+		_scale_ring(origin, pts, WASH_PENUMBRA_SCALE),
+		Color(core.r, core.g, core.b, core.a * 0.4),
+		-3
 	)
-	inner.z_index = -2
-	inner.polygon = _scale_ring(origin, pts, WASH_CORE_SCALE)
-	_root.add_child(inner)
-	_visuals.append(inner)
+	_add_wash_fan(
+		origin,
+		pts,
+		Color(core.r, core.g, core.b, mini(0.72, core.a * 0.9)),
+		-2
+	)
+	_add_wash_fan(
+		origin,
+		_scale_ring(origin, pts, WASH_CORE_SCALE),
+		Color(
+			mini(1.0, core.r + 0.12),
+			mini(1.0, core.g + 0.1),
+			mini(1.0, core.b + 0.05),
+			mini(0.88, core.a * 1.25)
+		),
+		-2
+	)
+	## Hottest center — always on so the middle isn't empty.
+	var hot_pts := PackedVector2Array()
+	var hot_r := radius * clampf(0.2 + (intensity - 1.0) * 0.08, 0.18, 0.36)
+	for i in 16:
+		var a := TAU * float(i) / 16.0
+		hot_pts.append(origin + Vector2.from_angle(a) * hot_r)
+	_add_wash_fan(
+		origin,
+		hot_pts,
+		Color(1.0, 0.9, 0.5, mini(0.55, 0.28 + intensity * 0.12)),
+		-2
+	)
 
-	## Soft hot core without extra occlusion rays.
-	if intensity > 1.05:
-		var hot := _take_poly()
-		var hot_pts := PackedVector2Array()
-		var hot_r := radius * clampf(0.18 + (intensity - 1.0) * 0.1, 0.18, 0.38)
-		for i in 12:
-			var a := TAU * float(i) / 12.0
-			hot_pts.append(origin + Vector2.from_angle(a) * hot_r)
-		hot.color = Color(1.0, 0.92, 0.55, mini(0.5, 0.2 * (intensity - 0.5)))
-		hot.z_index = -2
-		hot.polygon = hot_pts
-		_root.add_child(hot)
-		_visuals.append(hot)
-
-	## Clear AoE edge — occluded silhouette so cover (houses/crates) is readable.
+	## AoE edge matches burn rays (gameplay occluders only).
 	var ring := _take_line()
-	ring.width = 2.4 + intensity * 0.6
-	ring.default_color = Color(core.r, core.g, core.b, mini(0.95, 0.7 + intensity * 0.1))
+	ring.width = 2.6 + intensity * 0.5
+	ring.default_color = Color(core.r, core.g, core.b, mini(0.95, 0.75 + intensity * 0.08))
 	ring.z_index = -1
 	ring.clear_points()
 	for p in pts:
@@ -401,10 +400,9 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		ring.add_point(pts[0])
 	_root.add_child(ring)
 	_visuals.append(ring)
-	## Outer glow stroke so the boundary pops on dark floors.
 	var glow := _take_line()
-	glow.width = 5.0 + intensity
-	glow.default_color = Color(core.r, core.g, core.b, 0.28)
+	glow.width = 5.5 + intensity
+	glow.default_color = Color(core.r, core.g, core.b, 0.3)
 	glow.z_index = -1
 	glow.clear_points()
 	for p in pts:
@@ -465,6 +463,26 @@ func _scale_ring(origin: Vector2, pts: PackedVector2Array, t: float) -> PackedVe
 	for i in pts.size():
 		out[i] = origin + (pts[i] - origin) * t
 	return out
+
+
+func _add_wash_fan(origin: Vector2, rim: PackedVector2Array, color: Color, z: int) -> void:
+	if rim.size() < 2:
+		return
+	var fan := _take_fan()
+	fan.z_index = z
+	fan.set_fan(origin, rim, color)
+	_root.add_child(fan)
+	_visuals.append(fan)
+
+
+func _take_fan() -> LightWashFan:
+	while not _pool_fan.is_empty():
+		var n: Node = _pool_fan.pop_back()
+		if is_instance_valid(n) and n is LightWashFan:
+			var f := n as LightWashFan
+			f.visible = true
+			return f
+	return LightWashFan.new()
 
 
 func _clip_shadow_extent(
@@ -591,7 +609,12 @@ func _recycle_visuals() -> void:
 		if parent:
 			parent.remove_child(v)
 		v.visible = false
-		if v is Polygon2D:
+		if v is LightWashFan:
+			if _pool_fan.size() < 48:
+				_pool_fan.append(v)
+			else:
+				v.queue_free()
+		elif v is Polygon2D:
 			(v as Polygon2D).polygon = PackedVector2Array()
 			if _pool_poly.size() < 120:
 				_pool_poly.append(v)
@@ -621,4 +644,8 @@ func _clear_visuals() -> void:
 		if is_instance_valid(v):
 			v.queue_free()
 	_pool_line.clear()
+	for v in _pool_fan:
+		if is_instance_valid(v):
+			v.queue_free()
+	_pool_fan.clear()
 	_occ_cache.clear()

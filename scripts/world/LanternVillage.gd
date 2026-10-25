@@ -16,15 +16,12 @@ func _ready() -> void:
 	GameState.map_max_x = MAP_W - 80.0
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
-	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_TOP)
+	## Fire sky only — no brick murals / city silhouettes (they also falsely cut lantern washes).
+	LevelCommon.add_backdrop(self, MAP_W, 780, FLOOR_TOP, ROOF_TOP, false)
 	LevelCommon.add_underfloor_fill(self, MAP_W, FLOOR_CENTER + FLOOR_H * 0.5)
 
 	LevelCommon.add_cobble_floor(self, MAP_W * 0.5, FLOOR_CENTER, MAP_W, FLOOR_H)
 	LevelCommon.add_border_walls(self, MAP_W, FLOOR_TOP, ROOF_TOP)
-
-	LevelCommon.add_brick_wall_face(self, 400, 280, 900, 360)
-	LevelCommon.add_brick_wall_face(self, 1500, 280, 900, 360)
-	LevelCommon.add_brick_wall_face(self, 2500, 280, 800, 360)
 
 	var wire_y := 90.0
 	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)

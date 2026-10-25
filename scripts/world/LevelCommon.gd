@@ -420,40 +420,46 @@ static func add_moving_platform(parent: Node2D, pos: Vector2, size: Vector2, cfg
 	return body
 
 
-static func add_backdrop(parent: Node2D, width: float, height: float, floor_top: float = 500.0, roof_top: float = 180.0) -> void:
-	## Playfield fill (below sky fire). Far silhouettes read as background, not solids.
-	var bg := Polygon2D.new()
-	bg.polygon = PackedVector2Array([
-		Vector2(0, roof_top), Vector2(width, roof_top), Vector2(width, height), Vector2(0, height)
-	])
-	bg.color = Color(0.06, 0.05, 0.07)
-	bg.z_index = -18
-	parent.add_child(bg)
-	# Distant building silhouettes (desaturated, soft) — clearly non-interactive BG.
-	var x := 40.0
-	while x < width:
-		var sil := Polygon2D.new()
-		sil.z_index = -17
-		var bw := randf_range(70, 140)
-		var bh := randf_range(80, 200)
-		sil.polygon = PackedVector2Array([
-			Vector2(x, floor_top - 8), Vector2(x + bw, floor_top - 8),
-			Vector2(x + bw, floor_top - 8 - bh), Vector2(x, floor_top - 8 - bh)
+static func add_backdrop(
+	parent: Node2D,
+	width: float,
+	height: float,
+	floor_top: float = 500.0,
+	roof_top: float = 180.0,
+	with_city: bool = true
+) -> void:
+	## Black-fire sky is the real backdrop. Optional city silhouettes for older rooms.
+	if with_city:
+		var bg := Polygon2D.new()
+		bg.polygon = PackedVector2Array([
+			Vector2(0, roof_top), Vector2(width, roof_top), Vector2(width, height), Vector2(0, height)
 		])
-		sil.color = Color(0.09, 0.08, 0.1, 0.55)
-		parent.add_child(sil)
-		# Fake distant windows
-		for wi in 3:
-			var win := Polygon2D.new()
-			win.z_index = -16
-			var wx := x + 12 + wi * 22
-			var wy := floor_top - 40 - wi * 28
-			win.polygon = PackedVector2Array([
-				Vector2(wx, wy), Vector2(wx + 8, wy), Vector2(wx + 8, wy - 10), Vector2(wx, wy - 10)
+		bg.color = Color(0.05, 0.04, 0.06)
+		bg.z_index = -18
+		parent.add_child(bg)
+		var x := 40.0
+		while x < width:
+			var sil := Polygon2D.new()
+			sil.z_index = -17
+			var bw := randf_range(70, 140)
+			var bh := randf_range(80, 200)
+			sil.polygon = PackedVector2Array([
+				Vector2(x, floor_top - 8), Vector2(x + bw, floor_top - 8),
+				Vector2(x + bw, floor_top - 8 - bh), Vector2(x, floor_top - 8 - bh)
 			])
-			win.color = Color(0.35, 0.28, 0.15, 0.15)
-			parent.add_child(win)
-		x += bw + randf_range(30, 80)
+			sil.color = Color(0.09, 0.08, 0.1, 0.55)
+			parent.add_child(sil)
+			for wi in 3:
+				var win := Polygon2D.new()
+				win.z_index = -16
+				var wx := x + 12 + wi * 22
+				var wy := floor_top - 40 - wi * 28
+				win.polygon = PackedVector2Array([
+					Vector2(wx, wy), Vector2(wx + 8, wy), Vector2(wx + 8, wy - 10), Vector2(wx, wy - 10)
+				])
+				win.color = Color(0.35, 0.28, 0.15, 0.15)
+				parent.add_child(win)
+			x += bw + randf_range(30, 80)
 	var sky := BlackFireSky.new()
 	sky.setup(width, floor_top, roof_top)
 	parent.add_child(sky)
