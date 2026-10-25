@@ -22,7 +22,7 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 - Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
 
 ### Active / claimed
-_(none)_
+- Editor number fields commit only on Enter. Clicking away restores the previous value so a new lantern does not inherit the last field text.
 
 ### Queue
 _(none)_
