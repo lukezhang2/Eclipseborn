@@ -167,13 +167,10 @@ static func apply_purchase(item_id: String) -> bool:
 		return false
 	match str(it.get("kind", "")):
 		"consumable":
+			## Supplies go into the bag (B inventory) — use them later.
 			match item_id:
-				"heal_tonic":
-					GameState.heal(40)
-					return true
-				"shade_vial":
-					GameState.shade = 1.0
-					GameState.shade_changed.emit(GameState.shade)
+				"heal_tonic", "shade_vial":
+					GameState.add_inventory_item(item_id, 1)
 					return true
 				_:
 					return false

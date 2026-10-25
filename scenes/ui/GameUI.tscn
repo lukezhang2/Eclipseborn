@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://game_ui"]
+[gd_scene load_steps=10 format=3 uid="uid://game_ui"]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/PauseMenu.gd" id="2"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/ui/HitboxDebug.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/ui/FastTravelMenu.gd" id="7"]
 [ext_resource type="Script" path="res://scripts/ui/ShopMenu.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/ui/InventoryMenu.gd" id="9"]
 
 [node name="GameUI" type="Node" groups=["game_ui"]]
 
@@ -18,6 +19,10 @@ script = ExtResource("7")
 [node name="ShopMenu" type="CanvasLayer" parent="." groups=["shop_menu"]]
 layer = 13
 script = ExtResource("8")
+
+[node name="InventoryMenu" type="CanvasLayer" parent="." groups=["inventory_menu"]]
+layer = 14
+script = ExtResource("9")
 
 [node name="HitboxDebug" type="Node" parent="."]
 script = ExtResource("6")

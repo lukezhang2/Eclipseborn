@@ -297,7 +297,11 @@ func _on_buy(item_id: String, remaining: int) -> void:
 	if remaining > 0:
 		GameState.set_shop_stock(_shop_key, item_id, remaining - 1)
 	AudioManager.play_currency()
-	status_label.text = "Bought %s." % str(it.get("name", item_id))
+	var bought_name := str(it.get("name", item_id))
+	if str(it.get("kind", "")) == "consumable":
+		status_label.text = "Bought %s — press B to use from Inventory." % bought_name
+	else:
+		status_label.text = "Bought %s." % bought_name
 	SaveManager.autosave()
 	_refresh_gears()
 	_refresh_list()
