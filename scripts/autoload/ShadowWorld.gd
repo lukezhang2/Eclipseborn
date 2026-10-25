@@ -16,6 +16,11 @@ const UMBRA_MAX_PER_LIGHT := 8
 const REBUILD_HZ := 12.0
 ## Skip lights / occluders far from the camera.
 const CULL_MARGIN := 420.0
+## Contact-hardening: hard umbra ends here; soft penumbra continues past.
+const UMBRA_CONTACT_T := 0.36
+## Soft wash shell scale (same rays, no extra casts) — cheap area-light penumbra.
+const WASH_PENUMBRA_SCALE := 1.09
+const WASH_CORE_SCALE := 0.55
 ## world(1) + boxes(8) + light-only(128)
 const OCCLUDER_MASK := 1 | 8 | 128
 
@@ -339,14 +344,36 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
 
+	## Soft outer shell ≈ area-light penumbra (reuse silhouette; no new rays).
+	var soft := _take_poly()
+	soft.color = Color(core.r, core.g, core.b, core.a * 0.38)
+	soft.z_index = -13
+	soft.polygon = _scale_ring(origin, pts, WASH_PENUMBRA_SCALE)
+	_root.add_child(soft)
+	_visuals.append(soft)
+
+	## Main occluded wash.
 	var fill := _take_poly()
-	fill.color = core
+	fill.color = Color(core.r, core.g, core.b, core.a * 0.72)
 	fill.z_index = -12
 	fill.polygon = pts
 	_root.add_child(fill)
 	_visuals.append(fill)
 
-	## Soft hot core without extra occlusion rays (cheap circle).
+	## Brighter near the lamp (cheap 1/r-ish falloff via a scaled inner ring).
+	var inner := _take_poly()
+	inner.color = Color(
+		mini(1.0, core.r + 0.08),
+		mini(1.0, core.g + 0.06),
+		mini(1.0, core.b + 0.04),
+		mini(0.7, core.a * 1.15)
+	)
+	inner.z_index = -12
+	inner.polygon = _scale_ring(origin, pts, WASH_CORE_SCALE)
+	_root.add_child(inner)
+	_visuals.append(inner)
+
+	## Soft hot core without extra occlusion rays.
 	if intensity > 1.05:
 		var hot := _take_poly()
 		var hot_pts := PackedVector2Array()
@@ -360,9 +387,10 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		_root.add_child(hot)
 		_visuals.append(hot)
 
+	## Thin soft rim — hard rings look fake on real lamps.
 	var ring := _take_line()
-	ring.width = 1.5 + intensity * 0.75
-	ring.default_color = Color(core.r, core.g, core.b, mini(0.9, core.a + 0.25 + intensity * 0.08))
+	ring.width = 1.1 + intensity * 0.45
+	ring.default_color = Color(core.r, core.g, core.b, mini(0.55, core.a * 0.9))
 	ring.z_index = -11
 	ring.clear_points()
 	for p in pts:
@@ -407,12 +435,22 @@ func _draw_umbrae_for_light(
 
 	var max_len: float = light.get_shadow_length() if light.has_method("get_shadow_length") else radius
 	max_len = mini(max_len, radius * 0.95)
-	var ink_a := 0.42
+	## Brighter lamps → slightly denser ink; still capped for readability.
+	var ink_a := 0.48
 	if light.has_method("get_intensity"):
-		ink_a = clampf(0.32 + float(light.get_intensity()) * 0.1, 0.32, 0.55)
+		ink_a = clampf(0.36 + float(light.get_intensity()) * 0.12, 0.36, 0.62)
 
 	for c in candidates:
 		_draw_umbra_wedge(c["e"], light_pos, max_len, ink_a, space, exclude)
+
+
+func _scale_ring(origin: Vector2, pts: PackedVector2Array, t: float) -> PackedVector2Array:
+	## Scale silhouette about the lamp. t<1 = closer/brighter; t>1 = soft penumbra shell.
+	var out := PackedVector2Array()
+	out.resize(pts.size())
+	for i in pts.size():
+		out[i] = origin + (pts[i] - origin) * t
+	return out
 
 
 func _clip_shadow_extent(
@@ -439,6 +477,17 @@ func _clip_shadow_extent(
 	return from + dir_n * maxf(d - 0.8, 0.0)
 
 
+func _add_ink_poly(pts: PackedVector2Array, alpha: float, z: int = -11) -> void:
+	if pts.size() < 3 or alpha < 0.02:
+		return
+	var ink := _take_poly()
+	ink.color = Color(0.03, 0.015, 0.06, clampf(alpha, 0.0, 0.75))
+	ink.z_index = z
+	ink.polygon = pts
+	_root.add_child(ink)
+	_visuals.append(ink)
+
+
 func _draw_umbra_wedge(
 	entry: Dictionary,
 	light_pos: Vector2,
@@ -447,9 +496,10 @@ func _draw_umbra_wedge(
 	space: PhysicsDirectSpaceState2D,
 	exclude: Array
 ) -> void:
+	## Real shadows: sharp + dark at contact, softer/fainter with distance (penumbra).
+	## Uses the same two physics clips per edge — no extra raycasts.
 	var poly: PackedVector2Array = entry["poly"]
 	var n := poly.size()
-	## Skip tiny decorative silhouettes (vents etc.) — wash occlusion is enough.
 	var aabb: Rect2 = entry["aabb"]
 	if aabb.get_area() < 280.0:
 		return
@@ -468,18 +518,35 @@ func _draw_umbra_wedge(
 		var db := (b - light_pos).normalized()
 		var far_a := _clip_shadow_extent(space, a, da, max_len, exclude)
 		var far_b := _clip_shadow_extent(space, b, db, max_len, exclude)
-		if far_a.distance_to(a) < 4.0 and far_b.distance_to(b) < 4.0:
+		var len_a := far_a.distance_to(a)
+		var len_b := far_b.distance_to(b)
+		if len_a < 4.0 and len_b < 4.0:
 			continue
 		if far_a.distance_to(light_pos) < mid.distance_to(light_pos) - 2.0:
 			continue
 		if far_b.distance_to(light_pos) < mid.distance_to(light_pos) - 2.0:
 			continue
-		var ink := _take_poly()
-		ink.color = Color(0.04, 0.02, 0.07, ink_a)
-		ink.z_index = -11
-		ink.polygon = PackedVector2Array([a, b, far_b, far_a])
-		_root.add_child(ink)
-		_visuals.append(ink)
+
+		## Farther from the lamp → thinner ink (inverse-ish falloff).
+		var dist_fade := clampf(1.15 - mid.distance_to(light_pos) / maxf(max_len, 1.0), 0.4, 1.0)
+		var base_a := ink_a * dist_fade
+
+		## Contact hardening: hard umbra near the occluder…
+		var ca := a.lerp(far_a, UMBRA_CONTACT_T)
+		var cb := b.lerp(far_b, UMBRA_CONTACT_T)
+		_add_ink_poly(PackedVector2Array([a, b, cb, ca]), base_a * 0.92, -11)
+
+		## …then a softer, slightly wider penumbra that grows with cast length.
+		var cast_len := (len_a + len_b) * 0.5
+		var spread := clampf(cast_len * 0.045, 2.0, 16.0)
+		var side := far_a - far_b
+		if side.length_squared() < 1.0:
+			side = edge_dir
+		else:
+			side = side.normalized()
+		var pa := far_a + side * spread
+		var pb := far_b - side * spread
+		_add_ink_poly(PackedVector2Array([ca, cb, pb, pa]), base_a * 0.28, -12)
 
 
 func _take_poly() -> Polygon2D:
@@ -512,13 +579,13 @@ func _recycle_visuals() -> void:
 		v.visible = false
 		if v is Polygon2D:
 			(v as Polygon2D).polygon = PackedVector2Array()
-			if _pool_poly.size() < 64:
+			if _pool_poly.size() < 120:
 				_pool_poly.append(v)
 			else:
 				v.queue_free()
 		elif v is Line2D:
 			(v as Line2D).clear_points()
-			if _pool_line.size() < 32:
+			if _pool_line.size() < 40:
 				_pool_line.append(v)
 			else:
 				v.queue_free()
