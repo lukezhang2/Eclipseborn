@@ -13,6 +13,7 @@ var _pieces: Array = []
 var _bounds: Rect2 = Rect2(0, 160, 800, 360)
 var _scale: float = 1.0
 var _origin: Vector2 = Vector2.ZERO
+var _plate_font: Font
 
 
 func set_zone_map(zone: String, p_player: Vector2, p_has_player: bool) -> void:
@@ -50,17 +51,10 @@ func _draw() -> void:
 	if wr.x < 8.0 or wr.y < 8.0:
 		return
 	_fit()
-	draw_rect(Rect2(Vector2.ZERO, wr), Color(0.05, 0.03, 0.07, 1.0), true)
+	var veil := Color(0.05, 0.03, 0.07, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, wr), veil, true)
 	if _pieces.is_empty():
-		draw_string(
-			ThemeDB.fallback_font,
-			Vector2(PAD, wr.y * 0.5),
-			"No map for this zone",
-			HORIZONTAL_ALIGNMENT_LEFT,
-			wr.x - PAD * 2.0,
-			18,
-			WorldArt.BRASS_HI
-		)
+		_draw_plaque("No map for this zone", Vector2(PAD, wr.y * 0.5 - 16.0), 18)
 		_draw_frame(wr)
 		return
 	var fitted := Rect2(_to_map(_bounds.position), _bounds.size * _scale)
@@ -71,6 +65,11 @@ func _draw() -> void:
 	for piece in _pieces:
 		if typeof(piece) == TYPE_DICTIONARY:
 			_draw_piece(piece)
+	## Cover everything the camera has not framed, so the zone shape stays hidden.
+	for span in GameState.map_hidden_spans(zone_id, _bounds):
+		draw_rect(_map_rect(span), veil, true)
+	_draw_seen_labels()
+	_draw_plaque(_zone_title(), Vector2(16, 14), 20)
 	_draw_frame(wr)
 	if has_player:
 		_draw_player_icon(_to_map(player_world))
@@ -186,17 +185,6 @@ func _draw_house(piece: Dictionary, rect: Rect2) -> void:
 	draw_rect(door, WorldArt.BRASS_LO, true)
 	var window := Rect2(walls.position + Vector2(walls.size.x * 0.12, walls.size.y * 0.18), Vector2(walls.size.x * 0.22, walls.size.y * 0.22))
 	draw_rect(window, WorldArt.LAMP, true)
-	var label := str(piece.get("name", "")).replace("House: ", "")
-	if label != "" and walls.size.x >= 36.0:
-		draw_string(
-			ThemeDB.fallback_font,
-			Vector2(walls.position.x, walls.position.y + 12.0),
-			label,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			walls.size.x,
-			11,
-			WorldArt.BRASS_HI
-		)
 
 
 func _draw_tower(rect: Rect2) -> void:
@@ -314,6 +302,56 @@ func _draw_ladder(rect: Rect2) -> void:
 	while y < rect.end.y:
 		draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), WorldArt.WOOD_HI, 1.5)
 		y += step
+
+
+func _zone_title() -> String:
+	var raw := zone_id.replace("_", " ")
+	if raw == "":
+		return "Unknown"
+	return raw.capitalize()
+
+
+func _font() -> Font:
+	if _plate_font == null:
+		_plate_font = UITheme.spaced_font(1, 0.2)
+	return _plate_font
+
+
+func _draw_seen_labels() -> void:
+	for piece in _pieces:
+		if typeof(piece) != TYPE_DICTIONARY:
+			continue
+		if str(piece.get("kind", "")) != "prop_house":
+			continue
+		var world := MapAtlas.world_rect(piece)
+		if not GameState.map_cell_seen(zone_id, world.get_center()):
+			continue
+		var rect := _map_rect(world)
+		var walls := Rect2(
+			rect.position + Vector2(rect.size.x * 0.06, rect.size.y * 0.28),
+			Vector2(rect.size.x * 0.88, rect.size.y * 0.72)
+		)
+		var label := str(piece.get("name", "")).replace("House: ", "")
+		if label == "" or walls.size.x < 36.0:
+			continue
+		_draw_plaque(label, Vector2.ZERO, 12, Vector2(walls.get_center().x, walls.position.y + 4.0))
+
+
+func _draw_plaque(text: String, at: Vector2, font_size: int, anchor: Vector2 = Vector2(INF, INF)) -> void:
+	var font := _font()
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var pad := Vector2(8, 3)
+	var box := Rect2(Vector2.ZERO, text_size + pad * 2.0)
+	if is_finite(anchor.x):
+		box.position = Vector2(anchor.x - box.size.x * 0.5, anchor.y)
+	else:
+		box.position = at
+	box.position.x = clampf(box.position.x, 8.0, maxf(8.0, size.x - box.size.x - 8.0))
+	box.position.y = clampf(box.position.y, 8.0, maxf(8.0, size.y - box.size.y - 8.0))
+	draw_rect(box, Color(UITheme.IRON, 0.94), true)
+	draw_rect(box, UITheme.BRASS, false, 1.5)
+	var baseline := box.position + Vector2(pad.x, pad.y + font.get_ascent(font_size))
+	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, UITheme.BRASS_LIGHT)
 
 
 func _draw_frame(wr: Vector2) -> void:

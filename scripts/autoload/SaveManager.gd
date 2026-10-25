@@ -208,6 +208,7 @@ func load_game(slot: int) -> bool:
 	GameState.has_reflect = cfg.get_value("abilities", "reflect", false)
 	GameState.has_snuff = cfg.get_value("abilities", "snuff", false)
 	GameState.discovered_rooms = cfg.get_value("map", "discovered", {})
+	GameState.map_seen = _load_map_seen(cfg.get_value("map", "seen_json", ""))
 	GameState.broken_ids = cfg.get_value("world", "broken", [])
 	GameState.collected_ids = cfg.get_value("world", "collected", [])
 	if typeof(GameState.collected_ids) != TYPE_ARRAY:
@@ -266,6 +267,39 @@ func _resolve_checkpoint_position(cfg: ConfigFile, hearths: Array, fallback: Vec
 	return fallback
 
 
+func _load_map_seen(raw: Variant) -> Dictionary:
+	if not (raw is String) or str(raw) == "":
+		return {}
+	var parsed: Variant = JSON.parse_string(str(raw))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {}
+	var out := {}
+	for zone in (parsed as Dictionary).keys():
+		var bag := {}
+		var keys: Variant = (parsed as Dictionary)[zone]
+		if typeof(keys) != TYPE_ARRAY:
+			continue
+		for key in keys:
+			bag[int(key)] = true
+		if not bag.is_empty():
+			out[str(zone)] = bag
+	return out
+
+
+func _save_map_seen() -> String:
+	var out := {}
+	for zone in GameState.map_seen.keys():
+		var cells: Variant = GameState.map_seen[zone]
+		if typeof(cells) != TYPE_DICTIONARY:
+			continue
+		var keys: Array = []
+		for key in (cells as Dictionary).keys():
+			keys.append(int(key))
+		if not keys.is_empty():
+			out[str(zone)] = keys
+	return JSON.stringify(out)
+
+
 func capture_player_position() -> void:
 	## Don't clobber an intentional transition spawn (hatch → next zone).
 	if GameState.pending_spawn != Vector2.ZERO:
@@ -319,6 +353,7 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("abilities", "reflect", GameState.has_reflect)
 	cfg.set_value("abilities", "snuff", GameState.has_snuff)
 	cfg.set_value("map", "discovered", GameState.discovered_rooms)
+	cfg.set_value("map", "seen_json", _save_map_seen())
 	var hearths := _normalize_checkpoints(GameState.activated_checkpoints)
 	GameState.activated_checkpoints = hearths
 	cfg.set_value("map", "checkpoints", hearths)

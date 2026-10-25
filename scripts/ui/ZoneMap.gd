@@ -3,7 +3,6 @@ extends CanvasLayer
 
 @onready var root: Control = $Root
 @onready var draw_area: Control = $Root/MapArea
-@onready var title: Label = $Root/Title
 
 
 func _ready() -> void:
@@ -18,6 +17,12 @@ func _ready() -> void:
 	var hint := root.get_node_or_null("Hint")
 	if hint is Label:
 		(hint as Label).text = "Tab to close"
+		var hint_label := hint as Label
+		hint_label.add_theme_font_override("font", UITheme.spaced_font(2, 0.35))
+		hint_label.add_theme_font_size_override("font_size", 18)
+		hint_label.add_theme_color_override("font_color", UITheme.BRASS_LIGHT)
+		hint_label.add_theme_color_override("font_outline_color", UITheme.COAL)
+		hint_label.add_theme_constant_override("outline_size", 4)
 
 
 func _process(_delta: float) -> void:
@@ -40,12 +45,13 @@ func toggle() -> void:
 
 func open() -> void:
 	root.visible = true
-	title.text = "Zone: %s" % GameState.current_zone_id.replace("_", " ").capitalize()
+	GameState.reveal_screen()
 	_refresh_map()
 
 
 func close() -> void:
 	root.visible = false
+	SaveManager.autosave()
 
 
 func _refresh_map() -> void:

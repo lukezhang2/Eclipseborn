@@ -48,6 +48,11 @@ var current_zone_id: String = "cursed_cottage"
 var current_room_id: String = "hall"
 ## zone_id -> Array of room_id strings discovered
 var discovered_rooms: Dictionary = {}
+## World cells the camera has actually framed, per zone. Terraria-style map reveal.
+const MAP_CELL := 32
+const _MAP_BIAS := 100000
+var map_seen: Dictionary = {}
+var map_seen_rev: int = 0
 ## Breakable ids already destroyed (persist across load).
 var broken_ids: Array = []
 ## One-time permanent pickups (shadow crystals, etc.) — never respawn.
@@ -88,6 +93,85 @@ func can_interact() -> bool:
 	return Time.get_ticks_msec() >= _interact_lock_until_msec
 
 
+func reveal_screen() -> void:
+	## Stamp the live camera frame into the zone map.
+	if player == null or not is_instance_valid(player):
+		return
+	if current_zone_id == "":
+		return
+	var cam := player.get_node_or_null("Camera2D") as Camera2D
+	var vp := player.get_viewport()
+	if vp == null:
+		return
+	var view_size := vp.get_visible_rect().size
+	var zoom := cam.zoom if cam != null else Vector2.ONE
+	if zoom.x <= 0.01 or zoom.y <= 0.01:
+		zoom = Vector2.ONE
+	var center := cam.get_screen_center_position() if cam != null else player.global_position
+	var world_size := Vector2(view_size.x / zoom.x, view_size.y / zoom.y)
+	reveal_rect(current_zone_id, Rect2(center - world_size * 0.5, world_size))
+
+
+func reveal_rect(zone_id: String, world_rect: Rect2) -> void:
+	if zone_id == "" or world_rect.size.x <= 1.0 or world_rect.size.y <= 1.0:
+		return
+	var cells: Dictionary = map_seen.get(zone_id, {})
+	var x0 := int(floor(world_rect.position.x / float(MAP_CELL)))
+	var y0 := int(floor(world_rect.position.y / float(MAP_CELL)))
+	var x1 := int(floor((world_rect.end.x - 0.001) / float(MAP_CELL)))
+	var y1 := int(floor((world_rect.end.y - 0.001) / float(MAP_CELL)))
+	var added := false
+	for iy in range(y0, y1 + 1):
+		for ix in range(x0, x1 + 1):
+			var key := map_pack(ix, iy)
+			if not cells.has(key):
+				cells[key] = true
+				added = true
+	if added:
+		map_seen[zone_id] = cells
+		map_seen_rev += 1
+
+
+func map_pack(ix: int, iy: int) -> int:
+	return (ix + _MAP_BIAS) * 1000000 + (iy + _MAP_BIAS)
+
+
+func map_cell_seen(zone_id: String, world: Vector2) -> bool:
+	var cells: Dictionary = map_seen.get(zone_id, {})
+	if cells.is_empty():
+		return false
+	var ix := int(floor(world.x / float(MAP_CELL)))
+	var iy := int(floor(world.y / float(MAP_CELL)))
+	return cells.has(map_pack(ix, iy))
+
+
+func map_hidden_spans(zone_id: String, bounds: Rect2) -> Array:
+	## Horizontal runs of world cells the camera has not framed, clipped to bounds.
+	var hidden: Array = []
+	if bounds.size.x < 1.0 or bounds.size.y < 1.0:
+		return hidden
+	var cells: Dictionary = map_seen.get(zone_id, {})
+	var cell := float(MAP_CELL)
+	var x0 := int(floor(bounds.position.x / cell))
+	var y0 := int(floor(bounds.position.y / cell))
+	var x1 := int(floor((bounds.end.x - 0.001) / cell))
+	var y1 := int(floor((bounds.end.y - 0.001) / cell))
+	for iy in range(y0, y1 + 1):
+		var ix := x0
+		while ix <= x1:
+			if cells.has(map_pack(ix, iy)):
+				ix += 1
+				continue
+			var start := ix
+			while ix <= x1 and not cells.has(map_pack(ix, iy)):
+				ix += 1
+			var span := Rect2(float(start) * cell, float(iy) * cell, float(ix - start) * cell, cell)
+			var hit := span.intersection(bounds)
+			if hit.size.x >= 0.5 and hit.size.y >= 0.5:
+				hidden.append(hit)
+	return hidden
+
+
 func _ready() -> void:
 	discovered_rooms = {
 		"cursed_cottage": [],
@@ -97,6 +181,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	reveal_screen()
 	if is_paused or intro_cutscene_playing:
 		return
 	# Natural regen: 1 HP / second while below max (paused while burning in light after shade empty).
@@ -139,6 +224,8 @@ func reset_run() -> void:
 		"lantern_village": [],
 		"clockwork_tower": [],
 	}
+	map_seen = {}
+	map_seen_rev = 0
 	needs_intro_cutscene = true
 	intro_cutscene_playing = false
 	health_changed.emit(health, max_health)
