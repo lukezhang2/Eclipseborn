@@ -56,16 +56,10 @@ func set_blocks_light(on: bool) -> void:
 	_apply_light_block(hx)
 
 
-func _apply_light_block(hx: float) -> void:
-	## Full facade + roof peak — geometry occluder drives burns AND wash cuts.
-	var poly := PackedVector2Array([
-		Vector2(-hx - 10, 4),
-		Vector2(hx + 10, 4),
-		Vector2(hx + 10, -height),
-		Vector2(0, -height - 40),
-		Vector2(-hx - 10, -height),
-	])
-	LightOnlyBlocker.attach(self, poly, blocks_light)
+func _apply_light_block(_hx: float) -> void:
+	## Silhouette of the drawn house (walls + roof) — geometry occluder drives burns AND wash cuts.
+	var style := art_style if art_style >= 0 else _pick_style()
+	LightOnlyBlocker.attach(self, WorldArt.house_silhouette(style, width, height), blocks_light)
 
 
 func _process(_delta: float) -> void:

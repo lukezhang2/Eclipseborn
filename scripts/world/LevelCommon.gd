@@ -326,10 +326,10 @@ static func add_valve(parent: Node2D, pos: Vector2) -> void:
 	]), true)
 
 static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2(36, 28)) -> void:
-	## Non-interactive scenery crate (same dark-oak X-brace look as pushable crates).
+	## Non-interactive scenery crate: dark-oak planks without the X brace pushable crates have.
 	var art := WorldArt.new()
 	art.kind = WorldArt.Kind.CRATE
-	art.style = 7
+	art.style = 9
 	art.size = size
 	art.position = pos
 	parent.add_child(art)
@@ -369,12 +369,11 @@ static func add_lamp_post(parent: Node2D, pos: Vector2) -> void:
 
 static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float = 70.0, radius: float = 150.0) -> void:
 	## Lantern suspended from the overhead pipe/wire at wire_pos.
-	var chain := Line2D.new()
-	chain.width = 2.0
-	chain.default_color = Color(0.35, 0.32, 0.28)
-	chain.add_point(wire_pos)
-	# Ends at the top ring of the caged lantern the LightSource draws.
-	chain.add_point(wire_pos + Vector2(0, drop - 20))
+	# Link chain from the top ring of the caged lantern up to the wire.
+	var chain := WorldArt.new()
+	chain.kind = WorldArt.Kind.CHAIN
+	chain.size = Vector2(0, drop - 20)
+	chain.position = wire_pos + Vector2(0, drop - 20)
 	chain.z_index = -1
 	parent.add_child(chain)
 	var hook := Polygon2D.new()

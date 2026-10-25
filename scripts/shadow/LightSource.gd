@@ -203,7 +203,15 @@ func _hang_chain() -> void:
 	var top := Vector2(0, -24)
 	var d := WorldArt.ceiling_distance(self, top)
 	if d <= 0.0:
-		return
+		## Rooms without a solid ceiling (Lantern Village) publish the overhead pipe's height.
+		var room: Node = get_parent()
+		while room != null and not room.has_meta("ceiling_y"):
+			room = room.get_parent()
+		if room == null:
+			return
+		d = global_position.y + top.y - float(room.get_meta("ceiling_y"))
+		if d <= 0.0:
+			return
 	var chain := WorldArt.new()
 	chain.kind = WorldArt.Kind.CHAIN
 	chain.size = Vector2(0, d)

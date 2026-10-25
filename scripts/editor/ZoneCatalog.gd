@@ -66,12 +66,12 @@ static func _cottage() -> Array:
 
 static func _village() -> Array:
 	var FLOOR_TOP := PieceSpecs.floor_top_for_zone("lantern_village")
-	var MAP_23 := 3200.0
+	var MAP_W := 3200.0
 	var out: Array = []
-	out.append(_p("floor_main", "floor", "Cobble Floor", MAP_23 * 0.5, 520, MAP_23, 40))
+	out.append(_p("floor_main", "floor", "Cobble Floor", MAP_W * 0.5, 520, MAP_W, 40))
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
-	out.append(_p("border_right", "wall", "Border Right", MAP_23 - 24, 330, 48, 360))
-	out.append(_p("pipe_wire", "prop_pipe", "Overhead Wire", MAP_23 * 0.5, 90, MAP_23 - 120, 12))
+	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
+	out.append(_p("pipe_wire", "prop_pipe", "Overhead Wire", MAP_W * 0.5, 90, MAP_W - 120, 12))
 	out.append(_plight("lantern_1", "Hanging Lantern 1", 280, 160, 120))
 	out.append(_plight("lantern_2", "Hanging Lantern 2", 720, 160, 120))
 	out.append(_plight("lantern_3", "Hanging Lantern 3", 1600, 160, 120))
@@ -106,7 +106,7 @@ static func _village() -> Array:
 	out.append(_p("bg_gear_2", "prop_bg_gear", "BG Gear 2", 2200, 260, 140, 140))
 	out.append(_p("enemy_1", "prop_enemy", "Wander Enemy 1", 1500, FLOOR_TOP - 20, 28, 36))
 	out.append(_p("enemy_2", "prop_enemy", "Wander Enemy 2", 2050, FLOOR_TOP - 20, 28, 36))
-	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_23 - 200, FLOOR_TOP, 160, 280))
+	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_W - 200, FLOOR_TOP, 160, 280))
 	out.append(_p("shade_heart", "prop_pickup", "Shade Heart", 2407.53247070312, 256, 28, 28))
 	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate) — the … hearth", 200, FLOOR_TOP, 56, 24))
 	return out
@@ -115,19 +115,19 @@ static func _village() -> Array:
 static func _house_interior(house_id: String) -> Array:
 	var profile := HouseProfiles.get_profile(house_id)
 	var FLOOR_TOP := 500.0
-	var MAP_23 := 720.0
+	var MAP_W := 720.0
 	var out: Array = []
-	out.append(_p("floor_main", "floor", "Shop Floor", MAP_23 * 0.5, FLOOR_TOP + 20.0, MAP_23, 40))
-	out.append(_p("roof_main", "wall", "Shop Roof", MAP_23 * 0.5, 180.0, MAP_23, 36))
+	out.append(_p("floor_main", "floor", "Shop Floor", MAP_W * 0.5, FLOOR_TOP + 20.0, MAP_W, 40))
+	out.append(_p("roof_main", "wall", "Shop Roof", MAP_W * 0.5, 180.0, MAP_W, 36))
 	out.append(_p("border_left", "wall", "Border Left", 24, 330, 48, 360))
-	out.append(_p("border_right", "wall", "Border Right", MAP_23 - 24, 330, 48, 360))
-	out.append(_p("desk", "prop_desk", "Shop Desk", MAP_23 * 0.5, FLOOR_TOP - 8, 200, 28))
+	out.append(_p("border_right", "wall", "Border Right", MAP_W - 24, 330, 48, 360))
+	out.append(_p("desk", "prop_desk", "Shop Desk", MAP_W * 0.5, FLOOR_TOP - 8, 200, 28))
 	out.append(_p("exit_door", "prop_exit", "Exit Door", 80, FLOOR_TOP, 40, 50))
-	out.append(_plight("lamp_moon", "Moon Lamp", MAP_23 - 100, 260, 140))
+	out.append(_plight("lamp_moon", "Moon Lamp", MAP_W - 100, 260, 140))
 	out.append(_pnpc(
 		str(profile.get("npc_id", "npc_shop")),
 		str(profile.get("keeper_name", "Keeper")),
-		MAP_23 * 0.5,
+		MAP_W * 0.5,
 		float(profile.get("npc_25", FLOOR_TOP - 40)),
 		profile.get("lines", []),
 		profile.get("shop_items", ShopCatalog.default_shop_stock())

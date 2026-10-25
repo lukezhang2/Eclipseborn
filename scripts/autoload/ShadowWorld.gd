@@ -326,14 +326,15 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		exclude = light.get_exclude_rids()
 
 	var angles := _collect_ray_angles(origin, radius, view)
+	## Ray end points only. With the origin as the first vertex, the polygon's closing edge ran
+	## back to the origin and left the wedge between the last and first ray (angle 0) unlit.
 	var pts := PackedVector2Array()
-	pts.append(origin)
 	for i in angles.size():
 		var dir := Vector2.from_angle(angles[i])
 		pts.append(_cast_ray(space, origin, dir, radius, exclude))
 
-	if pts.size() < 4:
-		pts = PackedVector2Array([origin])
+	if pts.size() < 3:
+		pts = PackedVector2Array()
 		for i in 24:
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
@@ -364,10 +365,10 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 	ring.default_color = Color(core.r, core.g, core.b, mini(0.9, core.a + 0.25 + intensity * 0.08))
 	ring.z_index = -11
 	ring.clear_points()
-	for i in range(1, pts.size()):
-		ring.add_point(pts[i])
-	if pts.size() > 1:
-		ring.add_point(pts[1])
+	for p in pts:
+		ring.add_point(p)
+	if pts.size() > 0:
+		ring.add_point(pts[0])
 	_root.add_child(ring)
 	_visuals.append(ring)
 

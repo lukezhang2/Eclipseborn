@@ -19,16 +19,14 @@ static func attach(parent: Node2D, local_poly: PackedVector2Array, enabled: bool
 	body.set_meta("light_only_blocker", true)
 	body.collision_layer = PieceSpecs.LIGHT_BLOCK_PHYSICS_LAYER
 	body.collision_mask = 0
-	## Rectangle hull is more reliable for ray hits than a concave roof poly.
-	var aabb := Rect2(local_poly[0], Vector2.ZERO)
-	for p in local_poly:
-		aabb = aabb.expand(p)
-	var cs := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = aabb.size
-	cs.shape = rect
-	cs.position = aabb.position + aabb.size * 0.5
-	body.add_child(cs)
+	## Exact outline, split into convex pieces: as reliable for ray hits as a rectangle, but it
+	## never blocks open space (a bounding box or hull blocks the empty corners beside a roof).
+	for piece in Geometry2D.decompose_polygon_in_convex(local_poly):
+		var cs := CollisionShape2D.new()
+		var shape := ConvexPolygonShape2D.new()
+		shape.points = piece
+		cs.shape = shape
+		body.add_child(cs)
 	parent.add_child(body)
 
 	## Full silhouette for geometry occlusion (includes roof peak).

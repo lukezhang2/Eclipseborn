@@ -53,6 +53,32 @@ static func ceiling_distance(n: Node2D, start: Vector2, max_dist: float = 500.0)
 	return _ray_distance(n, Vector2(0, -max_dist), start)
 
 
+## Light-blocking outline of a drawn house (bottom-center origin): the walls plus the roof
+## above them. Eaves and the C1 jetty are left out on purpose, so light reaches all the way to
+## the walls instead of leaving a shadow strip under each overhang (the overhang art covers the
+## wash there anyway). Always convex. Matches _house / _house_timber.
+static func house_silhouette(house_style: int, w: float, h: float) -> PackedVector2Array:
+	# Tucked 1.5px inside the walls: wash rays stop just short of what they hit, so without the
+	# inset a hairline of shadow shows between the light and the wall.
+	var hx := w * 0.5 - 1.5
+	match house_style:
+		6:
+			# Jettied two-storey: roof triangle (±(hx+16) at -1.15h, apex -1.6h) clipped to the walls.
+			var eave := -h * 1.15 - h * 0.45 * (16.0 / (hx + 16.0))
+			return PackedVector2Array([Vector2(-hx, 4), Vector2(hx, 4), Vector2(hx, eave),
+				Vector2(0, -h * 1.6), Vector2(-hx, eave)])
+		9:
+			# Clockmaker: roof triangle (±(hx+12) at -h, apex -h-46) clipped to the walls.
+			var eave := -h - 46.0 * (12.0 / (hx + 12.0))
+			return PackedVector2Array([Vector2(-hx, 4), Vector2(hx, 4), Vector2(hx, eave),
+				Vector2(0, -h - 46.0), Vector2(-hx, eave)])
+		_:
+			# Timber workshop (C) and fallback: roof trapezoid (±(hx+12) at -h, ±0.6hx at -h-34).
+			var eave := -h - 34.0 * (12.0 / (hx * 0.4 + 12.0))
+			return PackedVector2Array([Vector2(-hx, 4), Vector2(hx, 4), Vector2(hx, eave),
+				Vector2(hx * 0.6, -h - 34.0), Vector2(-hx * 0.6, -h - 34.0), Vector2(-hx, eave)])
+
+
 static func _ray_distance(n: Node2D, dir: Vector2, start: Vector2 = Vector2.ZERO) -> float:
 	var from := n.global_position + start
 	var q := PhysicsRayQueryParameters2D.create(from, from + dir, 1)
@@ -77,7 +103,8 @@ func _draw() -> void:
 			if more: _platform_more()
 			else: _platform()
 		Kind.CRATE:
-			if style >= 6: _crate_wood_x()
+			if style == 9: _crate_pine_planks()
+			elif style >= 6: _crate_wood_x()
 			elif more: _crate_more()
 			else: _crate()
 		Kind.HOUSE:
@@ -787,6 +814,23 @@ func _crate_wood_x() -> void:
 			_outline(r, Color("2f271e"), 2.0)
 
 
+## Scenery crate: dark-oak boards in a frame, no X brace (pushable crates have the X).
+## Reads fine at any width/height.
+func _crate_pine_planks() -> void:
+	var r := Rect2(-size.x * 0.5, -size.y * 0.5, size.x, size.y)
+	var oak := Color("3a2716")
+	var oak_lo := Color("2a1c10")
+	_rect(r, oak)
+	var y := r.position.y + 7.0
+	while y < r.end.y - 4.0:
+		draw_line(Vector2(r.position.x + 3, y), Vector2(r.end.x - 3, y), oak_lo, 1.0)
+		y += 7.0
+	_plank_frame(r, Color("5e4129"), 3.0)
+	for c in _corners(r, 2.5):
+		draw_circle(c, 1.1, IRON_HI)
+	_outline(r, COAL, 1.5)
+
+
 ## More houses in the timber-workshop family (house C).
 func _house_timber() -> void:
 	var w := size.x
@@ -1480,8 +1524,11 @@ func _vent() -> void:
 ## Pot B reworked: a plain clay jar (no crack). The glow sits in its open mouth.
 func _pot_clay_jar() -> void:
 	# Simple flat jar: one clay colour, dark outline, rolled lip, glow in the mouth.
-	var w := size.x
-	var h := size.y
+	# Keep 28:36 proportions so wide/short editor boxes don't squash it; sit it on the box bottom.
+	var fit := minf(size.x / 28.0, size.y / 36.0)
+	var w := 28.0 * fit
+	var h := 36.0 * fit
+	draw_set_transform(Vector2(0, size.y * 0.5 - h * 0.5))
 	var pulse := 0.75 + 0.25 * sin(_t * 2.4)
 	var clay := Color("9a6646")
 	var line := Color("4a2c1c")
@@ -1511,6 +1558,7 @@ func _pot_clay_jar() -> void:
 	draw_rect(lip, Color("b27a55"), true)
 	draw_rect(Rect2(-w * 0.2, -h * 0.52, w * 0.4, h * 0.05), Color(0.75, 0.9, 1.0, 0.85 * pulse), true)
 	draw_line(Vector2(-w * 0.46, h * 0.08), Vector2(w * 0.46, h * 0.08), line, 2.0)
+	draw_set_transform(Vector2.ZERO)
 
 
 ## Hatch, side view: a low brass cellar hatch sitting on the floor (origin = floor contact,
