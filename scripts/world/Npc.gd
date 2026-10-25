@@ -83,9 +83,8 @@ func _is_shop_open() -> bool:
 func _open_shop() -> void:
 	_cooldown = 0.35
 	_bubble.visible = false
+	## Empty shop_items = nothing for sale (do not fill catalog defaults).
 	var items := shop_items
-	if items.is_empty():
-		items = ShopCatalog.default_shop_stock()
 	var ui := get_tree().get_first_node_in_group("shop_menu")
 	if ui and ui.has_method("open_shop"):
 		ui.open_shop(npc_name, shop_key, items)

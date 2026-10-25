@@ -220,7 +220,7 @@ static func add_bg_gear(parent: Node2D, pos: Vector2, radius: float = 50.0, spee
 	return g
 
 
-static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float, height: float) -> void:
+static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float, height: float) -> Node2D:
 	## Distant mural — darker, flatter, no collision. Reads as BG not solid geometry.
 	var face := Node2D.new()
 	face.position = Vector2(x, y)
@@ -266,6 +266,7 @@ static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float
 	occ.ignore_rotation = true
 	face.add_child(occ)
 	parent.add_child(face)
+	return face
 
 
 static func add_window(parent: Node2D, x: float, y: float, w: float = 48.0, h: float = 64.0, moonlit: bool = false) -> void:
@@ -328,7 +329,7 @@ static func add_valve(parent: Node2D, pos: Vector2) -> void:
 		Vector2(-14, -14), Vector2(14, -14), Vector2(14, 14), Vector2(-14, 14)
 	]), true)
 
-static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2(36, 28)) -> void:
+static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2(36, 28)) -> Node2D:
 	## Non-interactive scenery crate: dark-oak planks without the X brace pushable crates have.
 	var art := WorldArt.new()
 	art.kind = WorldArt.Kind.CRATE
@@ -341,6 +342,32 @@ static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2
 	LightOnlyBlocker.attach(art, PackedVector2Array([
 		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
 	]), true)
+	return art
+
+
+static func add_world_label(
+	parent: Node2D,
+	pos: Vector2,
+	text: String,
+	font_size: int = 14,
+	color: Color = Color("c4b07a"),
+	size: Vector2 = Vector2(160, 28)
+) -> Label:
+	## Editor prop_text / zone plaque labels.
+	var lbl := Label.new()
+	lbl.text = text if text != "" else "Text"
+	lbl.position = pos - size * 0.5
+	lbl.size = size
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", clampi(font_size, 8, 72))
+	lbl.add_theme_color_override("font_color", color)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	lbl.add_theme_constant_override("outline_size", 3)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = PieceSpecs.default_draw_layer("prop_text")
+	parent.add_child(lbl)
+	return lbl
 
 static func add_bench(parent: Node2D, pos: Vector2) -> void:
 	## Riveted steel bench in mid-dark grey.

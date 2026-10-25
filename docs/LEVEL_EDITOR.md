@@ -24,7 +24,13 @@ New and duplicated pieces use numeric suffixes (`window_1`, `lantern_12`), not l
 
 ### NPC / shopkeeper
 
-Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/−1 or a count) when Shopkeeper is on; otherwise a dialogue box. Stored as `"is_shopkeeper": true` and `"shop_items": [{"id","stock"},…]`. House interiors read `npc_shop` via `LevelData.merged_piece`.
+Select a `prop_npc` piece → **Shop inventory** (all catalog items, stock Inf/−1 or a count, plus per-keeper **price**) when Shopkeeper is on; otherwise a dialogue box. New shopkeepers start with **all sales off** (`"shop_items": []`). Stored as `"is_shopkeeper": true` and `"shop_items": [{"id","stock","price"},…]`. House interiors read `npc_shop` via `LevelData.merged_piece`.
+
+### Tint color & text
+
+- Floors, walls, platforms, crates, pipes, backgrounds, and **Text label** (`prop_text`) show a **Tint color** picker (wheel + `#hex`).
+- Add **Text label** from Decor; edit text/font size in the inspector. Zone plaques (e.g. tower workshop/gallery) appear as `prop_text` pieces in the editor.
+- **Right-click** (or middle-mouse) drag pans the viewport.
 
 ### Levers, doors, and links
 

@@ -128,9 +128,8 @@ func open_shop(keeper_name: String, shop_key: String, shop_items: Array) -> void
 		return
 	_keeper_name = keeper_name if keeper_name != "" else "Shop"
 	_shop_key = shop_key if shop_key != "" else "shop"
+	## Empty list = nothing for sale (editor shopkeepers default to all off).
 	_entries = ShopCatalog.normalize_shop_items(shop_items)
-	if _entries.is_empty():
-		_entries = ShopCatalog.default_shop_stock()
 	title_label.text = _keeper_name
 	UITheme.style_title(title_label, 32)
 	status_label.text = " "
@@ -192,11 +191,13 @@ func _refresh_list() -> void:
 		var id := str(entry.get("id", ""))
 		var base_stock := int(entry.get("stock", -1))
 		var remaining := GameState.get_shop_stock(_shop_key, id, base_stock)
-		list_box.add_child(_make_row(id, remaining))
+		list_box.add_child(_make_row(entry, remaining))
 
 
-func _make_row(item_id: String, remaining: int) -> Control:
+func _make_row(entry: Dictionary, remaining: int) -> Control:
+	var item_id := str(entry.get("id", ""))
 	var it := ShopCatalog.get_item(item_id)
+	var price := ShopCatalog.entry_price(entry)
 	var row := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(UITheme.IRON, 0.92)
@@ -234,7 +235,7 @@ func _make_row(item_id: String, remaining: int) -> Control:
 	h.add_child(meta)
 
 	var price_l := Label.new()
-	price_l.text = "%d gears" % int(it.get("price", 0))
+	price_l.text = "%d gears" % price
 	price_l.add_theme_font_size_override("font_size", 14)
 	price_l.add_theme_color_override("font_color", UITheme.LAMP)
 	price_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -257,7 +258,6 @@ func _make_row(item_id: String, remaining: int) -> Control:
 
 	var owned := ShopCatalog.owns_ability(item_id)
 	var sold_out := remaining == 0
-	var price := int(it.get("price", 0))
 	var can_afford := GameState.currency >= price
 	if owned:
 		buy.text = "Owned"
@@ -268,11 +268,11 @@ func _make_row(item_id: String, remaining: int) -> Control:
 	elif not can_afford:
 		buy.disabled = true
 	else:
-		buy.pressed.connect(_on_buy.bind(item_id, remaining))
+		buy.pressed.connect(_on_buy.bind(item_id, remaining, price))
 	return row
 
 
-func _on_buy(item_id: String, remaining: int) -> void:
+func _on_buy(item_id: String, remaining: int, price: int = -1) -> void:
 	if _busy:
 		return
 	var it := ShopCatalog.get_item(item_id)
@@ -284,7 +284,12 @@ func _on_buy(item_id: String, remaining: int) -> void:
 	if remaining == 0:
 		status_label.text = "Sold out."
 		return
-	var price := int(it.get("price", 0))
+	if price < 0:
+		price = ShopCatalog.price(item_id)
+		for entry in _entries:
+			if str(entry.get("id", "")) == item_id:
+				price = ShopCatalog.entry_price(entry)
+				break
 	if not GameState.spend_currency(price):
 		status_label.text = "Not enough silver gears."
 		_refresh_gears()

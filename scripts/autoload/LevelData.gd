@@ -160,17 +160,38 @@ static func apply(parent: Node2D, zone_id: String) -> void:
 	prune_removed(parent, zone_id)
 
 
+static func _piece_tint(p: Dictionary) -> Color:
+	if p.has("color"):
+		return Color.html(str(p.get("color", "#ffffff")))
+	return Color.WHITE
+
+
+static func _apply_tint(node: Node, tint: Color) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if tint == Color.WHITE:
+		return
+	if node is CanvasItem:
+		var ci := node as CanvasItem
+		## Preserve existing alpha (backgrounds use translucent modulate).
+		ci.modulate = Color(tint.r, tint.g, tint.b, ci.modulate.a)
+
+
 static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 	var kind: String = str(p.get("kind", "block"))
 	var pos := Vector2(float(p.get("x", 0)), float(p.get("y", 0)))
 	var size := Vector2(float(p.get("w", 48)), float(p.get("h", 48)))
+	var tint := _piece_tint(p)
 	match kind:
 		"background":
-			LevelCommon.add_brick_wall_face(parent, pos.x, pos.y, size.x, size.y)
+			var bg := LevelCommon.add_brick_wall_face(parent, pos.x, pos.y, size.x, size.y)
+			_apply_tint(bg, tint)
 		"block", "floor":
-			LevelCommon.add_steel_floor(parent, pos.x, pos.y, size.x, maxf(size.y, 16.0))
+			var fl := LevelCommon.add_steel_floor(parent, pos.x, pos.y, size.x, maxf(size.y, 16.0))
+			_apply_tint(fl, tint)
 		"wall":
-			LevelCommon.add_wall(parent, pos.x, pos.y, size.x, size.y)
+			var wl := LevelCommon.add_wall(parent, pos.x, pos.y, size.x, size.y)
+			_apply_tint(wl, tint)
 		"crate":
 			var box := PushableBox.new()
 			## Set size before enter tree so _ready/_build uses the editor size.
@@ -179,6 +200,7 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			box.box_size = size
 			box.position = pos
 			parent.add_child(box)
+			_apply_tint(box, tint)
 			LevelData.tag(box, str(p.get("id", "")))
 		"light":
 			var lamp := LightSource.new()
@@ -222,9 +244,11 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 				"gear_radius": float(p.get("gear_radius", 55.0)),
 			}
 			var plat := LevelCommon.add_moving_platform(parent, pos, size, cfg)
+			_apply_tint(plat, tint)
 			LevelData.tag(plat, str(p.get("id", "")))
 		"prop_crate":
-			LevelCommon.add_crate_prop(parent, pos, size)
+			var crate_n := LevelCommon.add_crate_prop(parent, pos, size)
+			_apply_tint(crate_n, tint)
 		"prop_checkpoint":
 			var cp := Checkpoint.new()
 			cp.position = pos
@@ -257,13 +281,25 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			npc.npc_name = str(p.get("name", "Villager"))
 			npc.lines = HouseProfiles.lines_to_packed(p.get("lines", ["…"]))
 			npc.is_shopkeeper = bool(p.get("is_shopkeeper", true))
+			## Empty shop_items = nothing for sale.
 			npc.shop_items = ShopCatalog.normalize_shop_items(p.get("shop_items", []))
-			if npc.is_shopkeeper and npc.shop_items.is_empty():
-				npc.shop_items = ShopCatalog.default_shop_stock()
 			var nid := str(p.get("id", ""))
 			npc.shop_key = "%s/%s" % [GameState.current_zone_id, nid if nid != "" else npc.npc_name]
 			parent.add_child(npc)
 			LevelData.tag(npc, nid)
+		"prop_text":
+			var col := Color("c4b07a")
+			if p.has("color"):
+				col = Color.html(str(p.get("color", "#c4b07a")))
+			var lbl := LevelCommon.add_world_label(
+				parent,
+				pos,
+				str(p.get("text", p.get("name", "Text"))),
+				clampi(int(p.get("font_size", 14)), 8, 72),
+				col,
+				size
+			)
+			LevelData.tag(lbl, str(p.get("id", "")))
 		"prop_pickup":
 			var pid := str(p.get("id", "shadow_crystal"))
 			if GameState.is_collected(pid):

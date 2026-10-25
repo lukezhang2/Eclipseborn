@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.57 — Editor: shopkeeper sales default off + per-shop prices; piece color hex/wheel; RMB pan; prop_text + show text pieces; `index-0_1_57.pck`
 - v0.1.55 — player map: zone nameplate, plaque labels, reveal only the framed screen; `index-0_1_55.pck`
 - v0.1.54 — Backpack no-pause; Equipment + Consumables tabs; player preview + 3 accessory slots; `index-0_1_54.pck`
 - v0.1.52 — lantern wash: fix TAU-wrap rim scramble + keep corner grazes (no jagged shards); `index-0_1_52.pck`

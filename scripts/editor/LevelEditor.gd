@@ -54,6 +54,14 @@ var _plat_vertical: CheckButton
 var _plat_rotate: CheckButton
 var _plat_rotate_body: CheckButton
 var _syncing_platform: bool = false
+var _color_row: VBoxContainer
+var _color_picker: ColorPickerButton
+var _color_hex: LineEdit
+var _syncing_color: bool = false
+var _text_row: VBoxContainer
+var _text_edit: TextEdit
+var _font_size_spin: SpinBox
+var _syncing_text: bool = false
 var _blocks_light_btn: CheckButton
 var _layer_label: Label
 var _status: Label
@@ -285,7 +293,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_bg_g = _bg_color_spin(color_row, "G", func(v: float) -> void: _set_void_channel(1, v))
 	_bg_b = _bg_color_spin(color_row, "B", func(v: float) -> void: _set_void_channel(2, v))
 	var tip := Label.new()
-	tip.text = "Anim sits at roof + offset. Lower offset = higher on screen. Middle-mouse pan to the top."
+	tip.text = "Anim sits at roof + offset. Lower offset = higher on screen. Middle/right-mouse pan to the top."
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tip.add_theme_font_size_override("font_size", 11)
 	tip.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
@@ -396,18 +404,67 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_shopkeeper_check.toggled.connect(_on_shopkeeper_toggled)
 	_shop_row.add_child(_shopkeeper_check)
 	var shop_hint := Label.new()
-	shop_hint.text = "Tick items to sell. Stock −1 / Inf = unlimited."
+	shop_hint.text = "New shopkeepers sell nothing until you tick items. Set stock + price per keeper."
 	shop_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	shop_hint.add_theme_font_size_override("font_size", 11)
 	shop_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
 	_shop_row.add_child(shop_hint)
 	var shop_scroll := ScrollContainer.new()
-	shop_scroll.custom_minimum_size = Vector2(280, 220)
+	shop_scroll.custom_minimum_size = Vector2(280, 260)
 	_shop_row.add_child(shop_scroll)
 	_shop_list = VBoxContainer.new()
 	_shop_list.add_theme_constant_override("separation", 6)
 	_shop_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	shop_scroll.add_child(_shop_list)
+
+	_color_row = VBoxContainer.new()
+	_color_row.visible = false
+	_color_row.add_theme_constant_override("separation", 4)
+	_pieces_block.add_child(_color_row)
+	_color_row.add_child(_section("Tint color"))
+	var color_hint := Label.new()
+	color_hint.text = "Color wheel or #hex for floors, walls, platforms, text…"
+	color_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	color_hint.add_theme_font_size_override("font_size", 11)
+	color_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
+	_color_row.add_child(color_hint)
+	var color_bar := HBoxContainer.new()
+	color_bar.add_theme_constant_override("separation", 8)
+	_color_row.add_child(color_bar)
+	_color_picker = ColorPickerButton.new()
+	_color_picker.custom_minimum_size = Vector2(48, 28)
+	_color_picker.edit_alpha = false
+	_color_picker.color_changed.connect(_on_tint_color_changed)
+	color_bar.add_child(_color_picker)
+	_color_hex = LineEdit.new()
+	_color_hex.placeholder_text = "#RRGGBB"
+	_color_hex.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_color_hex.text_submitted.connect(_on_tint_hex_submitted)
+	_color_hex.focus_exited.connect(func() -> void:
+		_on_tint_hex_submitted(_color_hex.text)
+	)
+	color_bar.add_child(_color_hex)
+
+	_text_row = VBoxContainer.new()
+	_text_row.visible = false
+	_text_row.add_theme_constant_override("separation", 4)
+	_pieces_block.add_child(_text_row)
+	_text_row.add_child(_section("World text"))
+	_text_edit = TextEdit.new()
+	_text_edit.custom_minimum_size = Vector2(280, 64)
+	_text_edit.placeholder_text = "Label text"
+	_text_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_text_edit.text_changed.connect(_on_label_text_changed)
+	_text_row.add_child(_text_edit)
+	_font_size_spin = _spin_row(_text_row, "Font size", 8, 72, 1, 14)
+	_font_size_spin.value_changed.connect(func(v: float) -> void:
+		if _syncing_text or _history_restoring or _selected == null:
+			return
+		_push_undo_inspector()
+		_selected.font_size = int(v)
+		_selected._rebuild()
+		_selected.set_selected(true)
+	)
 
 	_link_row = VBoxContainer.new()
 	_link_row.visible = false
@@ -563,7 +620,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		tools.add_child(b)
 	_tool_label = Label.new()
 	_tool_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tool_label.text = "Tool: Select — click world or list · Move shows X/Y arrows"
+	_tool_label.text = "Tool: Select — click world or list · RMB/MMB drag to pan · Move shows X/Y arrows"
 	col.add_child(_tool_label)
 
 	var hist := HBoxContainer.new()
@@ -797,7 +854,7 @@ const ADD_CATEGORIES := [
 	["Build", [["floor", "Steel floor"], ["prop_platform", "Moving platform"], ["wall", "Wall"], ["prop_door", "Door (switchable)"], ["prop_ladder", "Ladder"]]],
 	["Lights", [["light", "Lantern"], ["prop_switch", "Lever"]]],
 	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"]]],
-	["Decor", [["prop_window", "Window"], ["prop_bg_gear", "Background gear"]]],
+	["Decor", [["prop_window", "Window"], ["prop_bg_gear", "Background gear"], ["prop_text", "Text label"]]],
 	["People", [["prop_checkpoint", "Checkpoint"], ["prop_npc", "NPC / Shopkeeper"], ["prop_pickup", "Shadow crystal"]]],
 ]
 
@@ -932,6 +989,9 @@ func _palette_preview(kind: String) -> Texture2D:
 		"prop_pickup":
 			art = null
 			holder.add_child(_preview_poly([Vector2(0, -15), Vector2(9, 0), Vector2(0, 15), Vector2(-9, 0)], Color(0.55, 0.4, 0.85)))
+		"prop_text":
+			art = null
+			holder.add_child(_preview_poly([Vector2(-18, -8), Vector2(18, -8), Vector2(18, 8), Vector2(-18, 8)], Color(0.18, 0.15, 0.12, 0.7)))
 	if art:
 		art.position = offset
 		art.scale = Vector2.ONE * scale
@@ -1120,7 +1180,7 @@ func _load_zone() -> void:
 				"blocks_light", "layer", "target_ids", "starts_on", "starts_open", "rotation",
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
 				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
-				"is_shopkeeper", "shop_items",
+				"is_shopkeeper", "shop_items", "color", "text", "font_size",
 			]:
 				if ov.has(key):
 					merged[key] = ov[key]
@@ -1215,6 +1275,22 @@ func _update_inspector() -> void:
 		_plat_rotate.set_pressed_no_signal(_selected.rotate_while_moving)
 		_plat_rotate_body.set_pressed_no_signal(_selected.rotate_platform)
 		_syncing_platform = false
+	var tintable := _selected != null and PieceSpecs.supports_tint(_selected.catalog_kind)
+	_color_row.visible = tintable
+	_syncing_color = true
+	if tintable:
+		_color_picker.color = _selected.tint_color
+		_color_hex.text = "#" + _selected.tint_color.to_html(false)
+	_syncing_color = false
+	var is_text := _selected != null and _selected.catalog_kind == "prop_text"
+	_text_row.visible = is_text
+	_syncing_text = true
+	if is_text:
+		_text_edit.text = _selected.label_text
+		_font_size_spin.value = _selected.font_size
+	else:
+		_text_edit.text = ""
+	_syncing_text = false
 	_blocks_light_btn.disabled = _selected == null
 	if _selected:
 		_blocks_light_btn.set_pressed_no_signal(_selected.blocks_light)
@@ -1273,11 +1349,57 @@ func _on_shopkeeper_toggled(on: bool) -> void:
 		return
 	_push_undo()
 	_selected.is_shopkeeper = on
-	if on and _selected.shop_items.is_empty():
-		_selected.shop_items = ShopCatalog.default_shop_stock()
+	## Leave shop_items as-is (empty = nothing for sale).
 	_dialogue_row.visible = not on
 	_rebuild_shop_list()
 	_status.text = "Shopkeeper %s." % ("on" if on else "off")
+
+
+func _on_tint_color_changed(c: Color) -> void:
+	if _syncing_color or _history_restoring or _selected == null:
+		return
+	if not PieceSpecs.supports_tint(_selected.catalog_kind):
+		return
+	_push_undo_inspector()
+	_selected.tint_color = Color(c.r, c.g, c.b, 1.0)
+	_syncing_color = true
+	_color_hex.text = "#" + _selected.tint_color.to_html(false)
+	_syncing_color = false
+	_selected._rebuild()
+	_selected.set_selected(true)
+
+
+func _on_tint_hex_submitted(raw: String) -> void:
+	if _syncing_color or _history_restoring or _selected == null:
+		return
+	if not PieceSpecs.supports_tint(_selected.catalog_kind):
+		return
+	var s := raw.strip_edges()
+	if not s.begins_with("#"):
+		s = "#" + s
+	if not s.is_valid_html_color():
+		_status.text = "Invalid hex color."
+		_syncing_color = true
+		_color_hex.text = "#" + _selected.tint_color.to_html(false)
+		_syncing_color = false
+		return
+	_push_undo_inspector()
+	_selected.tint_color = Color.html(s)
+	_syncing_color = true
+	_color_picker.color = _selected.tint_color
+	_color_hex.text = "#" + _selected.tint_color.to_html(false)
+	_syncing_color = false
+	_selected._rebuild()
+	_selected.set_selected(true)
+
+
+func _on_label_text_changed() -> void:
+	if _syncing_text or _history_restoring or _selected == null or _selected.catalog_kind != "prop_text":
+		return
+	_push_undo_inspector()
+	_selected.label_text = _text_edit.text
+	_selected._rebuild()
+	_selected.set_selected(true)
 
 
 func _rebuild_shop_list() -> void:
@@ -1291,6 +1413,7 @@ func _rebuild_shop_list() -> void:
 		var it := ShopCatalog.get_item(item_id)
 		var stock := _selected.get_shop_item_stock(item_id)
 		var enabled := stock != -2
+		var item_price := _selected.get_shop_item_price(item_id)
 		var row := VBoxContainer.new()
 		row.add_theme_constant_override("separation", 2)
 		var top := HBoxContainer.new()
@@ -1301,11 +1424,6 @@ func _rebuild_shop_list() -> void:
 		sell.button_pressed = enabled
 		sell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(sell)
-		var price := Label.new()
-		price.text = "%dg" % int(it.get("price", 0))
-		price.add_theme_font_size_override("font_size", 11)
-		price.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
-		top.add_child(price)
 		var bottom := HBoxContainer.new()
 		bottom.add_theme_constant_override("separation", 6)
 		row.add_child(bottom)
@@ -1320,21 +1438,43 @@ func _rebuild_shop_list() -> void:
 		spin.step = 1
 		spin.value = 1 if (not enabled or stock < 0) else float(stock)
 		spin.editable = enabled and not inf.button_pressed
-		spin.custom_minimum_size.x = 90
+		spin.custom_minimum_size.x = 72
 		bottom.add_child(spin)
 		var stock_l := Label.new()
 		stock_l.text = "stock"
 		stock_l.add_theme_font_size_override("font_size", 11)
 		stock_l.add_theme_color_override("font_color", Color(0.55, 0.5, 0.45))
 		bottom.add_child(stock_l)
+		var price_row := HBoxContainer.new()
+		price_row.add_theme_constant_override("separation", 6)
+		row.add_child(price_row)
+		var price_l := Label.new()
+		price_l.text = "Price"
+		price_l.add_theme_font_size_override("font_size", 11)
+		price_l.add_theme_color_override("font_color", Color(0.55, 0.5, 0.45))
+		price_row.add_child(price_l)
+		var price_spin := SpinBox.new()
+		price_spin.min_value = 0
+		price_spin.max_value = 9999
+		price_spin.step = 1
+		price_spin.value = float(item_price)
+		price_spin.editable = enabled
+		price_spin.custom_minimum_size.x = 90
+		price_row.add_child(price_spin)
+		var gears_l := Label.new()
+		gears_l.text = "gears"
+		gears_l.add_theme_font_size_override("font_size", 11)
+		gears_l.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+		price_row.add_child(gears_l)
 		sell.toggled.connect(func(on: bool) -> void:
 			if _syncing_shop or _history_restoring or _selected == null:
 				return
 			_push_undo()
 			inf.disabled = not on
 			spin.editable = on and not inf.button_pressed
+			price_spin.editable = on
 			var s := -1 if inf.button_pressed else int(spin.value)
-			_selected.set_shop_item_stock(item_id, s, on)
+			_selected.set_shop_item_stock(item_id, s, on, int(price_spin.value))
 		)
 		inf.toggled.connect(func(on: bool) -> void:
 			if _syncing_shop or _history_restoring or _selected == null or not sell.button_pressed:
@@ -1342,13 +1482,20 @@ func _rebuild_shop_list() -> void:
 			_push_undo()
 			spin.editable = not on
 			var s := -1 if on else int(spin.value)
-			_selected.set_shop_item_stock(item_id, s, true)
+			_selected.set_shop_item_stock(item_id, s, true, int(price_spin.value))
 		)
 		spin.value_changed.connect(func(v: float) -> void:
 			if _syncing_shop or _history_restoring or _selected == null or not sell.button_pressed or inf.button_pressed:
 				return
 			_push_undo_inspector()
-			_selected.set_shop_item_stock(item_id, int(v), true)
+			_selected.set_shop_item_stock(item_id, int(v), true, int(price_spin.value))
+		)
+		price_spin.value_changed.connect(func(v: float) -> void:
+			if _syncing_shop or _history_restoring or _selected == null or not sell.button_pressed:
+				return
+			_push_undo_inspector()
+			var s := -1 if inf.button_pressed else int(spin.value)
+			_selected.set_shop_item_stock(item_id, s, true, int(v))
 		)
 		_shop_list.add_child(row)
 
@@ -1441,6 +1588,8 @@ func _pretty_palette_name(palette: String) -> String:
 			return "Ladder"
 		"prop_breakable":
 			return "Glowing Jar"
+		"prop_text":
+			return "Text"
 		_:
 			return palette.replace("prop_", "").replace("_", " ").capitalize()
 
@@ -1508,8 +1657,12 @@ func _add_piece() -> void:
 		d["pushable"] = true
 	if _palette_id == "prop_npc":
 		d["is_shopkeeper"] = true
-		d["shop_items"] = ShopCatalog.default_shop_stock()
+		d["shop_items"] = [] ## All sales off until the designer enables items.
 		d["lines"] = []
+	if _palette_id == "prop_text":
+		d["text"] = "Text"
+		d["font_size"] = 14
+		d["color"] = "c4b07a"
 	if _palette_id == "prop_switch":
 		d["starts_on"] = true
 		d["target_ids"] = []
@@ -1864,7 +2017,7 @@ func _playtest() -> void:
 func _on_vp_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_MIDDLE:
+		if mb.button_index == MOUSE_BUTTON_MIDDLE or mb.button_index == MOUSE_BUTTON_RIGHT:
 			_panning = mb.pressed
 			_pan_last = mb.position
 			_vp_container.accept_event()

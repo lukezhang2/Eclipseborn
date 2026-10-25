@@ -249,12 +249,14 @@ func _build_side_workshop() -> void:
 	LevelCommon.add_bench(self, Vector2(940, STORY_SHAFT_2))
 	_spawn_jar(Vector2(1020, STORY_SHAFT_2 - 8))
 	_spawn_mite(Vector2(980, STORY_SHAFT_2 - 16))
-	var note := Label.new()
-	note.text = "Workshop alcove"
-	note.position = Vector2(900, STORY_SHAFT_2 - 90)
-	note.add_theme_font_size_override("font_size", 12)
-	note.add_theme_color_override("font_color", Color(0.65, 0.58, 0.45))
-	add_child(note)
+	_spawn_world_text(
+		"text_workshop",
+		"Workshop alcove",
+		Vector2(980, STORY_SHAFT_2 - 90),
+		12,
+		Color("a69473"),
+		Vector2(160, 24)
+	)
 
 
 func _build_pendulum_cloister() -> void:
@@ -368,12 +370,14 @@ func _build_switch_gallery() -> void:
 		s.target_ids = PackedStringArray([str(pair[1])])
 		LevelData.tag(s, sid)
 		add_child(s)
-	var hint := Label.new()
-	hint.text = "Practice the Hour — flip levers to match lamp patterns."
-	hint.position = Vector2(200, floor_top - 70)
-	hint.add_theme_font_size_override("font_size", 13)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.68, 0.5))
-	add_child(hint)
+	_spawn_world_text(
+		"text_gallery",
+		"Practice the Hour — flip levers to match lamp patterns.",
+		Vector2(360, floor_top - 70),
+		13,
+		Color("bfad80"),
+		Vector2(320, 28)
+	)
 	_spawn_beetle(Vector2(320, floor_top - 18))
 	_spawn_beetle(Vector2(480, floor_top - 18))
 
@@ -532,6 +536,39 @@ func _piece_pos(catalog_id: String, fallback: Vector2) -> Vector2:
 	if saved.has("x") and saved.has("y"):
 		return Vector2(float(saved.get("x")), float(saved.get("y")))
 	return fallback
+
+
+func _spawn_world_text(
+	catalog_id: String,
+	fallback_text: String,
+	fallback_pos: Vector2,
+	fallback_size: int,
+	fallback_color: Color,
+	fallback_box: Vector2
+) -> void:
+	if LevelData.is_removed("clockwork_tower", catalog_id):
+		return
+	var saved := LevelData.merged_piece("clockwork_tower", catalog_id)
+	var pos := fallback_pos
+	var text := fallback_text
+	var font_size := fallback_size
+	var col := fallback_color
+	var box := fallback_box
+	if not saved.is_empty():
+		if saved.has("x") and saved.has("y"):
+			pos = Vector2(float(saved.get("x")), float(saved.get("y")))
+		if saved.has("text") and str(saved.get("text", "")) != "":
+			text = str(saved.get("text"))
+		elif saved.has("name") and str(saved.get("name", "")) != "":
+			text = str(saved.get("name"))
+		if saved.has("font_size"):
+			font_size = int(saved.get("font_size"))
+		if saved.has("color"):
+			col = Color.html(str(saved.get("color")))
+		if saved.has("w") and saved.has("h"):
+			box = Vector2(float(saved.get("w")), float(saved.get("h")))
+	var lbl := LevelCommon.add_world_label(self, pos, text, font_size, col, box)
+	LevelData.tag(lbl, catalog_id)
 
 
 func _make_hanging_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSource:

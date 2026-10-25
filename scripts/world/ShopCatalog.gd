@@ -110,14 +110,23 @@ static func price(item_id: String) -> int:
 	return int(get_item(item_id).get("price", 0))
 
 
+static func entry_price(entry: Dictionary) -> int:
+	## Per-shopkeeper override, else catalog default.
+	var id := str(entry.get("id", ""))
+	if entry.has("price"):
+		return maxi(0, int(entry.get("price", 0)))
+	return price(id)
+
+
 static func default_shop_stock() -> Array:
 	## Sensible starter inventory for house shopkeepers (−1 = infinite).
+	## New editor shopkeepers start with [] (nothing for sale) instead.
 	return [
-		{"id": "heal_tonic", "stock": -1},
-		{"id": "shade_vial", "stock": -1},
-		{"id": "shade_heart", "stock": 3},
-		{"id": "double_jump", "stock": 1},
-		{"id": "shadow_grip", "stock": 1},
+		{"id": "heal_tonic", "stock": -1, "price": price("heal_tonic")},
+		{"id": "shade_vial", "stock": -1, "price": price("shade_vial")},
+		{"id": "shade_heart", "stock": 3, "price": price("shade_heart")},
+		{"id": "double_jump", "stock": 1, "price": price("double_jump")},
+		{"id": "shadow_grip", "stock": 1, "price": price("shadow_grip")},
 	]
 
 
@@ -135,7 +144,8 @@ static func normalize_shop_items(raw: Variant) -> Array:
 		## Clamp: −1 infinite, else 0+ finite.
 		if stock < -1:
 			stock = -1
-		out.append({"id": id, "stock": stock})
+		var p := entry_price(entry)
+		out.append({"id": id, "stock": stock, "price": p})
 	return out
 
 

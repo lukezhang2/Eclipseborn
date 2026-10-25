@@ -136,7 +136,8 @@ func _build_desk_and_keeper() -> void:
 	npc.npc_name = keeper_name
 	npc.lines = keeper_lines
 	npc.is_shopkeeper = true
-	npc.shop_items = keeper_shop_items if not keeper_shop_items.is_empty() else ShopCatalog.default_shop_stock()
+	## Respect empty stock from the editor (all sales off).
+	npc.shop_items = keeper_shop_items
 	npc.shop_key = "%s/%s" % [house_id, _npc_id]
 	npc.z_index = -2
 	LevelData.tag(npc, _npc_id)

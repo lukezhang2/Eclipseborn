@@ -22,9 +22,15 @@ var catalog_kind: String = "floor"
 var anchor_mode: String = "center"
 ## NPC dialogue lines (one string per line). Empty for non-NPCs / shopkeepers.
 var dialogue_lines: PackedStringArray = PackedStringArray()
-## Shopkeeper flag + stock list: [{id, stock}] with stock −1 = infinite.
+## Shopkeeper flag + stock list: [{id, stock, price}] with stock −1 = infinite.
+## Empty array = nothing for sale (editor default for new shopkeepers).
 var is_shopkeeper: bool = false
 var shop_items: Array = []
+## Optional tint for floors/walls/platforms/etc. White = no change.
+var tint_color: Color = Color.WHITE
+## World text (prop_text).
+var label_text: String = "Text"
+var font_size: int = 14
 ## If true, gameplay should occlude lantern washes (no player collision required).
 var blocks_light: bool = true
 ## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
@@ -117,6 +123,8 @@ func to_dict() -> Dictionary:
 		d["kind"] = "background"
 	elif has_meta("piece_kind"):
 		d["kind"] = str(get_meta("piece_kind"))
+	if PieceSpecs.supports_tint(catalog_kind) and tint_color != Color.WHITE:
+		d["color"] = tint_color.to_html(false)
 	if catalog_kind == "prop_npc" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_npc"):
 		var lines_arr: Array = []
 		for s in dialogue_lines:
@@ -125,6 +133,11 @@ func to_dict() -> Dictionary:
 		d["is_shopkeeper"] = is_shopkeeper
 		d["shop_items"] = ShopCatalog.normalize_shop_items(shop_items)
 		d["kind"] = "prop_npc"
+	if catalog_kind == "prop_text" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_text"):
+		d["kind"] = "prop_text"
+		d["text"] = label_text
+		d["font_size"] = font_size
+		d["color"] = tint_color.to_html(false)
 	if catalog_kind == "prop_switch" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_switch"):
 		d["kind"] = "prop_switch"
 		d["starts_on"] = starts_on
@@ -180,6 +193,13 @@ func apply_dict(d: Dictionary) -> void:
 		rotate_while_moving = bool(d.get("rotate_while_moving", d.get("rotate", true)))
 		rotate_speed = float(d.get("rotate_speed", 1.0))
 		rotate_platform = bool(d.get("rotate_platform", false))
+	tint_color = Color.WHITE
+	if d.has("color"):
+		tint_color = Color.html(str(d.get("color", "#ffffff")))
+	elif k == "prop_text":
+		tint_color = Color("c4b07a")
+	label_text = str(d.get("text", label_text if label_text != "" else "Text"))
+	font_size = clampi(int(d.get("font_size", font_size if font_size > 0 else 14)), 8, 72)
 	match k:
 		"background":
 			kind = Kind.BACKGROUND
@@ -204,9 +224,11 @@ func apply_dict(d: Dictionary) -> void:
 			if k == "prop_npc":
 				dialogue_lines = HouseProfiles.lines_to_packed(d.get("lines", dialogue_lines))
 				is_shopkeeper = bool(d.get("is_shopkeeper", true))
+				## Empty shop_items = nothing for sale (do not fill catalog defaults).
 				shop_items = ShopCatalog.normalize_shop_items(d.get("shop_items", []))
-				if is_shopkeeper and shop_items.is_empty():
-					shop_items = ShopCatalog.default_shop_stock()
+			if k == "prop_text":
+				if str(d.get("text", "")) == "" and display_name != "" and display_name != "Piece":
+					label_text = display_name
 	if display_name == "" or display_name == "Piece":
 		display_name = piece_id if piece_id != "" else k
 	_rebuild()
@@ -223,19 +245,22 @@ func get_dialogue_text() -> String:
 	return "\n".join(dialogue_lines)
 
 
-func set_shop_item_stock(item_id: String, stock: int, enabled: bool) -> void:
+func set_shop_item_stock(item_id: String, stock: int, enabled: bool, item_price: int = -1) -> void:
 	var next: Array = []
 	var found := false
+	var p := item_price if item_price >= 0 else ShopCatalog.price(item_id)
 	for entry in ShopCatalog.normalize_shop_items(shop_items):
 		var id := str(entry.get("id", ""))
 		if id == item_id:
 			found = true
 			if enabled:
-				next.append({"id": id, "stock": stock})
+				if item_price < 0:
+					p = ShopCatalog.entry_price(entry)
+				next.append({"id": id, "stock": stock, "price": p})
 		else:
 			next.append(entry)
 	if enabled and not found:
-		next.append({"id": item_id, "stock": stock})
+		next.append({"id": item_id, "stock": stock, "price": p})
 	shop_items = next
 
 
@@ -245,6 +270,13 @@ func get_shop_item_stock(item_id: String) -> int:
 		if str(entry.get("id", "")) == item_id:
 			return int(entry.get("stock", -1))
 	return -2
+
+
+func get_shop_item_price(item_id: String) -> int:
+	for entry in ShopCatalog.normalize_shop_items(shop_items):
+		if str(entry.get("id", "")) == item_id:
+			return ShopCatalog.entry_price(entry)
+	return ShopCatalog.price(item_id)
 
 
 func set_draw_layer(layer: int) -> void:
@@ -372,12 +404,15 @@ func _rebuild() -> void:
 	match kind:
 		Kind.BACKGROUND:
 			_visual.texture = _make_bg_tex(int(size.x), int(size.y))
-			_visual.modulate = Color(1, 1, 1, 0.85)
+			_visual.modulate = Color(tint_color.r, tint_color.g, tint_color.b, 0.85)
 		Kind.LIGHT:
 			_visual.texture = _make_light_tex(28, 36)
 			size = Vector2(28, 36)
 		Kind.PROP:
-			_visual.texture = _make_prop_tex(int(size.x), int(size.y), catalog_kind)
+			if catalog_kind == "prop_text":
+				_visual.texture = _make_text_tex(int(size.x), int(size.y))
+			else:
+				_visual.texture = _make_prop_tex(int(size.x), int(size.y), catalog_kind)
 		_:
 			if catalog_kind == "crate":
 				_visual.texture = _make_crate_tex(int(size.x), int(size.y))
@@ -387,7 +422,22 @@ func _rebuild() -> void:
 	var tw := maxi(_visual.texture.get_width(), 1)
 	var th := maxi(_visual.texture.get_height(), 1)
 	_visual.scale = Vector2(size.x / float(tw), size.y / float(th))
+	if PieceSpecs.supports_tint(catalog_kind) and catalog_kind != "background" and catalog_kind != "prop_text":
+		_visual.modulate = tint_color
 	_body.add_child(_visual)
+	if catalog_kind == "prop_text":
+		var txt := Label.new()
+		txt.text = label_text if label_text != "" else "Text"
+		txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		txt.add_theme_font_size_override("font_size", font_size)
+		txt.add_theme_color_override("font_color", tint_color if tint_color.a > 0.01 else Color(0.85, 0.78, 0.55))
+		txt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		txt.add_theme_constant_override("outline_size", 3)
+		txt.size = size
+		txt.position = Vector2(-size.x * 0.5, -size.y * 0.5)
+		txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_body.add_child(txt)
 
 	_outline = Line2D.new()
 	_outline.width = 2.0
@@ -513,6 +563,8 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.35, 0.42, 0.5)
 		"prop_pickup":
 			col = Color(0.28, 0.14, 0.42)
+		"prop_text":
+			col = Color(0.2, 0.18, 0.16, 0.35)
 		_:
 			col = Color(0.4, 0.42, 0.48)
 	for y in h:
@@ -549,6 +601,20 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 					if absf(dx) + absf(dy) > 0.7:
 						c = c.darkened(0.35)
 					img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
+func _make_text_tex(w: int, h: int) -> ImageTexture:
+	w = clampi(w, 24, 512)
+	h = clampi(h, 16, 256)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.12, 0.1, 0.08, 0.25))
+	for x in w:
+		img.set_pixel(x, 0, Color(0.55, 0.48, 0.35, 0.7))
+		img.set_pixel(x, h - 1, Color(0.55, 0.48, 0.35, 0.7))
+	for y in h:
+		img.set_pixel(0, y, Color(0.55, 0.48, 0.35, 0.7))
+		img.set_pixel(w - 1, y, Color(0.55, 0.48, 0.35, 0.7))
 	return ImageTexture.create_from_image(img)
 
 

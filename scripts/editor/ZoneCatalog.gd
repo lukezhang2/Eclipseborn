@@ -164,6 +164,7 @@ static func _tower() -> Array:
 	out.append(_p("floor_workshop", "floor", "Workshop Floor", 960, STORY_SHAFT_2 + FLOOR_H * 0.5, 280, FLOOR_H))
 	out.append(_p("bench_workshop", "prop_bench", "Workshop Bench", 940, STORY_SHAFT_2, 60, 20))
 	out.append(_p("jar_workshop", "prop_breakable", "Workshop Jar", 1020, STORY_SHAFT_2 - 8, 28, 36))
+	out.append(_ptext("text_workshop", "Workshop alcove", 980, STORY_SHAFT_2 - 90, 160, 24, 12, "a69473"))
 
 	## Pendulum cloister.
 	out.append(_p("floor_cloister", "floor", "Cloister Story", 400, STORY_CLOISTER + FLOOR_H * 0.5, 560, FLOOR_H))
@@ -205,6 +206,11 @@ static func _tower() -> Array:
 		psw["starts_on"] = bool(pair[3])
 		psw["target_ids"] = [str(pair[1])]
 		out.append(psw)
+	out.append(_ptext(
+		"text_gallery",
+		"Practice the Hour — flip levers to match lamp patterns.",
+		360, STORY_GALLERY - 70, 320, 28, 13, "bfad80"
+	))
 	out.append(_p("floor_pre_gate", "floor", "Pre-Gate Landing", 400, STORY_PRE_GATE + FLOOR_H * 0.5, 520, FLOOR_H))
 	out.append(_p("ladder_pre_gate", "prop_ladder", "Pre-Gate Ladder", 320, STORY_PRE_GATE, 28, STORY_PRE_GATE - ANTECHAMBER_TOP))
 
@@ -301,9 +307,12 @@ static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant, 
 	var arr: Array = []
 	for s in packed:
 		arr.append(s)
-	var stock := ShopCatalog.normalize_shop_items(shop_items)
-	if stock.is_empty():
+	## null → house default stock; explicit [] stays empty (nothing for sale).
+	var stock: Array = []
+	if shop_items == null:
 		stock = ShopCatalog.default_shop_stock()
+	else:
+		stock = ShopCatalog.normalize_shop_items(shop_items)
 	return {
 		"id": id,
 		"kind": "prop_npc",
@@ -320,3 +329,20 @@ static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant, 
 		"is_shopkeeper": true,
 		"shop_items": stock,
 	}
+
+
+static func _ptext(
+	id: String,
+	text: String,
+	x: float,
+	y: float,
+	w: float = 160.0,
+	h: float = 28.0,
+	font_size: int = 14,
+	color_hex: String = "c4b07a"
+) -> Dictionary:
+	var d := _p(id, "prop_text", text, x, y, w, h)
+	d["text"] = text
+	d["font_size"] = font_size
+	d["color"] = color_hex
+	return d

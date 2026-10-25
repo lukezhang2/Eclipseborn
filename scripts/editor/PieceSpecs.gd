@@ -106,10 +106,11 @@ const LIGHT_BLOCK_PHYSICS_LAYER := 128
 static func default_blocks_light(kind: String) -> bool:
 	## Default ON — opt out for emitters, characters, and pure draw props.
 	match kind:
-		"light", "background", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint", "prop_ladder":
+		"light", "background", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint", "prop_ladder", "prop_text":
 			return false
 		_:
 			return true
+
 
 static func is_linkable_target(kind: String) -> bool:
 	return kind in ["light", "prop_lantern", "prop_door"]
@@ -121,6 +122,14 @@ static func is_switch_kind(kind: String) -> bool:
 
 static func is_platform_kind(kind: String) -> bool:
 	return kind == "prop_platform"
+
+
+static func supports_tint(kind: String) -> bool:
+	## Floors/walls/platforms and other builds that take a modulate color.
+	return kind in [
+		"floor", "wall", "block", "background", "crate",
+		"prop_platform", "prop_pipe", "prop_crate", "prop_text",
+	]
 
 
 static func default_draw_layer(kind: String) -> int:
@@ -141,6 +150,8 @@ static func default_draw_layer(kind: String) -> int:
 			return 1
 		"light", "prop_lantern", "prop_pickup":
 			return 2
+		"prop_text":
+			return 3
 		_:
 			return 0
 
@@ -193,6 +204,8 @@ static func default_size(kind: String) -> Vector2:
 			return Vector2(40, 50)
 		"prop_ladder":
 			return Vector2(28, 200)
+		"prop_text":
+			return Vector2(160, 28)
 		_:
 			return Vector2(48, 48)
 
