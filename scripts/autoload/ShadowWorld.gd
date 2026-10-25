@@ -314,17 +314,18 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 	if light.has_method("get_intensity"):
 		intensity = clampf(float(light.get_intensity()), 0.15, 3.0)
 	var burns := kind in [GameState.LightKind.HEARTH, GameState.LightKind.CANDLE, GameState.LightKind.SUNSHAFT]
-	var base_a := (0.34 if burns else 0.14) * intensity
-	var core := Color(1.0, 0.72, 0.28, mini(0.72, base_a))
+	## Bright enough that the burn/safe zone is obvious on the floor.
+	var base_a := (0.48 if burns else 0.22) * intensity
+	var core := Color(1.0, 0.78, 0.32, mini(0.85, base_a))
 	match kind:
 		GameState.LightKind.MOON:
-			core = Color(0.65, 0.85, 1.0, mini(0.4, 0.16 * intensity))
+			core = Color(0.65, 0.85, 1.0, mini(0.55, 0.28 * intensity))
 		GameState.LightKind.CRIMSON:
-			core = Color(0.95, 0.2, 0.25, mini(0.55, 0.28 * intensity))
+			core = Color(0.95, 0.25, 0.3, mini(0.7, 0.4 * intensity))
 		GameState.LightKind.SUNSHAFT:
-			core = Color(1.0, 1.0, 0.85, mini(0.75, 0.38 * intensity))
+			core = Color(1.0, 1.0, 0.85, mini(0.9, 0.55 * intensity))
 		GameState.LightKind.CANDLE:
-			core = Color(1.0, 0.7, 0.4, mini(0.65, 0.3 * intensity))
+			core = Color(1.0, 0.72, 0.38, mini(0.8, 0.42 * intensity))
 
 	var exclude: Array = []
 	if light.has_method("get_exclude_rids"):
@@ -344,18 +345,19 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
 
+	## z −3/−2/−1 sits above floors (−4) and below the player (0) so AoE reads on the ground.
 	## Soft outer shell ≈ area-light penumbra (reuse silhouette; no new rays).
 	var soft := _take_poly()
-	soft.color = Color(core.r, core.g, core.b, core.a * 0.38)
-	soft.z_index = -13
+	soft.color = Color(core.r, core.g, core.b, core.a * 0.45)
+	soft.z_index = -3
 	soft.polygon = _scale_ring(origin, pts, WASH_PENUMBRA_SCALE)
 	_root.add_child(soft)
 	_visuals.append(soft)
 
-	## Main occluded wash.
+	## Main occluded wash — this is the readable danger/safe zone.
 	var fill := _take_poly()
-	fill.color = Color(core.r, core.g, core.b, core.a * 0.72)
-	fill.z_index = -12
+	fill.color = Color(core.r, core.g, core.b, mini(0.78, core.a * 0.95))
+	fill.z_index = -2
 	fill.polygon = pts
 	_root.add_child(fill)
 	_visuals.append(fill)
@@ -363,12 +365,12 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 	## Brighter near the lamp (cheap 1/r-ish falloff via a scaled inner ring).
 	var inner := _take_poly()
 	inner.color = Color(
-		mini(1.0, core.r + 0.08),
-		mini(1.0, core.g + 0.06),
+		mini(1.0, core.r + 0.1),
+		mini(1.0, core.g + 0.08),
 		mini(1.0, core.b + 0.04),
-		mini(0.7, core.a * 1.15)
+		mini(0.82, core.a * 1.2)
 	)
-	inner.z_index = -12
+	inner.z_index = -2
 	inner.polygon = _scale_ring(origin, pts, WASH_CORE_SCALE)
 	_root.add_child(inner)
 	_visuals.append(inner)
@@ -381,17 +383,17 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		for i in 12:
 			var a := TAU * float(i) / 12.0
 			hot_pts.append(origin + Vector2.from_angle(a) * hot_r)
-		hot.color = Color(1.0, 0.92, 0.55, mini(0.45, 0.16 * (intensity - 0.5)))
-		hot.z_index = -12
+		hot.color = Color(1.0, 0.92, 0.55, mini(0.5, 0.2 * (intensity - 0.5)))
+		hot.z_index = -2
 		hot.polygon = hot_pts
 		_root.add_child(hot)
 		_visuals.append(hot)
 
-	## Thin soft rim — hard rings look fake on real lamps.
+	## Clear AoE edge — occluded silhouette so cover (houses/crates) is readable.
 	var ring := _take_line()
-	ring.width = 1.1 + intensity * 0.45
-	ring.default_color = Color(core.r, core.g, core.b, mini(0.55, core.a * 0.9))
-	ring.z_index = -11
+	ring.width = 2.4 + intensity * 0.6
+	ring.default_color = Color(core.r, core.g, core.b, mini(0.95, 0.7 + intensity * 0.1))
+	ring.z_index = -1
 	ring.clear_points()
 	for p in pts:
 		ring.add_point(p)
@@ -399,6 +401,18 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 		ring.add_point(pts[0])
 	_root.add_child(ring)
 	_visuals.append(ring)
+	## Outer glow stroke so the boundary pops on dark floors.
+	var glow := _take_line()
+	glow.width = 5.0 + intensity
+	glow.default_color = Color(core.r, core.g, core.b, 0.28)
+	glow.z_index = -1
+	glow.clear_points()
+	for p in pts:
+		glow.add_point(p)
+	if pts.size() > 0:
+		glow.add_point(pts[0])
+	_root.add_child(glow)
+	_visuals.append(glow)
 
 	_draw_umbrae_for_light(light, origin, radius, space, exclude)
 
@@ -477,7 +491,7 @@ func _clip_shadow_extent(
 	return from + dir_n * maxf(d - 0.8, 0.0)
 
 
-func _add_ink_poly(pts: PackedVector2Array, alpha: float, z: int = -11) -> void:
+func _add_ink_poly(pts: PackedVector2Array, alpha: float, z: int = -2) -> void:
 	if pts.size() < 3 or alpha < 0.02:
 		return
 	var ink := _take_poly()
@@ -534,7 +548,7 @@ func _draw_umbra_wedge(
 		## Contact hardening: hard umbra near the occluder…
 		var ca := a.lerp(far_a, UMBRA_CONTACT_T)
 		var cb := b.lerp(far_b, UMBRA_CONTACT_T)
-		_add_ink_poly(PackedVector2Array([a, b, cb, ca]), base_a * 0.92, -11)
+		_add_ink_poly(PackedVector2Array([a, b, cb, ca]), base_a * 0.92, -2)
 
 		## …then a softer, slightly wider penumbra that grows with cast length.
 		var cast_len := (len_a + len_b) * 0.5
@@ -546,7 +560,7 @@ func _draw_umbra_wedge(
 			side = side.normalized()
 		var pa := far_a + side * spread
 		var pb := far_b - side * spread
-		_add_ink_poly(PackedVector2Array([ca, cb, pb, pa]), base_a * 0.28, -12)
+		_add_ink_poly(PackedVector2Array([ca, cb, pb, pa]), base_a * 0.28, -3)
 
 
 func _take_poly() -> Polygon2D:

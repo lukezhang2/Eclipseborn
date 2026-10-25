@@ -13,6 +13,8 @@ static var platform_style: int = 2
 static func add_steel_floor(parent: Node2D, x: float, y: float, width: float, height: float = 32.0, dress: bool = true) -> StaticBody2D:
 	var body := StaticBody2D.new()
 	body.position = Vector2(x, y)
+	## Below lantern washes (−2/−1) so AoE reads on the ground; above deep BG.
+	body.z_index = -4
 	body.collision_layer = 1
 	var cs := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
@@ -92,6 +94,7 @@ static func add_cobble_floor(parent: Node2D, x: float, y: float, width: float, h
 static func add_wall(parent: Node2D, x: float, y: float, width: float, height: float) -> StaticBody2D:
 	var body := StaticBody2D.new()
 	body.position = Vector2(x, y)
+	body.z_index = -4
 	body.collision_layer = 1
 	var cs := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()

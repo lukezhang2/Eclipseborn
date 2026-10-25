@@ -28,6 +28,7 @@ _(none — tower combat design committed; waiting for “build it” before codi
 - Implement Clockwork Tower combat plan (`docs/CLOCKWORK_TOWER_COMBAT.md`): enemies, Wickwright boss, ascent floors, sprites
 
 ### Done recently
+- v0.1.39 — lantern AoE visible on floor (wash z above floors, brighter fill + bold occluded edge); `index-0_1_39.pck`
 - v0.1.38 — realistic cheap shadows: contact-hardening umbra, soft penumbra, wash falloff (no extra rays); `index-0_1_38.pck`
 - design — Clockwork Tower combat/boss/ascent plan (`docs/CLOCKWORK_TOWER_COMBAT.md`); no gameplay ship
 - v0.1.37 — editor Undo/Redo buttons + Ctrl+Z/Y/Shift+Z; snapshot history for move/resize/rotate/inspector; `index-0_1_37.pck`

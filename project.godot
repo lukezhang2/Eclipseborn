@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Eclipseborn"
 config/description="You aren't moving platforms. You're changing what counts as a platform."
-config/version="0.1.38"
+config/version="0.1.39"
 run/main_scene="res://scenes/ui/BootSplash.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
