@@ -179,6 +179,8 @@ func set_paused(value: bool) -> void:
 		return
 	is_paused = value
 	get_tree().paused = value
+	if value:
+		AudioManager.stop_all_burns()
 	pause_changed.emit(value)
 
 
@@ -321,6 +323,7 @@ func take_damage(amount: int) -> void:
 	# Enemy hits skip the shade bar.
 	if amount <= 0:
 		return
+	AudioManager.play_hurt()
 	health = maxi(0, health - amount)
 	health_changed.emit(health, max_health)
 	if health <= 0:
@@ -339,6 +342,7 @@ func add_shade_heart() -> void:
 
 
 func _die() -> void:
+	AudioManager.stop_all_burns()
 	died.emit()
 	# Soft respawn at checkpoint.
 	get_tree().create_timer(0.6).timeout.connect(_respawn, CONNECT_ONE_SHOT)

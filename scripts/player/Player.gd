@@ -409,8 +409,16 @@ func _update_light_exposure(delta: float) -> void:
 	_recompute_light_state()
 	if _in_vulnerable_light:
 		GameState.apply_light_exposure(delta, _active_light_kind as GameState.LightKind)
+		# Quiet crackle while shade drains; a bit louder once HP burns in light.
+		if GameState.shade > 0.0:
+			AudioManager.set_shade_burning(true)
+			AudioManager.set_health_burning(false)
+		else:
+			AudioManager.set_shade_burning(false)
+			AudioManager.set_health_burning(true)
 	else:
 		GameState.refill_shade_safe(delta)
+		AudioManager.stop_all_burns()
 
 
 func _recompute_light_state() -> void:

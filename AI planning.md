@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.24 — quieter intro; natural walk/slash/jump/land (−45%); hurt + shade/HP burn loops; `index-0_1_24.pck`
 - v0.1.23 — enemies blocked by pushable crates (`pass_through_objects` opt-out); fall anim mild arm raise
 - v0.1.22 — fix silent SFX: default AudioBusLayout (SFX/Music), AudioManager ALWAYS + web unlock; `index-0_1_22.pck`
 - v0.1.21 — permanent shadow crystal fragments (saved collected_ids); map hint “Tab to close” only
