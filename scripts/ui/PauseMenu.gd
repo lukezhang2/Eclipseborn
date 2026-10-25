@@ -111,6 +111,7 @@ func _on_back() -> void:
 
 
 func _on_title() -> void:
-	SaveManager.autosave()
+	## Explicit save (not just autosave) so hearths flush before leaving the run.
+	SaveManager.save_game()
 	close()
 	get_tree().change_scene_to_file("res://scenes/ui/TitleMenu.tscn")

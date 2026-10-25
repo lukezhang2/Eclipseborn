@@ -1,38 +1,53 @@
 extends Interactable
 class_name Checkpoint
 ## Rest hearth — Interact to save + open fast travel between activated checkpoints.
+## Tall touch volume so a jump arc cannot skip activation.
 
 
 @export var checkpoint_id: String = "default"
 @export var checkpoint_name: String = "Rest"
 
+## Generous pad: wide + tall so jump arcs still hit.
+const TOUCH_W := 120.0
+const TOUCH_H := 140.0
+
 var _ember: Polygon2D
 var _lit: bool = false
+var _touching: bool = false
 
 
 func _ready() -> void:
 	verb = "Rest"
-	interact_range = 64.0
-	prompt_offset = Vector2(-36, -58)
+	## Wide interact so the prompt is easy while near / above the hearth.
+	interact_range = 96.0
+	prompt_offset = Vector2(-36, -72)
 	if checkpoint_name == "Rest" and checkpoint_id != "" and checkpoint_id != "default":
 		checkpoint_name = checkpoint_id.replace("_", " ").capitalize()
 	_build_visual()
 	super._ready()
 	add_to_group("checkpoints")
-	## Auto-activate on touch as well (legacy feel), but menu needs Interact.
+	_build_touch()
+	## Restore lit look from a prior save.
+	call_deferred("_restore_from_save")
+
+
+func _build_touch() -> void:
 	var area := Area2D.new()
 	area.name = "Touch"
 	area.collision_layer = 0
-	area.collision_mask = 2
+	area.collision_mask = 2 ## Player body layer
 	area.monitoring = true
+	area.monitorable = false
 	var cs := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = 36.0
-	cs.shape = circle
-	cs.position = Vector2(0, -12)
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(TOUCH_W, TOUCH_H)
+	cs.shape = rect
+	## Origin is floor; pad rises well above jump height and a bit below feet.
+	cs.position = Vector2(0, -TOUCH_H * 0.5 + 8.0)
 	area.add_child(cs)
 	add_child(area)
-	area.body_entered.connect(_on_touch)
+	area.body_entered.connect(_on_touch_enter)
+	area.body_exited.connect(_on_touch_exit)
 
 
 func _build_visual() -> void:
@@ -62,9 +77,32 @@ func _build_visual() -> void:
 	add_child(label)
 
 
-func _on_touch(body: Node) -> void:
+func _restore_from_save() -> void:
+	if GameState.is_checkpoint_activated(checkpoint_id, GameState.current_zone_id):
+		_set_lit(true)
+
+
+func _physics_process(_delta: float) -> void:
+	## Backup for fast jump arcs that can skip Area2D body_entered.
+	var p = GameState.player
+	if p == null or not is_instance_valid(p):
+		return
+	var d: Vector2 = (p as Node2D).global_position - global_position
+	if absf(d.x) <= TOUCH_W * 0.5 and d.y <= 24.0 and d.y >= -TOUCH_H:
+		if not _touching:
+			_touching = true
+			_activate(false)
+
+
+func _on_touch_enter(body: Node) -> void:
 	if body is Player or (body and body.is_in_group("player")):
+		_touching = true
 		_activate(false)
+
+
+func _on_touch_exit(body: Node) -> void:
+	if body is Player or (body and body.is_in_group("player")):
+		_touching = false
 
 
 func interact() -> void:
@@ -78,11 +116,15 @@ func _activate(open_travel: bool) -> void:
 		global_position,
 		checkpoint_name
 	)
-	_lit = true
-	if _ember:
-		_ember.color = Color(0.85, 0.45, 0.18, 0.95)
+	_set_lit(true)
 	if open_travel:
 		_open_fast_travel()
+
+
+func _set_lit(on: bool) -> void:
+	_lit = on
+	if _ember:
+		_ember.color = Color(0.85, 0.45, 0.18, 0.95) if on else Color(0.45, 0.22, 0.1, 0.55)
 
 
 func _open_fast_travel() -> void:

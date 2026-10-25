@@ -209,18 +209,37 @@ func activate_checkpoint(id: String, zone: String, pos: Vector2, label: String =
 	}
 	var found := false
 	for i in activated_checkpoints.size():
-		var e: Dictionary = activated_checkpoints[i]
+		var raw = activated_checkpoints[i]
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var e: Dictionary = raw
 		if str(e.get("id", "")) == entry.id and str(e.get("zone", "")) == entry.zone:
 			activated_checkpoints[i] = entry
 			found = true
 			break
 	if not found:
 		activated_checkpoints.append(entry)
+	## Always flush to disk so exit/reload keeps hearths for fast travel.
 	SaveManager.autosave()
 
 
+func is_checkpoint_activated(id: String, zone: String = "") -> bool:
+	var z := zone if zone != "" else current_zone_id
+	for raw in activated_checkpoints:
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var e: Dictionary = raw
+		if str(e.get("id", "")) == id and str(e.get("zone", "")) == z:
+			return true
+	return false
+
+
 func get_activated_checkpoints() -> Array:
-	return activated_checkpoints.duplicate(true)
+	var out: Array = []
+	for raw in activated_checkpoints:
+		if typeof(raw) == TYPE_DICTIONARY:
+			out.append((raw as Dictionary).duplicate(true))
+	return out
 
 
 func travel_to_checkpoint(entry: Dictionary) -> void:

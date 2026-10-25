@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.19 — persist activated hearths (JSON sidecar + web flush); tall unmissable hearth hitbox; restore lit on load
 - v0.1.18 — player hitboxes: flush red attack boxes, inset yellow hurtbox, enemies no longer body-block; `index-0_1_18.pck`
 - v0.1.17 — Cursor workflow: always export+push main; sync version past Claude Done history
 - v0.1.16 — house fade + interact lock; editor platform path/spin + rotate tool; steam vents (includes village lamp sync)

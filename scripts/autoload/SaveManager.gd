@@ -15,10 +15,73 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST \
+			or what == NOTIFICATION_APPLICATION_PAUSED \
+			or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		autosave()
 	elif what == NOTIFICATION_PREDELETE:
 		autosave()
+
+
+func _hearths_sidecar_path(slot: int) -> String:
+	return "%s/slot_%d_hearths.json" % [SAVE_DIR, slot]
+
+
+func _write_hearths_sidecar(slot: int) -> void:
+	## Belt-and-suspenders for web IDBFS — plain JSON round-trips reliably.
+	var path := _hearths_sidecar_path(slot)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify(GameState.activated_checkpoints))
+	f.flush()
+	f.close()
+
+
+func _read_hearths_sidecar(slot: int) -> Array:
+	var path := _hearths_sidecar_path(slot)
+	if not FileAccess.file_exists(path):
+		return []
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return []
+	var text := f.get_as_text()
+	f.close()
+	var parsed = JSON.parse_string(text)
+	return _normalize_checkpoints(parsed)
+
+
+func _normalize_checkpoints(raw) -> Array:
+	var out: Array = []
+	if raw == null:
+		return out
+	if raw is String:
+		var parsed = JSON.parse_string(raw)
+		return _normalize_checkpoints(parsed)
+	if not (raw is Array):
+		return out
+	for item in raw:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var d: Dictionary = item
+		out.append({
+			"id": str(d.get("id", "")),
+			"zone": str(d.get("zone", "")),
+			"x": float(d.get("x", 0.0)),
+			"y": float(d.get("y", 0.0)),
+			"name": str(d.get("name", d.get("id", "Rest"))),
+		})
+	return out
+
+
+func _persist_web_fs() -> void:
+	## Nudge browser FS sync so tab-close after a hearth rest keeps the save.
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval(
+		"(function(){try{if(typeof FS!=='undefined'&&FS.syncfs){FS.syncfs(false,function(){});}}catch(e){}})();",
+		true
+	)
 
 
 func slot_path(slot: int) -> String:
@@ -67,8 +130,14 @@ func delete_save(slot: int) -> void:
 		var fname := "slot_%d.cfg" % slot
 		if dir.file_exists(fname):
 			dir.remove(fname)
+		var side := "slot_%d_hearths.json" % slot
+		if dir.file_exists(side):
+			dir.remove(side)
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var side_path := _hearths_sidecar_path(slot)
+	if FileAccess.file_exists(side_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(side_path))
 	_set_slot_exists(slot, false)
 	if current_slot == slot:
 		current_slot = -1
@@ -132,7 +201,16 @@ func load_game(slot: int) -> bool:
 	GameState.has_shadow_grip = cfg.get_value("abilities", "shadow_grip", false)
 	GameState.discovered_rooms = cfg.get_value("map", "discovered", {})
 	GameState.broken_ids = cfg.get_value("world", "broken", [])
-	GameState.activated_checkpoints = cfg.get_value("map", "checkpoints", [])
+	## Prefer JSON sidecar / checkpoints_json — nested Array-of-Dict can drop on web reload.
+	var hearths: Array = []
+	var json_field = cfg.get_value("map", "checkpoints_json", "")
+	if json_field is String and str(json_field) != "":
+		hearths = _normalize_checkpoints(json_field)
+	if hearths.is_empty():
+		hearths = _read_hearths_sidecar(slot)
+	if hearths.is_empty():
+		hearths = _normalize_checkpoints(cfg.get_value("map", "checkpoints", []))
+	GameState.activated_checkpoints = hearths
 	GameState.checkpoint_path = cfg.get_value("meta", "checkpoint_id", "")
 	GameState.health_changed.emit(GameState.health, GameState.max_health)
 	GameState.shade_changed.emit(GameState.shade)
@@ -186,10 +264,15 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("abilities", "double_jump", GameState.has_double_jump)
 	cfg.set_value("abilities", "shadow_grip", GameState.has_shadow_grip)
 	cfg.set_value("map", "discovered", GameState.discovered_rooms)
-	cfg.set_value("map", "checkpoints", GameState.activated_checkpoints)
+	var hearths := _normalize_checkpoints(GameState.activated_checkpoints)
+	GameState.activated_checkpoints = hearths
+	cfg.set_value("map", "checkpoints", hearths)
+	cfg.set_value("map", "checkpoints_json", JSON.stringify(hearths))
 	cfg.set_value("meta", "checkpoint_id", GameState.checkpoint_path)
 	cfg.set_value("world", "broken", GameState.broken_ids)
 	var err := cfg.save(slot_path(slot))
+	_write_hearths_sidecar(slot)
+	_persist_web_fs()
 	if err == OK:
 		_set_slot_exists(slot, true)
 		current_slot = slot
