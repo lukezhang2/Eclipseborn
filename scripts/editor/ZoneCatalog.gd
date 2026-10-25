@@ -85,7 +85,12 @@ static func _village() -> Array:
 	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, 472, 56, 56))
 	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1292, 238, 380))
 	out.append(_plight("lamp_street", "Street Lamp", 700, 280, 280))
-	out.append(_p("switch_street", "prop_switch", "Light Switch", 372, 488, 24, 40))
+	out.append(_plight("lamp_square", "Square Lamp", 2000, 300, 260))
+	var sw := _p("switch_street", "prop_switch", "Lever", 372, FLOOR_TOP - 12, 28, 40)
+	sw["starts_on"] = true
+	sw["target_ids"] = ["lamp_street", "lamp_square", "door_street_a"]
+	out.append(sw)
+	out.append(_p("door_street_a", "prop_door", "Street Door", 1100, FLOOR_TOP, 28, 100))
 	out.append(_p("platform_gear_a", "floor", "Moving Platform A", 1544, 410, 140, 20))
 	out.append(_p("platform_gear_b", "floor", "Moving Platform B", 2300, 370, 120, 20))
 	out.append(_p("bg_gear_a", "prop_bg_gear", "BG Gear A", 1450, 300, 110, 110))

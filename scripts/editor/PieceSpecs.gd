@@ -23,10 +23,17 @@ const LIGHT_BLOCK_PHYSICS_LAYER := 128
 static func default_blocks_light(kind: String) -> bool:
 	## Default ON — opt out for emitters, characters, and pure draw props.
 	match kind:
-		"light", "background", "prop_npc", "prop_enemy", "prop_pickup":
+		"light", "background", "prop_npc", "prop_enemy", "prop_pickup", "prop_switch", "prop_checkpoint":
 			return false
 		_:
 			return true
+
+static func is_linkable_target(kind: String) -> bool:
+	return kind in ["light", "prop_lantern", "prop_door"]
+
+
+static func is_switch_kind(kind: String) -> bool:
+	return kind == "prop_switch"
 
 
 static func default_draw_layer(kind: String) -> int:
@@ -42,7 +49,7 @@ static func default_draw_layer(kind: String) -> int:
 			return -3
 		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit":
 			return -2
-		"crate", "prop_breakable", "prop_npc", "prop_enemy", "prop_switch":
+		"crate", "prop_breakable", "prop_npc", "prop_enemy", "prop_switch", "prop_door":
 			return 1
 		"light", "prop_lantern", "prop_pickup":
 			return 2
@@ -87,7 +94,9 @@ static func default_size(kind: String) -> Vector2:
 		"prop_pickup":
 			return Vector2(28, 28)
 		"prop_switch":
-			return Vector2(24, 40)
+			return Vector2(28, 40)
+		"prop_door":
+			return Vector2(28, 96)
 		"prop_desk":
 			return Vector2(200, 28)
 		"prop_exit":
@@ -100,7 +109,7 @@ static func anchor(kind: String) -> String:
 	## Matches how room scripts place the node origin.
 	match kind:
 		"prop_house", "prop_checkpoint", "prop_bench", "prop_vent", \
-		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_exit":
+		"prop_hatch", "prop_tower", "prop_npc", "prop_switch", "prop_door", "prop_exit":
 			return "bottom"
 		"prop_desk":
 			return "center"

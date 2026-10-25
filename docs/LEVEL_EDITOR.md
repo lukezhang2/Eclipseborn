@@ -21,6 +21,13 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 
 Select a `prop_npc` piece → **NPC dialogue** box (one line per entry). Stored as `"lines": ["…"]` on the piece. House interiors read `npc_shop` via `LevelData.merged_piece`.
 
+### Levers, doors, and links
+
+- Add **Lever** (`prop_switch`) or **Door (switchable)** (`prop_door`) from the palette.
+- Select a lever → **Lever links** list: multi-select lanterns and doors it should power.
+- Saved as `"target_ids": ["lamp_street", "door_street_a"]` plus optional `"starts_on"`.
+- Doors respond to `set_on` (open when powered). Checkpoints: Interact to rest and open **Fast Travel**.
+
 ## Sharing a level with an AI
 
 1. Open the Level Editor (title → bottom-right hotspot → password).

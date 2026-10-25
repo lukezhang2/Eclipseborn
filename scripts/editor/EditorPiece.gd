@@ -25,6 +25,10 @@ var dialogue_lines: PackedStringArray = PackedStringArray()
 var blocks_light: bool = true
 ## Draw order (z_index). Player is PieceSpecs.PLAYER_DRAW_LAYER (0).
 var draw_layer: int = 0
+## Lever links: catalog ids of lights / doors this switch powers.
+var target_ids: PackedStringArray = PackedStringArray()
+## Door starts open / switch starts on.
+var starts_on: bool = true
 
 var _visual: Sprite2D
 var _outline: Line2D
@@ -95,6 +99,16 @@ func to_dict() -> Dictionary:
 			lines_arr.append(s)
 		d["lines"] = lines_arr
 		d["kind"] = "prop_npc"
+	if catalog_kind == "prop_switch" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_switch"):
+		d["kind"] = "prop_switch"
+		d["starts_on"] = starts_on
+		var tids: Array = []
+		for t in target_ids:
+			tids.append(t)
+		d["target_ids"] = tids
+	if catalog_kind == "prop_door" or (has_meta("piece_kind") and str(get_meta("piece_kind")) == "prop_door"):
+		d["kind"] = "prop_door"
+		d["starts_open"] = starts_on
 	return d
 
 
@@ -110,6 +124,13 @@ func apply_dict(d: Dictionary) -> void:
 	blocks_light = bool(d.get("blocks_light", PieceSpecs.default_blocks_light(k)))
 	draw_layer = int(d.get("layer", PieceSpecs.default_draw_layer(k)))
 	z_index = draw_layer
+	target_ids = PackedStringArray()
+	for t in d.get("target_ids", []):
+		target_ids.append(str(t))
+	if k == "prop_switch":
+		starts_on = bool(d.get("starts_on", true))
+	elif k == "prop_door":
+		starts_on = bool(d.get("starts_open", false))
 	match k:
 		"background":
 			kind = Kind.BACKGROUND
@@ -306,6 +327,10 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.32, 0.24, 0.16)
 		"prop_exit":
 			col = Color(0.12, 0.08, 0.06)
+		"prop_switch":
+			col = Color(0.55, 0.55, 0.52)
+		"prop_door":
+			col = Color(0.4, 0.26, 0.14)
 		_:
 			col = Color(0.4, 0.42, 0.48)
 	for y in h:

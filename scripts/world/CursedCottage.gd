@@ -151,6 +151,7 @@ func _build_hatch_room() -> void:
 		var cp := Checkpoint.new()
 		cp.position = Vector2(3300, FLOOR_TOP - 4)
 		cp.checkpoint_id = "cottage_hatch"
+		cp.checkpoint_name = "Cottage Hatch"
 		LevelData.tag(cp, "checkpoint_hatch")
 		add_child(cp)
 

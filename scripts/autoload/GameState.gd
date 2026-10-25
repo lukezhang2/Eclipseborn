@@ -31,6 +31,8 @@ var has_snuff: bool = false
 
 var checkpoint_path: String = ""
 var checkpoint_position: Vector2 = Vector2.ZERO
+## Activated rest hearths for fast travel: [{id, zone, x, y, name}, ...]
+var activated_checkpoints: Array = []
 ## Live position written on exit / autosave (may differ from checkpoint).
 var last_position: Vector2 = Vector2.ZERO
 ## One-shot spawn used by zone transitions (hatch → village). Survives autosave capture.
@@ -98,6 +100,7 @@ func reset_run() -> void:
 	has_snuff = false
 	checkpoint_path = ""
 	checkpoint_position = Vector2.ZERO
+	activated_checkpoints = []
 	last_position = Vector2.ZERO
 	current_zone_id = "cursed_cottage"
 	current_room_id = "hall"
@@ -183,6 +186,43 @@ func set_checkpoint(pos: Vector2, path: String = "") -> void:
 	shade = 1.0
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
+
+
+func activate_checkpoint(id: String, zone: String, pos: Vector2, label: String = "") -> void:
+	set_checkpoint(pos, id)
+	var entry := {
+		"id": id if id != "" else "cp_%d" % int(pos.x),
+		"zone": zone if zone != "" else current_zone_id,
+		"x": pos.x,
+		"y": pos.y,
+		"name": label if label != "" else (id if id != "" else "Rest"),
+	}
+	var found := false
+	for i in activated_checkpoints.size():
+		var e: Dictionary = activated_checkpoints[i]
+		if str(e.get("id", "")) == entry.id and str(e.get("zone", "")) == entry.zone:
+			activated_checkpoints[i] = entry
+			found = true
+			break
+	if not found:
+		activated_checkpoints.append(entry)
+	SaveManager.autosave()
+
+
+func get_activated_checkpoints() -> Array:
+	return activated_checkpoints.duplicate(true)
+
+
+func travel_to_checkpoint(entry: Dictionary) -> void:
+	var zone := str(entry.get("zone", current_zone_id))
+	var pos := Vector2(float(entry.get("x", 0)), float(entry.get("y", 0)))
+	pending_spawn = pos
+	checkpoint_position = pos
+	checkpoint_path = str(entry.get("id", ""))
+	last_position = pos
+	current_zone_id = zone
+	var scene_path := SaveManager.scene_for_zone(zone)
+	get_tree().change_scene_to_file(scene_path)
 
 
 func apply_light_exposure(dt: float, kind: LightKind) -> void:

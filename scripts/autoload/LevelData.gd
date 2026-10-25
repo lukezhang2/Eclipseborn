@@ -149,6 +149,9 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			lamp.pushable = bool(p.get("pushable", true))
 			parent.add_child(lamp)
 			lamp.set_radius(float(p.get("radius", 280.0)))
+			LevelData.tag(lamp, str(p.get("id", "")))
+			if str(p.get("id", "")) != "":
+				lamp.name = str(p.get("id"))
 		"prop_bench":
 			LevelCommon.add_bench(parent, pos)
 		"prop_vent":
@@ -159,7 +162,28 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			var cp := Checkpoint.new()
 			cp.position = pos
 			cp.checkpoint_id = str(p.get("id", "editor_cp"))
+			cp.checkpoint_name = str(p.get("name", cp.checkpoint_id))
 			parent.add_child(cp)
+			LevelData.tag(cp, str(p.get("id", "")))
+		"prop_switch":
+			var sw := LightSwitch.new()
+			sw.position = pos
+			sw.starts_on = bool(p.get("starts_on", true))
+			var tids: PackedStringArray = PackedStringArray()
+			for t in p.get("target_ids", []):
+				tids.append(str(t))
+			sw.target_ids = tids
+			parent.add_child(sw)
+			LevelData.tag(sw, str(p.get("id", "")))
+		"prop_door":
+			var door := SwitchDoor.new()
+			door.position = pos
+			door.door_id = str(p.get("id", "door"))
+			door.width = maxf(size.x, 20.0)
+			door.height = maxf(size.y, 64.0)
+			door.starts_open = bool(p.get("starts_open", false))
+			parent.add_child(door)
+			LevelData.tag(door, str(p.get("id", "")))
 		"prop_npc":
 			var npc := NPC.new()
 			npc.position = pos

@@ -132,6 +132,8 @@ func load_game(slot: int) -> bool:
 	GameState.has_shadow_grip = cfg.get_value("abilities", "shadow_grip", false)
 	GameState.discovered_rooms = cfg.get_value("map", "discovered", {})
 	GameState.broken_ids = cfg.get_value("world", "broken", [])
+	GameState.activated_checkpoints = cfg.get_value("map", "checkpoints", [])
+	GameState.checkpoint_path = cfg.get_value("meta", "checkpoint_id", "")
 	GameState.health_changed.emit(GameState.health, GameState.max_health)
 	GameState.shade_changed.emit(GameState.shade)
 	GameState.currency_changed.emit(GameState.currency)
@@ -184,6 +186,8 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("abilities", "double_jump", GameState.has_double_jump)
 	cfg.set_value("abilities", "shadow_grip", GameState.has_shadow_grip)
 	cfg.set_value("map", "discovered", GameState.discovered_rooms)
+	cfg.set_value("map", "checkpoints", GameState.activated_checkpoints)
+	cfg.set_value("meta", "checkpoint_id", GameState.checkpoint_path)
 	cfg.set_value("world", "broken", GameState.broken_ids)
 	var err := cfg.save(slot_path(slot))
 	if err == OK:

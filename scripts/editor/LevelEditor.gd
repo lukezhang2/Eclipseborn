@@ -30,6 +30,9 @@ var _radius_spin: SpinBox
 var _radius_row: HBoxContainer
 var _dialogue_row: VBoxContainer
 var _dialogue_edit: TextEdit
+var _link_row: VBoxContainer
+var _link_list: ItemList
+var _syncing_links: bool = false
 var _blocks_light_btn: CheckButton
 var _layer_label: Label
 var _status: Label
@@ -246,6 +249,29 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	dlg_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
 	_dialogue_row.add_child(dlg_hint)
 
+	_link_row = VBoxContainer.new()
+	_link_row.visible = false
+	_link_row.add_theme_constant_override("separation", 4)
+	col.add_child(_link_row)
+	_link_row.add_child(_section("Lever links"))
+	var link_hint := Label.new()
+	link_hint.text = "Select lanterns / doors this lever powers (multi-select)."
+	link_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	link_hint.add_theme_font_size_override("font_size", 11)
+	link_hint.add_theme_color_override("font_color", Color(0.65, 0.6, 0.5))
+	_link_row.add_child(link_hint)
+	_link_list = ItemList.new()
+	_link_list.select_mode = ItemList.SELECT_MULTI
+	_link_list.custom_minimum_size = Vector2(280, 120)
+	_link_list.multi_selected.connect(func(_idx: int, _selected_now: bool) -> void:
+		_on_links_changed()
+	)
+	_link_list.item_clicked.connect(func(_idx: int, _pos: Vector2, _mouse: int) -> void:
+		## ItemList multi_selected fires on keyboard; also sync after click.
+		call_deferred("_on_links_changed")
+	)
+	_link_row.add_child(_link_list)
+
 	col.add_child(_section("Light & layer"))
 	_blocks_light_btn = CheckButton.new()
 	_blocks_light_btn.text = "Blocks light"
@@ -319,7 +345,8 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	add_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for item in [
 		["floor", "Steel floor"], ["wall", "Wall"], ["crate", "Crate"],
-		["light", "Lantern"], ["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
+		["light", "Lantern"], ["prop_switch", "Lever"], ["prop_door", "Door (switchable)"],
+		["prop_bench", "Bench"], ["prop_checkpoint", "Checkpoint"],
 		["prop_npc", "NPC / Shopkeeper"], ["prop_desk", "Desk"],
 	]:
 		add_opt.add_item(item[1])
@@ -485,7 +512,7 @@ func _load_zone() -> void:
 		var merged: Dictionary = cat.duplicate(true)
 		if overrides.has(id):
 			var ov: Dictionary = overrides[id]
-			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor", "blocks_light", "layer"]:
+			for key in ["x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor", "blocks_light", "layer", "target_ids", "starts_on", "starts_open"]:
 				if ov.has(key):
 					merged[key] = ov[key]
 			overrides.erase(id)
@@ -541,6 +568,10 @@ func _update_inspector() -> void:
 	else:
 		_dialogue_edit.text = ""
 	_syncing_dialogue = false
+	var is_switch := _selected != null and PieceSpecs.is_switch_kind(_selected.catalog_kind)
+	_link_row.visible = is_switch
+	if is_switch:
+		_refresh_link_list()
 	_blocks_light_btn.disabled = _selected == null
 	if _selected:
 		_blocks_light_btn.set_pressed_no_signal(_selected.blocks_light)
@@ -552,6 +583,38 @@ func _update_inspector() -> void:
 	else:
 		_blocks_light_btn.set_pressed_no_signal(false)
 		_layer_label.text = "Piece: —  |  Player layer: %d" % PieceSpecs.PLAYER_DRAW_LAYER
+
+
+func _refresh_link_list() -> void:
+	if _link_list == null or _selected == null:
+		return
+	_syncing_links = true
+	_link_list.clear()
+	var linked: Dictionary = {}
+	for t in _selected.target_ids:
+		linked[str(t)] = true
+	for p in _pieces:
+		if p == null or not is_instance_valid(p) or p == _selected:
+			continue
+		if not PieceSpecs.is_linkable_target(p.catalog_kind) and p.kind != EditorPiece.Kind.LIGHT:
+			continue
+		var label := "%s [%s]" % [p.display_name, p.piece_id]
+		_link_list.add_item(label)
+		var idx := _link_list.item_count - 1
+		_link_list.set_item_metadata(idx, p.piece_id)
+		if linked.has(p.piece_id):
+			_link_list.select(idx, false)
+	_syncing_links = false
+
+
+func _on_links_changed() -> void:
+	if _syncing_links or _selected == null or not PieceSpecs.is_switch_kind(_selected.catalog_kind):
+		return
+	var ids := PackedStringArray()
+	for idx in _link_list.get_selected_items():
+		ids.append(str(_link_list.get_item_metadata(idx)))
+	_selected.target_ids = ids
+	_status.text = "Lever linked to %d target(s)." % ids.size()
 
 
 func _on_dialogue_changed() -> void:
@@ -599,7 +662,7 @@ func _add_piece() -> void:
 	var floor_top := PieceSpecs.floor_top_for_zone(zone_id)
 	var y := _cam.position.y + 20.0
 	## Snap floor-sitting kinds onto the zone floor so crates aren't buried.
-	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc"]:
+	if _palette_id in ["crate", "prop_crate", "prop_bench", "prop_vent", "prop_checkpoint", "prop_house", "prop_hatch", "prop_npc", "prop_switch", "prop_door"]:
 		y = PieceSpecs.sit_on_floor_y(_palette_id, floor_top, sz)
 	var d := {
 		"id": "%s_%d" % [_palette_id, Time.get_ticks_msec()],
@@ -619,6 +682,15 @@ func _add_piece() -> void:
 	if _palette_id == "prop_npc":
 		d["name"] = "Shopkeeper"
 		d["lines"] = ["You're the stranger here — the only one who needs the shade."]
+	if _palette_id == "prop_switch":
+		d["name"] = "Lever"
+		d["starts_on"] = true
+		d["target_ids"] = []
+	if _palette_id == "prop_door":
+		d["name"] = "Door"
+		d["starts_open"] = false
+	if _palette_id == "prop_checkpoint":
+		d["name"] = "Rest Hearth"
 	d["blocks_light"] = PieceSpecs.default_blocks_light(_palette_id)
 	d["layer"] = PieceSpecs.default_draw_layer(_palette_id)
 	_spawn_piece_dict(d)
