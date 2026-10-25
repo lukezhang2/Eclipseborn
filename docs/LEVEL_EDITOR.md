@@ -41,6 +41,10 @@ Editor **Save (this session)** and auto-saves only last until you refresh the pa
 - **Zone door** (`prop_exit`) and **House facade** (`prop_house`): select → **Zone link** (target zone, spawn X/Y, fade caption). Builds on existing house exits / tower→village door.
 - Palette also includes hatch, pipe, jar, enemy, tower so more builtins can be placed as non-catalog overlays.
 
+### Lanterns
+
+Select a **Lantern** → **Lantern kind** (Hearth / Candle / **Moon** / Crimson / Sunshaft), plus radius and intensity. Moon and Crimson are safe shade lights. Saved as `"light_kind"`.
+
 ### Levers, doors, and links
 
 - Add **Lever** (`prop_switch`) or **Door (switchable)** (`prop_door`) from the palette.

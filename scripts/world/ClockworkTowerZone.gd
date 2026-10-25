@@ -675,6 +675,8 @@ func _make_hanging_lamp(id: String, pos: Vector2, radius: float, on: bool) -> Li
 	lamp.is_enabled = on
 	if saved.has("intensity"):
 		lamp.set_intensity(float(saved.get("intensity", 1.0)))
+	if saved.has("light_kind"):
+		lamp.light_kind = int(saved.get("light_kind")) as GameState.LightKind
 	## Let LightSource hang a chain to ceiling_y.
 	LevelData.tag(lamp, id)
 	return lamp

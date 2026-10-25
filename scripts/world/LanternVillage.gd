@@ -190,6 +190,8 @@ func _make_hearth_lamp(catalog_id: String, fallback_pos: Vector2, fallback_r: fl
 			lamp.set_radius(float(saved.get("radius")))
 		if saved.has("intensity"):
 			lamp.set_intensity(float(saved.get("intensity")))
+		if saved.has("light_kind"):
+			lamp.light_kind = int(saved.get("light_kind")) as GameState.LightKind
 	LevelData.tag(lamp, catalog_id)
 	return lamp
 
