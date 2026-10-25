@@ -10,6 +10,12 @@ class_name House
 @export var height: float = 90.0
 @export var blocks_light: bool = true
 @export var interior_scene: String = "res://scenes/rooms/HouseInterior.tscn"
+## WorldArt house style; -1 picks one of the timber designs from house_id so the village mixes.
+@export var art_style: int = -1
+
+const TIMBER_STYLES := [2, 6, 9]
+## Known village houses each get their own timber design: workshop (C), jettied (C1), clockmaker (C4).
+const HOUSE_STYLES := {"house_gear": 2, "house_keep": 6, "house_inn": 9}
 
 var _prompt: Label
 
@@ -22,37 +28,11 @@ func _ready() -> void:
 
 func _build() -> void:
 	var hx := width * 0.5
-	var wall := Polygon2D.new()
-	wall.color = Color(0.28, 0.22, 0.18)
-	wall.polygon = PackedVector2Array([
-		Vector2(-hx, 0), Vector2(hx, 0), Vector2(hx, -height), Vector2(-hx, -height)
-	])
-	add_child(wall)
-	var roof := Polygon2D.new()
-	roof.color = Color(0.35, 0.18, 0.14)
-	roof.polygon = PackedVector2Array([
-		Vector2(-hx - 8, -height), Vector2(hx + 8, -height), Vector2(0, -height - 36)
-	])
-	add_child(roof)
-	var door := Polygon2D.new()
-	door.color = Color(0.12, 0.08, 0.06)
-	door.polygon = PackedVector2Array([
-		Vector2(-12, 0), Vector2(12, 0), Vector2(11, -32), Vector2(-11, -32)
-	])
-	add_child(door)
-	var door_glow := Polygon2D.new()
-	door_glow.color = Color(0.55, 0.45, 0.25, 0.35)
-	door_glow.polygon = PackedVector2Array([
-		Vector2(-8, -4), Vector2(8, -4), Vector2(7, -28), Vector2(-7, -28)
-	])
-	add_child(door_glow)
-	var win := Polygon2D.new()
-	win.color = Color(0.55, 0.6, 0.35, 0.5)
-	win.polygon = PackedVector2Array([
-		Vector2(-hx + 16, -height + 20), Vector2(-hx + 36, -height + 20),
-		Vector2(-hx + 36, -height + 40), Vector2(-hx + 16, -height + 40)
-	])
-	add_child(win)
+	var art := WorldArt.new()
+	art.kind = WorldArt.Kind.HOUSE
+	art.style = art_style if art_style >= 0 else _pick_style()
+	art.size = Vector2(width, height)
+	add_child(art)
 
 	_apply_light_block(hx)
 
@@ -62,6 +42,12 @@ func _build() -> void:
 	_prompt.add_theme_color_override("font_color", Color(0.92, 0.86, 0.7))
 	_prompt.visible = false
 	add_child(_prompt)
+
+
+func _pick_style() -> int:
+	if HOUSE_STYLES.has(house_id):
+		return HOUSE_STYLES[house_id]
+	return TIMBER_STYLES[absi(hash(house_id)) % TIMBER_STYLES.size()]
 
 
 func set_blocks_light(on: bool) -> void:

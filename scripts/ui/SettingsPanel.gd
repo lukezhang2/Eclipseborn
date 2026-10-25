@@ -19,7 +19,7 @@ func _init(back_label: String = "Back") -> void:
 
 	var title := Label.new()
 	title.text = "Settings"
-	title.add_theme_font_size_override("font_size", 28)
+	UITheme.style_title(title, 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(title)
 

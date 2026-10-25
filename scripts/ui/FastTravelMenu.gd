@@ -24,11 +24,12 @@ func _build_ui() -> void:
 	root.name = "Root"
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.theme = UITheme.get_theme()
 	add_child(root)
 
 	dim = ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.02, 0.03, 0.05, 0.7)
+	dim.color = Color(UITheme.COAL, 0.78)
 	root.add_child(dim)
 
 	var center := CenterContainer.new()
@@ -38,59 +39,53 @@ func _build_ui() -> void:
 	panel = PanelContainer.new()
 	panel.name = "Panel"
 	panel.custom_minimum_size = Vector2(540, 440)
-	_style_panel(panel)
+	panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	center.add_child(panel)
+	UITheme.add_plate(panel, Vector2(28, 24))
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 22)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"
-	vbox.add_theme_constant_override("separation", 10)
+	vbox.add_theme_constant_override("separation", 12)
 	margin.add_child(vbox)
 
 	var title := Label.new()
 	title.text = "Fast Travel"
-	title.add_theme_font_size_override("font_size", 30)
-	title.add_theme_color_override("font_color", Color(0.95, 0.88, 0.72))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_title(title, 34)
 	vbox.add_child(title)
 
 	var sub := Label.new()
 	sub.text = "Rest hearths you've activated"
 	sub.add_theme_font_size_override("font_size", 13)
-	sub.add_theme_color_override("font_color", Color(0.62, 0.56, 0.48))
+	sub.add_theme_color_override("font_color", UITheme.STEAM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(sub)
 
-	var rule := ColorRect.new()
-	rule.custom_minimum_size = Vector2(0, 2)
-	rule.color = Color(0.55, 0.4, 0.25, 0.55)
-	vbox.add_child(rule)
-
 	list = ItemList.new()
 	list.name = "List"
-	list.custom_minimum_size = Vector2(480, 260)
+	list.custom_minimum_size = Vector2(460, 250)
 	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	list.add_theme_color_override("font_color", Color(0.9, 0.86, 0.78))
-	list.add_theme_color_override("font_hovered_color", Color(1.0, 0.95, 0.85))
-	list.add_theme_color_override("font_selected_color", Color(1.0, 0.92, 0.7))
+	list.add_theme_color_override("font_color", UITheme.CREAM)
+	list.add_theme_color_override("font_hovered_color", UITheme.LAMP)
+	list.add_theme_color_override("font_selected_color", UITheme.BRASS_LIGHT)
 	list.item_activated.connect(_on_activated)
 	vbox.add_child(list)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", 14)
 	vbox.add_child(row)
 
 	var go := Button.new()
 	go.text = "Travel"
-	go.custom_minimum_size = Vector2(140, 36)
-	_style_button(go, true)
+	go.custom_minimum_size = Vector2(150, 40)
 	go.pressed.connect(func() -> void:
 		var sel := list.get_selected_items()
 		if not sel.is_empty():
@@ -100,58 +95,16 @@ func _build_ui() -> void:
 
 	var close_btn := Button.new()
 	close_btn.text = "Close"
-	close_btn.custom_minimum_size = Vector2(140, 36)
-	_style_button(close_btn, false)
+	close_btn.custom_minimum_size = Vector2(150, 40)
 	close_btn.pressed.connect(close)
 	row.add_child(close_btn)
 
 	var hint := Label.new()
 	hint.text = "Double-click a hearth · Esc to close"
 	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.5, 0.46, 0.4))
+	hint.add_theme_color_override("font_color", UITheme.STEAM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
-
-
-func _style_panel(p: PanelContainer) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.09, 0.08, 0.1, 0.96)
-	sb.border_color = Color(0.7, 0.5, 0.28, 0.92)
-	sb.set_border_width_all(2)
-	sb.corner_radius_top_left = 10
-	sb.corner_radius_top_right = 10
-	sb.corner_radius_bottom_left = 10
-	sb.corner_radius_bottom_right = 10
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 12
-	p.add_theme_stylebox_override("panel", sb)
-
-
-func _style_button(btn: Button, accent: bool) -> void:
-	var sb := StyleBoxFlat.new()
-	if accent:
-		sb.bg_color = Color(0.34, 0.24, 0.12, 1.0)
-		sb.border_color = Color(0.9, 0.68, 0.35, 0.95)
-	else:
-		sb.bg_color = Color(0.15, 0.13, 0.15, 1.0)
-		sb.border_color = Color(0.45, 0.4, 0.35, 0.8)
-	sb.set_border_width_all(1)
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_top_right = 6
-	sb.corner_radius_bottom_left = 6
-	sb.corner_radius_bottom_right = 6
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 6
-	sb.content_margin_bottom = 6
-	btn.add_theme_stylebox_override("normal", sb)
-	var hover := sb.duplicate()
-	hover.bg_color = sb.bg_color.lightened(0.08)
-	btn.add_theme_stylebox_override("hover", hover)
-	var pressed := sb.duplicate()
-	pressed.bg_color = sb.bg_color.darkened(0.1)
-	btn.add_theme_stylebox_override("pressed", pressed)
-	btn.add_theme_color_override("font_color", Color(0.92, 0.88, 0.78))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -216,11 +169,9 @@ func _on_activated(index: int) -> void:
 	if index < 0 or index >= _entries.size():
 		return
 	var e: Dictionary = _entries[index]
-	## Don't "travel" to the hearth you're already at in the same zone.
 	if str(e.get("id", "")) == GameState.checkpoint_path and str(e.get("zone", "")) == GameState.current_zone_id:
 		close()
 		return
 	close()
-	## Let fade start, then travel after a beat so close tween isn't cut mid-scene-change.
 	await get_tree().create_timer(0.24, true, false, true).timeout
 	GameState.travel_to_checkpoint(e)

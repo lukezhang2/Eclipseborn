@@ -55,6 +55,8 @@ var currency_hud_unlocked: bool = false
 var shop_stock: Dictionary = {}
 
 var is_paused: bool = false
+## True between death and respawn — suppresses land/walk spam while the body settles.
+var is_dead: bool = false
 var single_player: bool = true
 var player: Node2D = null
 ## True until the first-spawn cutscene finishes on a new save.
@@ -314,7 +316,7 @@ func travel_to_checkpoint(entry: Dictionary) -> void:
 	get_tree().change_scene_to_file(scene_path)
 
 
-func apply_light_exposure(dt: float, kind: LightKind) -> void:
+func apply_light_exposure(dt: float, kind: LightKind, intensity: float = 1.0) -> void:
 	if is_paused:
 		return
 	match kind:
@@ -324,11 +326,12 @@ func apply_light_exposure(dt: float, kind: LightKind) -> void:
 		_:
 			pass
 
-	var drain := SHADE_DRAIN_HEARTH
-	var burn := HEALTH_BURN_HEARTH
+	var scale := clampf(intensity, 0.15, 3.0)
+	var drain := SHADE_DRAIN_HEARTH * scale
+	var burn := HEALTH_BURN_HEARTH * scale
 	if kind == LightKind.SUNSHAFT:
-		drain = SHADE_DRAIN_SUNSHAFT
-		burn = HEALTH_BURN_SUNSHAFT
+		drain = SHADE_DRAIN_SUNSHAFT * scale
+		burn = HEALTH_BURN_SUNSHAFT * scale
 
 	if shade > 0.0:
 		shade = maxf(0.0, shade - drain * dt)
@@ -377,6 +380,7 @@ func add_shade_heart() -> void:
 
 
 func _die() -> void:
+	is_dead = true
 	AudioManager.stop_all_burns()
 	died.emit()
 	# Soft respawn at checkpoint.
@@ -388,6 +392,29 @@ func _respawn() -> void:
 	shade = 1.0
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
+	var dest := _death_respawn_position()
 	if player and is_instance_valid(player):
-		player.global_position = checkpoint_position
+		player.global_position = dest
+		if player.has_method("notify_respawned"):
+			player.notify_respawned()
+	is_dead = false
 	respawned.emit()
+
+
+func _death_respawn_position() -> Vector2:
+	## Prefer the last rested hearth — never the continue/logout position alone.
+	if checkpoint_position != Vector2.ZERO:
+		return checkpoint_position
+	if checkpoint_path != "":
+		for raw in activated_checkpoints:
+			if typeof(raw) != TYPE_DICTIONARY:
+				continue
+			var e: Dictionary = raw
+			if str(e.get("id", "")) == checkpoint_path:
+				var p := Vector2(float(e.get("x", 0.0)), float(e.get("y", 0.0)))
+				if p != Vector2.ZERO:
+					checkpoint_position = p
+					return p
+	if player and is_instance_valid(player):
+		return (player as Node2D).global_position
+	return last_position

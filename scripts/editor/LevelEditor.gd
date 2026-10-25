@@ -28,6 +28,8 @@ var _piece_list: ItemList
 var _name_edit: LineEdit
 var _radius_spin: SpinBox
 var _radius_row: HBoxContainer
+var _intensity_spin: SpinBox
+var _intensity_row: HBoxContainer
 var _dialogue_row: VBoxContainer
 var _dialogue_edit: TextEdit
 var _shop_row: VBoxContainer
@@ -246,6 +248,25 @@ func _build_sidebar(col: VBoxContainer) -> void:
 			_refresh_world_extent()
 	)
 	_radius_row.add_child(_radius_spin)
+
+	_intensity_row = HBoxContainer.new()
+	_intensity_row.visible = false
+	col.add_child(_intensity_row)
+	_intensity_row.add_child(_lbl("Light intensity"))
+	_intensity_spin = SpinBox.new()
+	_intensity_spin.min_value = 0.25
+	_intensity_spin.max_value = 3.0
+	_intensity_spin.step = 0.05
+	_intensity_spin.value = 1.0
+	_intensity_spin.tooltip_text = "Wash brightness + shade/HP burn speed (1.0 = normal)"
+	_intensity_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_intensity_spin.value_changed.connect(func(v: float) -> void:
+		if _selected and _selected.kind == EditorPiece.Kind.LIGHT:
+			_selected.light_intensity = v
+			_selected._rebuild()
+			_selected.set_selected(true)
+	)
+	_intensity_row.add_child(_intensity_spin)
 
 	_dialogue_row = VBoxContainer.new()
 	_dialogue_row.visible = false
@@ -633,7 +654,7 @@ func _load_zone() -> void:
 		if overrides.has(id):
 			var ov: Dictionary = overrides[id]
 			for key in [
-				"x", "y", "w", "h", "name", "radius", "light_kind", "pushable", "lines", "anchor",
+				"x", "y", "w", "h", "name", "radius", "intensity", "light_kind", "pushable", "lines", "anchor",
 				"blocks_light", "layer", "target_ids", "starts_on", "starts_open", "rotation",
 				"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
 				"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
@@ -659,8 +680,11 @@ func _spawn_piece_dict(d: Dictionary) -> void:
 	var piece := EditorPiece.new()
 	_world.add_child(piece)
 	piece.apply_dict(d)
-	if str(d.get("kind", "")) == "light" and d.has("radius"):
-		piece.light_radius = float(d.get("radius", 280))
+	if str(d.get("kind", "")) == "light":
+		if d.has("radius"):
+			piece.light_radius = float(d.get("radius", 280))
+		if d.has("intensity"):
+			piece.light_intensity = float(d.get("intensity", 1.0))
 		piece._rebuild()
 	_pieces.append(piece)
 
@@ -672,7 +696,7 @@ func _refresh_list() -> void:
 		var p := _pieces[i]
 		var extra := ""
 		if p.kind == EditorPiece.Kind.LIGHT:
-			extra = "  r=%.0f" % p.light_radius
+			extra = "  r=%.0f i=%.2f" % [p.light_radius, p.light_intensity]
 		_piece_list.add_item("%s [%s]%s" % [p.display_name, p.piece_id, extra])
 		if p == _selected:
 			_piece_list.select(i)
@@ -684,8 +708,10 @@ func _update_inspector() -> void:
 	_name_edit.text = _selected.display_name if _selected else ""
 	var is_light := _selected != null and _selected.kind == EditorPiece.Kind.LIGHT
 	_radius_row.visible = is_light
+	_intensity_row.visible = is_light
 	if is_light:
 		_radius_spin.value = _selected.light_radius
+		_intensity_spin.value = _selected.light_intensity
 	var is_npc := _selected != null and _selected.is_npc()
 	_shop_row.visible = is_npc
 	_syncing_shop = true
@@ -909,6 +935,7 @@ func _add_piece() -> void:
 	if _palette_id == "light":
 		d["name"] = "Lantern"
 		d["radius"] = 280
+		d["intensity"] = 1.0
 		d["pushable"] = true
 	if _palette_id == "prop_npc":
 		d["name"] = "Shopkeeper"

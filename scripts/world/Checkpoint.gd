@@ -11,7 +11,7 @@ class_name Checkpoint
 const TOUCH_W := 120.0
 const TOUCH_H := 140.0
 
-var _ember: Polygon2D
+var _art: WorldArt
 var _lit: bool = false
 var _touching: bool = false
 
@@ -20,7 +20,7 @@ func _ready() -> void:
 	verb = "Rest"
 	## Wide interact so the prompt is easy while near / above the hearth.
 	interact_range = 96.0
-	prompt_offset = Vector2(-36, -72)
+	prompt_offset = Vector2(-36, -96)
 	if checkpoint_name == "Rest" and checkpoint_id != "" and checkpoint_id != "default":
 		checkpoint_name = checkpoint_id.replace("_", " ").capitalize()
 	_build_visual()
@@ -51,27 +51,15 @@ func _build_touch() -> void:
 
 
 func _build_visual() -> void:
-	var hearth := Polygon2D.new()
-	hearth.polygon = PackedVector2Array([
-		Vector2(-28, 0), Vector2(28, 0), Vector2(22, -18), Vector2(-22, -18)
-	])
-	hearth.color = Color(0.14, 0.11, 0.1)
-	add_child(hearth)
-	var lip := Polygon2D.new()
-	lip.polygon = PackedVector2Array([
-		Vector2(-24, -18), Vector2(24, -18), Vector2(18, -26), Vector2(-18, -26)
-	])
-	lip.color = Color(0.22, 0.18, 0.16)
-	add_child(lip)
-	_ember = Polygon2D.new()
-	_ember.polygon = PackedVector2Array([
-		Vector2(-8, -8), Vector2(8, -8), Vector2(5, -16), Vector2(-5, -16)
-	])
-	_ember.color = Color(0.45, 0.22, 0.1, 0.55)
-	add_child(_ember)
+	# Two short snuffed lamp posts with a steel bench; their ink flames brighten when lit.
+	_art = WorldArt.new()
+	_art.kind = WorldArt.Kind.CHECKPOINT
+	_art.style = 6
+	_art.on = _lit
+	add_child(_art)
 	var label := Label.new()
 	label.text = checkpoint_name
-	label.position = Vector2(-28, -48)
+	label.position = Vector2(-28, -74)
 	label.add_theme_font_size_override("font_size", 12)
 	label.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
 	add_child(label)
@@ -123,8 +111,8 @@ func _activate(open_travel: bool) -> void:
 
 func _set_lit(on: bool) -> void:
 	_lit = on
-	if _ember:
-		_ember.color = Color(0.85, 0.45, 0.18, 0.95) if on else Color(0.45, 0.22, 0.1, 0.55)
+	if _art:
+		_art.on = on
 
 
 func _open_fast_travel() -> void:

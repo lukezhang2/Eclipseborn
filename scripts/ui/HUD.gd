@@ -8,6 +8,7 @@ extends CanvasLayer
 
 var _currency_root: Control
 var _currency_label: Label
+var _health_fill: ColorRect
 
 
 func _ready() -> void:
@@ -17,6 +18,7 @@ func _ready() -> void:
 	GameState.room_entered.connect(_on_room)
 	GameState.currency_changed.connect(_on_currency)
 	GameState.currency_hud_reveal.connect(_reveal_currency)
+	_health_fill = UITheme.style_hud($Root)
 	_build_currency_ui()
 	_on_health(GameState.health, GameState.max_health)
 	_on_shade(GameState.shade)
@@ -32,7 +34,7 @@ func _ready() -> void:
 func _build_currency_ui() -> void:
 	_currency_root = Control.new()
 	_currency_root.name = "CurrencyHud"
-	_currency_root.position = Vector2(24, 100)
+	_currency_root.position = Vector2(24, 112)  # Below the brass gauge plate.
 	_currency_root.custom_minimum_size = Vector2(200, 32)
 	$Root.add_child(_currency_root)
 	var icon := TextureRect.new()
@@ -80,6 +82,8 @@ func _fill_circle(img: Image, center: Vector2, radius: float, col: Color) -> voi
 
 func _on_health(current: int, maximum: int) -> void:
 	health_label.text = "%d / %d" % [current, maximum]
+	var bar_w := (_health_fill.get_parent() as Control).size.x
+	_health_fill.size.x = bar_w * clampf(float(current) / maxf(1.0, float(maximum)), 0.0, 1.0)
 
 
 func _on_shade(ratio: float) -> void:

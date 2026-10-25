@@ -28,7 +28,11 @@ _(none)_
 _(none)_
 
 ### Done recently
-- v0.1.28 — shop GUI fade (gear prices + editor stock Inf/N); fast-travel fade polish; no shopkeeper dialogue
+- v0.1.32 — shop GUI fade (gear prices + editor stock Inf/N); fast-travel fade polish; no shopkeeper dialogue
+- v0.1.31 — clipped realistic shadows (floors/walls/BG); editor light intensity (wash + burn rate); `index-0_1_31.pck`
+- v0.1.30 — first death uses last hearth, not continue/logout position; save checkpoint_x/y separately; `index-0_1_30.pck`
+- v0.1.29 — Brass & Rivets UI theme and steampunk world art
+- v0.1.28 — steel floor walk bank; jump matched; no death land spam; burn loops fixed; realistic hurt (keeps 0.1.27 hit-connect)
 - v0.1.27 — enemy hit flash/knockback; hit-connect SFX when player attack lands
 - v0.1.26 — shadow crystal: no floating label; tiny red ember in the core
 - v0.1.25 — editor moving-platform path/spin inspector when selected + path ghost; village platforms are prop_platform
@@ -70,6 +74,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.29 — Brass & Rivets UI theme (`UITheme`) + world art restyle (`WorldArt`): platforms, crates, houses, rest posts, caged lanterns, jars, hatch, lever, windows, bench, valve, vents; `index-0_1_29.pck`
 - v0.1.11 — Settings on the title menu too; shared `SettingsPanel` for title + pause
 - v0.1.9 — Settings menu (volume, brightness, fullscreen)
 - v0.1.6 — E = Interact for levers / switches / buttons

@@ -193,10 +193,12 @@ func load_game(slot: int) -> bool:
 	GameState.umbra = cfg.get_value("player", "umbra", 0.0)
 	GameState.currency = cfg.get_value("player", "currency", 0)
 	GameState.currency_hud_unlocked = cfg.get_value("player", "currency_hud", false)
-	GameState.checkpoint_position = Vector2(
-		cfg.get_value("player", "pos_x", 0.0),
-		cfg.get_value("player", "pos_y", 0.0)
+	## pos_x/y = where the player left / continues (NOT the rest hearth).
+	var continue_pos := Vector2(
+		float(cfg.get_value("player", "pos_x", 0.0)),
+		float(cfg.get_value("player", "pos_y", 0.0))
 	)
+	GameState.last_position = continue_pos
 	GameState.has_double_jump = cfg.get_value("abilities", "double_jump", false)
 	GameState.has_shadow_grip = cfg.get_value("abilities", "shadow_grip", false)
 	GameState.has_shade_dash = cfg.get_value("abilities", "shade_dash", false)
@@ -220,11 +222,39 @@ func load_game(slot: int) -> bool:
 	if hearths.is_empty():
 		hearths = _normalize_checkpoints(cfg.get_value("map", "checkpoints", []))
 	GameState.activated_checkpoints = hearths
-	GameState.checkpoint_path = cfg.get_value("meta", "checkpoint_id", "")
+	GameState.checkpoint_path = str(cfg.get_value("meta", "checkpoint_id", ""))
+	## Death respawn uses the rest hearth — never the continue/logout position.
+	GameState.checkpoint_position = _resolve_checkpoint_position(cfg, hearths, continue_pos)
 	GameState.health_changed.emit(GameState.health, GameState.max_health)
 	GameState.shade_changed.emit(GameState.shade)
 	GameState.currency_changed.emit(GameState.currency)
 	return true
+
+
+func _resolve_checkpoint_position(cfg: ConfigFile, hearths: Array, fallback: Vector2) -> Vector2:
+	## Dedicated fields (new saves), else hearth list by id (legacy), else continue pos.
+	if cfg.has_section_key("player", "checkpoint_x") and cfg.has_section_key("player", "checkpoint_y"):
+		var cp := Vector2(
+			float(cfg.get_value("player", "checkpoint_x", 0.0)),
+			float(cfg.get_value("player", "checkpoint_y", 0.0))
+		)
+		if cp != Vector2.ZERO:
+			return cp
+	var want_id := str(cfg.get_value("meta", "checkpoint_id", ""))
+	if want_id != "":
+		for raw in hearths:
+			if typeof(raw) != TYPE_DICTIONARY:
+				continue
+			var e: Dictionary = raw
+			if str(e.get("id", "")) == want_id:
+				return Vector2(float(e.get("x", 0.0)), float(e.get("y", 0.0)))
+	## Last activated hearth if any.
+	if not hearths.is_empty() and typeof(hearths[hearths.size() - 1]) == TYPE_DICTIONARY:
+		var last: Dictionary = hearths[hearths.size() - 1]
+		var p := Vector2(float(last.get("x", 0.0)), float(last.get("y", 0.0)))
+		if p != Vector2.ZERO:
+			return p
+	return fallback
 
 
 func capture_player_position() -> void:
@@ -270,6 +300,9 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("player", "currency_hud", GameState.currency_hud_unlocked)
 	cfg.set_value("player", "pos_x", pos.x)
 	cfg.set_value("player", "pos_y", pos.y)
+	## Rest hearth used on death — kept separate from continue/logout pos above.
+	cfg.set_value("player", "checkpoint_x", GameState.checkpoint_position.x)
+	cfg.set_value("player", "checkpoint_y", GameState.checkpoint_position.y)
 	cfg.set_value("abilities", "double_jump", GameState.has_double_jump)
 	cfg.set_value("abilities", "shadow_grip", GameState.has_shadow_grip)
 	cfg.set_value("abilities", "shade_dash", GameState.has_shade_dash)

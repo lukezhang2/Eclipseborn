@@ -23,11 +23,24 @@ func _ready() -> void:
 	settings_panel = SettingsPanel.new("Back")
 	$Center.add_child(settings_panel)
 	settings_panel.closed.connect(_show_main)
+	_apply_theme()
 	_show_main()
 	_build_slots()
 	_build_controls()
 	_add_editor_hotspot()
 	InputMapManager.bindings_changed.connect(_build_controls)
+
+
+func _apply_theme() -> void:
+	theme = UITheme.get_theme()
+	UITheme.style_title($Center/Main/Title)
+	main_panel.add_theme_constant_override("separation", 14)
+	UITheme.style_title($Center/PlaySlots/Label, 26)
+	UITheme.style_title($Center/Controls/Label, 22)
+	controls_list.add_theme_constant_override("separation", 3)
+	controls_panel.add_theme_constant_override("separation", 8)
+	for panel in [main_panel, play_panel, controls_panel, settings_panel]:
+		UITheme.add_plate(panel, Vector2(44, 20) if panel == controls_panel else Vector2(44, 32))
 
 
 func _add_version_label() -> void:
@@ -276,6 +289,7 @@ func _build_controls() -> void:
 		for slot in InputMapManager.MAX_SLOTS:
 			var key_btn := Button.new()
 			key_btn.custom_minimum_size.x = 88
+			key_btn.theme_type_variation = "KeyButton"
 			key_btn.text = InputMapManager.get_slot_text(action, slot)
 			key_btn.pressed.connect(_on_rebind_slot.bind(action, slot, key_btn))
 			row.add_child(key_btn)

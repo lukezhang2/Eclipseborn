@@ -31,11 +31,12 @@ func _build_ui() -> void:
 	root.name = "Root"
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.theme = UITheme.get_theme()
 	add_child(root)
 
 	dim = ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.02, 0.02, 0.04, 0.72)
+	dim.color = Color(UITheme.COAL, 0.8)
 	root.add_child(dim)
 
 	var center := CenterContainer.new()
@@ -44,15 +45,16 @@ func _build_ui() -> void:
 
 	panel = PanelContainer.new()
 	panel.name = "Panel"
-	panel.custom_minimum_size = Vector2(560, 480)
-	_style_panel(panel)
+	panel.custom_minimum_size = Vector2(580, 500)
+	panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	center.add_child(panel)
+	UITheme.add_plate(panel, Vector2(28, 24))
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 22)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
@@ -61,28 +63,22 @@ func _build_ui() -> void:
 
 	title_label = Label.new()
 	title_label.text = "Shop"
-	title_label.add_theme_font_size_override("font_size", 30)
-	title_label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78))
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_title(title_label, 32)
 	vbox.add_child(title_label)
 
 	var sub := Label.new()
 	sub.text = "Spend silver gears"
 	sub.add_theme_font_size_override("font_size", 13)
-	sub.add_theme_color_override("font_color", Color(0.62, 0.58, 0.5))
+	sub.add_theme_color_override("font_color", UITheme.STEAM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(sub)
 
 	gears_label = Label.new()
 	gears_label.add_theme_font_size_override("font_size", 18)
-	gears_label.add_theme_color_override("font_color", Color(0.82, 0.88, 0.96))
+	gears_label.add_theme_color_override("font_color", UITheme.LAMP)
 	gears_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(gears_label)
-
-	var rule := ColorRect.new()
-	rule.custom_minimum_size = Vector2(0, 2)
-	rule.color = Color(0.55, 0.42, 0.28, 0.55)
-	vbox.add_child(rule)
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(500, 300)
@@ -98,72 +94,25 @@ func _build_ui() -> void:
 	status_label = Label.new()
 	status_label.text = " "
 	status_label.add_theme_font_size_override("font_size", 12)
-	status_label.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
+	status_label.add_theme_color_override("font_color", UITheme.STEAM)
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(status_label)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
 	vbox.add_child(row)
 	var close_btn := Button.new()
 	close_btn.text = "Close"
-	close_btn.custom_minimum_size = Vector2(140, 36)
-	_style_button(close_btn, false)
+	close_btn.custom_minimum_size = Vector2(150, 40)
 	close_btn.pressed.connect(close)
 	row.add_child(close_btn)
 
 	var hint := Label.new()
 	hint.text = "Esc to close"
 	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.5, 0.46, 0.4))
+	hint.add_theme_color_override("font_color", UITheme.STEAM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
-
-
-func _style_panel(p: PanelContainer) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.1, 0.09, 0.11, 0.96)
-	sb.border_color = Color(0.62, 0.48, 0.3, 0.9)
-	sb.set_border_width_all(2)
-	sb.corner_radius_top_left = 10
-	sb.corner_radius_top_right = 10
-	sb.corner_radius_bottom_left = 10
-	sb.corner_radius_bottom_right = 10
-	sb.content_margin_left = 4
-	sb.content_margin_right = 4
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 12
-	p.add_theme_stylebox_override("panel", sb)
-
-
-func _style_button(btn: Button, accent: bool) -> void:
-	var sb := StyleBoxFlat.new()
-	if accent:
-		sb.bg_color = Color(0.32, 0.26, 0.16, 1.0)
-		sb.border_color = Color(0.85, 0.7, 0.4, 0.95)
-	else:
-		sb.bg_color = Color(0.16, 0.14, 0.16, 1.0)
-		sb.border_color = Color(0.45, 0.4, 0.35, 0.8)
-	sb.set_border_width_all(1)
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_top_right = 6
-	sb.corner_radius_bottom_left = 6
-	sb.corner_radius_bottom_right = 6
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 6
-	sb.content_margin_bottom = 6
-	btn.add_theme_stylebox_override("normal", sb)
-	var hover := sb.duplicate()
-	hover.bg_color = sb.bg_color.lightened(0.08)
-	btn.add_theme_stylebox_override("hover", hover)
-	var pressed := sb.duplicate()
-	pressed.bg_color = sb.bg_color.darkened(0.1)
-	btn.add_theme_stylebox_override("pressed", pressed)
-	btn.add_theme_color_override("font_color", Color(0.92, 0.88, 0.78))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -183,6 +132,7 @@ func open_shop(keeper_name: String, shop_key: String, shop_items: Array) -> void
 	if _entries.is_empty():
 		_entries = ShopCatalog.default_shop_stock()
 	title_label.text = _keeper_name
+	UITheme.style_title(title_label, 32)
 	status_label.text = " "
 	_refresh_list()
 	_refresh_gears()
@@ -234,7 +184,7 @@ func _refresh_list() -> void:
 	if _entries.is_empty():
 		var empty := Label.new()
 		empty.text = "(Nothing for sale)"
-		empty.add_theme_color_override("font_color", Color(0.55, 0.5, 0.45))
+		empty.add_theme_color_override("font_color", UITheme.STEAM)
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		list_box.add_child(empty)
 		return
@@ -249,21 +199,18 @@ func _make_row(item_id: String, remaining: int) -> Control:
 	var it := ShopCatalog.get_item(item_id)
 	var row := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.14, 0.12, 0.14, 0.9)
-	sb.border_color = Color(0.35, 0.3, 0.26, 0.7)
+	sb.bg_color = Color(UITheme.IRON, 0.92)
+	sb.border_color = Color(UITheme.BRASS_DARK, 0.85)
 	sb.set_border_width_all(1)
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_top_right = 6
-	sb.corner_radius_bottom_left = 6
-	sb.corner_radius_bottom_right = 6
-	sb.content_margin_left = 10
-	sb.content_margin_right = 10
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
 	row.add_theme_stylebox_override("panel", sb)
 
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
+	h.add_theme_constant_override("separation", 12)
 	row.add_child(h)
 
 	var info := VBoxContainer.new()
@@ -273,23 +220,23 @@ func _make_row(item_id: String, remaining: int) -> Control:
 	var name_l := Label.new()
 	name_l.text = str(it.get("name", item_id))
 	name_l.add_theme_font_size_override("font_size", 16)
-	name_l.add_theme_color_override("font_color", Color(0.93, 0.9, 0.82))
+	name_l.add_theme_color_override("font_color", UITheme.CREAM)
 	info.add_child(name_l)
 
 	var desc := Label.new()
 	desc.text = str(it.get("desc", ""))
 	desc.add_theme_font_size_override("font_size", 11)
-	desc.add_theme_color_override("font_color", Color(0.58, 0.54, 0.48))
+	desc.add_theme_color_override("font_color", UITheme.STEAM)
 	info.add_child(desc)
 
 	var meta := VBoxContainer.new()
-	meta.custom_minimum_size.x = 120
+	meta.custom_minimum_size.x = 110
 	h.add_child(meta)
 
 	var price_l := Label.new()
 	price_l.text = "%d gears" % int(it.get("price", 0))
 	price_l.add_theme_font_size_override("font_size", 14)
-	price_l.add_theme_color_override("font_color", Color(0.78, 0.84, 0.95))
+	price_l.add_theme_color_override("font_color", UITheme.LAMP)
 	price_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	meta.add_child(price_l)
 
@@ -299,14 +246,13 @@ func _make_row(item_id: String, remaining: int) -> Control:
 	else:
 		stock_l.text = "Stock %d" % remaining
 	stock_l.add_theme_font_size_override("font_size", 11)
-	stock_l.add_theme_color_override("font_color", Color(0.55, 0.52, 0.46))
+	stock_l.add_theme_color_override("font_color", UITheme.STEAM)
 	stock_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	meta.add_child(stock_l)
 
 	var buy := Button.new()
 	buy.text = "Buy"
-	buy.custom_minimum_size = Vector2(72, 34)
-	_style_button(buy, true)
+	buy.custom_minimum_size = Vector2(88, 36)
 	h.add_child(buy)
 
 	var owned := ShopCatalog.owns_ability(item_id)
@@ -321,7 +267,6 @@ func _make_row(item_id: String, remaining: int) -> Control:
 		buy.disabled = true
 	elif not can_afford:
 		buy.disabled = true
-		buy.modulate = Color(0.7, 0.7, 0.7)
 	else:
 		buy.pressed.connect(_on_buy.bind(item_id, remaining))
 	return row
@@ -345,7 +290,6 @@ func _on_buy(item_id: String, remaining: int) -> void:
 		_refresh_gears()
 		return
 	if not ShopCatalog.apply_purchase(item_id):
-		## Refund on failed apply.
 		GameState.add_currency(price)
 		status_label.text = "Can't buy that."
 		_refresh_gears()
