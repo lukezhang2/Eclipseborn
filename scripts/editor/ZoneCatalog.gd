@@ -56,15 +56,22 @@ static func _cottage() -> Array:
 	out.append(_p("platform_crate_room", "floor", "Cover Platform", 1120, FLOOR_TOP - 100, 180, 22))
 	out.append(_p("ledge_1", "floor", "Jump Ledge 1", 2700, FLOOR_TOP - 55, 140, 22))
 	out.append(_p("ledge_2", "floor", "Jump Ledge 2", 2840, FLOOR_TOP - 100, 100, 22))
-	out.append(_plight("lamp_crate", "Hearth Lamp (crate room)", 1120, FLOOR_TOP - 170, 240))
-	out.append(_plight("lamp_moon", "Moon Lamp", 400, 258, 140))
+	out.append(_plight("lamp_crate", "Hearth Lamp (crate room)", 1120, 314, 240))
+	out.append(_plight("lamp_moon", "Moon Lamp", 1579.74951171875, 371, 140))
 	out.append(_p("jar_1", "prop_breakable", "Glowing Jar 1", 420, FLOOR_TOP - 18, 28, 36))
 	out.append(_p("jar_2", "prop_breakable", "Glowing Jar 2", 1480, FLOOR_TOP - 18, 28, 36))
 	out.append(_p("jar_3", "prop_breakable", "Glowing Jar 3", 2400, FLOOR_TOP - 18, 28, 36))
 	out.append(_p("chest_1", "prop_breakable", "Glowing Chest", 3100, FLOOR_TOP - 16, 40, 32))
-	out.append(_p("hatch_exit", "prop_hatch", "Exit Hatch", 3480, FLOOR_TOP - 2, 64, 16))
+	var hatch := _p("hatch_exit", "prop_hatch", "Exit Hatch", 3480, FLOOR_TOP - 2, 64, 16)
+	hatch["target_zone"] = "lantern_village"
+	hatch["spawn_x"] = 520.0
+	hatch["spawn_y"] = 460.0
+	hatch["caption"] = ""
+	out.append(hatch)
 	out.append(_p("wall_end", "wall", "End Wall", 3720, FLOOR_TOP - 90, 80, 180))
-	out.append(_p("checkpoint_hatch", "prop_checkpoint", "Checkpoint (cottage hatch)", 3300, FLOOR_TOP - 4, 56, 24))
+	var cp := _p("checkpoint_hatch", "prop_checkpoint", "Checkpoint (cottage hatch)", 3300, FLOOR_TOP - 4, 56, 24)
+	cp["blocks_light"] = false
+	out.append(cp)
 	return out
 
 

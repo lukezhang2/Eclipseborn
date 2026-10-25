@@ -93,11 +93,12 @@ func _build_crate_room() -> void:
 	var platform_y := FLOOR_TOP - 100.0
 	LevelCommon.add_steel_floor(self, 1120, platform_y, 180, 22)
 	var lamp := LightSource.new()
-	lamp.position = Vector2(1120, platform_y - 70.0)
+	lamp.position = Vector2(1120, 314)
 	lamp.light_kind = GameState.LightKind.HEARTH
 	lamp.radius = 240.0
 	lamp.shadow_length = 300.0
 	lamp.pushable = false
+	LevelData.tag(lamp, "lamp_crate")
 	add_child(lamp)
 	var box := PushableBox.new()
 	box.box_size = Vector2(58, 58)  # ~1.2× of 48 — matches PieceSpecs.CRATE_COTTAGE
@@ -135,9 +136,9 @@ func _build_hatch_room() -> void:
 	var hatch := BreakableHatch.new()
 	hatch.position = Vector2(3480, FLOOR_TOP - 2)
 	hatch.hatch_size = Vector2(64, 16)
-	hatch.next_scene = "res://scenes/rooms/LanternVillage.tscn"
-	# Village floor top ≈ 500; spawn slightly above it.
-	hatch.spawn_in_next = Vector2(160, 460)
+	hatch.next_scene = SaveManager.scene_for_zone("lantern_village")
+	hatch.spawn_in_next = Vector2(520, 460)
+	LevelData.tag(hatch, "hatch_exit")
 	add_child(hatch)
 
 	# Designed end wall instead of a door.
@@ -160,33 +161,16 @@ func _build_hatch_room() -> void:
 
 
 func _build_ambient_lamps() -> void:
-	## Safe moon pockets + a few hearths so cover/occlusion is exerciseable end-to-end.
+	## Editor save: moon lamp relocated into the mid-cottage corridor.
 	var moon := LightSource.new()
-	moon.position = Vector2(400, ROOF_BOTTOM + 40)
+	moon.position = Vector2(1579.74951171875, 371)
 	moon.light_kind = GameState.LightKind.MOON
-	moon.radius = 160.0
-	moon.shadow_length = 200.0
+	moon.radius = 140.0
+	moon.shadow_length = 180.0
 	moon.pushable = false
 	moon.name = "HallMoon"
+	LevelData.tag(moon, "lamp_moon")
 	add_child(moon)
-
-	var hearth_2 := LightSource.new()
-	hearth_2.position = Vector2(2000, ROOF_BOTTOM + 50)
-	hearth_2.light_kind = GameState.LightKind.HEARTH
-	hearth_2.radius = 220.0
-	hearth_2.shadow_length = 280.0
-	hearth_2.pushable = false
-	hearth_2.name = "PullHearth"
-	add_child(hearth_2)
-
-	var hearth_3 := LightSource.new()
-	hearth_3.position = Vector2(3200, ROOF_BOTTOM + 50)
-	hearth_3.light_kind = GameState.LightKind.CANDLE
-	hearth_3.radius = 180.0
-	hearth_3.shadow_length = 220.0
-	hearth_3.pushable = false
-	hearth_3.name = "HatchCandle"
-	add_child(hearth_3)
 
 
 func _build_currency_breakables() -> void:
