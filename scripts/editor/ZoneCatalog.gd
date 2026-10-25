@@ -90,8 +90,18 @@ static func _village() -> Array:
 	sw["starts_on"] = true
 	sw["target_ids"] = ["lamp_street", "lamp_square"]
 	out.append(sw)
-	out.append(_p("platform_gear_a", "floor", "Moving Platform A", 1544, 410, 140, 20))
-	out.append(_p("platform_gear_b", "floor", "Moving Platform B", 2300, 370, 120, 20))
+	out.append(_pplat("platform_gear_a", "Moving Platform A", 1544, 410, 140, 20, {
+		"move_amplitude": 90.0, "move_speed": 0.65, "vertical": false,
+		"path_y_amplitude": 0.0, "rotate_while_moving": true, "rotate_speed": 1.0,
+		"rotate_platform": false, "with_gear": true,
+		"gear_dx": -94.0, "gear_dy": -110.0, "gear_radius": 55.0,
+	}))
+	out.append(_pplat("platform_gear_b", "Moving Platform B", 2300, FLOOR_TOP - 130, 120, 20, {
+		"move_amplitude": 70.0, "move_speed": 0.55, "vertical": true,
+		"path_y_amplitude": 0.0, "rotate_while_moving": true, "rotate_speed": 1.2,
+		"rotate_platform": false, "with_gear": true,
+		"gear_dx": -100.0, "gear_dy": -110.0, "gear_radius": 70.0,
+	}))
 	out.append(_p("bg_gear_a", "prop_bg_gear", "BG Gear A", 1450, 300, 110, 110))
 	out.append(_p("bg_gear_b", "prop_bg_gear", "BG Gear B", 2200, 260, 140, 140))
 	out.append(_p("enemy_a", "prop_enemy", "Wander Enemy A", 1500, FLOOR_TOP - 20, 28, 36))
@@ -138,6 +148,13 @@ static func _p(id: String, kind: String, name: String, x: float, y: float, w: fl
 		"layer": PieceSpecs.default_draw_layer(kind),
 		"builtin": true,
 	}
+
+
+static func _pplat(id: String, name: String, x: float, y: float, w: float, h: float, motion: Dictionary) -> Dictionary:
+	var d := _p(id, "prop_platform", name, x, y, w, h)
+	for key in motion.keys():
+		d[key] = motion[key]
+	return d
 
 
 static func _plight(id: String, name: String, x: float, y: float, radius: float) -> Dictionary:

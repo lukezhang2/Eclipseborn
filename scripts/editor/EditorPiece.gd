@@ -153,6 +153,10 @@ func apply_dict(d: Dictionary) -> void:
 		starts_on = bool(d.get("starts_open", false))
 	rotation_deg = float(d.get("rotation", 0.0))
 	rotation_degrees = rotation_deg
+	## Legacy village platforms were saved as floor — promote so the inspector appears.
+	if k == "floor" and (piece_id.begins_with("platform_gear") or d.has("move_amplitude")):
+		k = "prop_platform"
+		catalog_kind = k
 	if k == "prop_platform":
 		move_amplitude = float(d.get("move_amplitude", d.get("amplitude", 90.0)))
 		move_speed = float(d.get("move_speed", d.get("speed", 0.65)))
@@ -220,6 +224,41 @@ func set_selected(on: bool) -> void:
 			"font_color",
 			Color(0.4, 1.0, 0.65) if on else Color(0.9, 0.88, 0.75)
 		)
+	queue_redraw()
+
+
+func _draw() -> void:
+	## Travel path ghost when a moving platform is selected.
+	if not is_selected or not PieceSpecs.is_platform_kind(catalog_kind):
+		return
+	var amp := move_amplitude
+	var wobble := path_y_amplitude
+	if amp <= 0.0 and wobble <= 0.0:
+		return
+	var prev := Vector2.ZERO
+	var first := true
+	for i in 49:
+		var t := float(i) / 48.0 * TAU
+		var sx := sin(t)
+		var cx := cos(t)
+		var ox := 0.0
+		var oy := 0.0
+		if move_vertical:
+			oy = sx * amp
+			ox = cx * wobble
+		else:
+			ox = sx * amp
+			oy = cx * wobble
+		var pt := Vector2(ox, oy)
+		if not first:
+			draw_line(prev, pt, Color(0.45, 0.8, 1.0, 0.75), 2.0)
+		prev = pt
+		first = false
+	## Endpoints of the main axis.
+	var a := Vector2(0, -amp) if move_vertical else Vector2(-amp, 0)
+	var b := Vector2(0, amp) if move_vertical else Vector2(amp, 0)
+	draw_circle(a, 4.0, Color(0.95, 0.85, 0.35, 0.95))
+	draw_circle(b, 4.0, Color(0.95, 0.85, 0.35, 0.95))
 
 
 func _local_origin_offset() -> Vector2:

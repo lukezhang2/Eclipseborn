@@ -30,13 +30,15 @@ Select a `prop_npc` piece → **NPC dialogue** box (one line per entry). Stored 
 
 ### Moving platforms & rotate
 
-- Add **Moving platform** (`prop_platform`). Inspector fields:
-  - `move_amplitude` — how far along the main axis
-  - `move_speed` — travel rate
-  - `vertical` — move on Y instead of X
-  - `path_y_amplitude` — side wobble (elliptical path)
-  - `rotate_while_moving` / `rotate_speed` — spin the bg gear
-  - `rotate_platform` — spin the floor body itself
+- Add **Moving platform** (`prop_platform`), or select an existing one (e.g. village gear platforms).
+- When selected, the sidebar **Moving platform path** panel appears:
+  - `Path distance` (`move_amplitude`) — how far along the main axis
+  - `Move speed` — travel rate
+  - `Vertical path` — move on Y instead of X
+  - `Side path (wobble)` (`path_y_amplitude`) — elliptical secondary axis
+  - `Rotate gear while moving` / `Rotate speed` — spin the bg gear
+  - `Rotate platform body` — spin the floor itself
+- A cyan path ghost draws in the viewport while the platform is selected.
 - **Rotate** tool: click a piece and drag to set `"rotation"` (degrees).
 - **Steam vent** (`prop_vent`): transparent rising steam particles.
 

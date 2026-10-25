@@ -178,28 +178,55 @@ func _build_light_puzzle() -> void:
 
 
 func _build_bg_gears_and_platforms() -> void:
-	LevelCommon.add_moving_platform(self, Vector2(1544, 410), Vector2(140, 20), {
+	_spawn_catalog_platform("platform_gear_a", Vector2(1544, 410), Vector2(140, 20), {
 		"move_amplitude": 90.0,
 		"move_speed": 0.65,
 		"vertical": false,
+		"path_y_amplitude": 0.0,
 		"rotate_while_moving": true,
 		"rotate_speed": 1.0,
+		"rotate_platform": false,
+		"with_gear": true,
 		"gear_dx": -94.0,
 		"gear_dy": -110.0,
 		"gear_radius": 55.0,
 	})
-	LevelCommon.add_moving_platform(self, Vector2(2300, FLOOR_TOP - 130), Vector2(120, 20), {
+	_spawn_catalog_platform("platform_gear_b", Vector2(2300, FLOOR_TOP - 130), Vector2(120, 20), {
 		"move_amplitude": 70.0,
 		"move_speed": 0.55,
 		"vertical": true,
+		"path_y_amplitude": 0.0,
 		"rotate_while_moving": true,
 		"rotate_speed": 1.2,
+		"rotate_platform": false,
+		"with_gear": true,
 		"gear_dx": -100.0,
 		"gear_dy": -110.0,
 		"gear_radius": 70.0,
 	})
 	LevelCommon.add_bg_gear(self, Vector2(800, 240), 40.0, 10.0)
 	LevelCommon.add_bg_gear(self, Vector2(2600, 220), 48.0, -8.0)
+
+
+func _spawn_catalog_platform(catalog_id: String, fallback_pos: Vector2, fallback_size: Vector2, defaults: Dictionary) -> void:
+	if LevelData.is_removed("lantern_village", catalog_id):
+		return
+	var saved := LevelData.merged_piece("lantern_village", catalog_id)
+	var pos := fallback_pos
+	var size := fallback_size
+	var cfg := defaults.duplicate(true)
+	if not saved.is_empty():
+		pos = Vector2(float(saved.get("x", pos.x)), float(saved.get("y", pos.y)))
+		size = Vector2(float(saved.get("w", size.x)), float(saved.get("h", size.y)))
+		for key in [
+			"move_amplitude", "move_speed", "vertical", "path_y_amplitude",
+			"rotate_while_moving", "rotate_speed", "rotate_platform", "with_gear",
+			"gear_dx", "gear_dy", "gear_radius", "rotation"
+		]:
+			if saved.has(key):
+				cfg[key] = saved.get(key)
+	var body := LevelCommon.add_moving_platform(self, pos, size, cfg)
+	LevelData.tag(body, catalog_id)
 
 
 func _build_wander_enemies() -> void:

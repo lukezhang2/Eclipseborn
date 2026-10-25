@@ -288,12 +288,19 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_platform_row.visible = false
 	_platform_row.add_theme_constant_override("separation", 4)
 	col.add_child(_platform_row)
-	_platform_row.add_child(_section("Moving platform"))
+	_platform_row.add_child(_section("Moving platform path"))
+	var plat_hint := Label.new()
+	plat_hint.text = "Select a moving platform to edit travel distance, path, and spin."
+	plat_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	plat_hint.add_theme_font_size_override("font_size", 12)
+	plat_hint.add_theme_color_override("font_color", Color(0.7, 0.68, 0.58))
+	_platform_row.add_child(plat_hint)
 	_plat_amp = _spin_row(_platform_row, "Path distance", 10, 400, 5, 90)
 	_plat_amp.value_changed.connect(func(v: float) -> void:
 		if _syncing_platform or _selected == null:
 			return
 		_selected.move_amplitude = v
+		_selected.queue_redraw()
 	)
 	_plat_speed = _spin_row(_platform_row, "Move speed", 0.05, 4.0, 0.05, 0.65)
 	_plat_speed.value_changed.connect(func(v: float) -> void:
@@ -301,11 +308,12 @@ func _build_sidebar(col: VBoxContainer) -> void:
 			return
 		_selected.move_speed = v
 	)
-	_plat_path_y = _spin_row(_platform_row, "Side wobble", 0, 200, 5, 0)
+	_plat_path_y = _spin_row(_platform_row, "Side path (wobble)", 0, 200, 5, 0)
 	_plat_path_y.value_changed.connect(func(v: float) -> void:
 		if _syncing_platform or _selected == null:
 			return
 		_selected.path_y_amplitude = v
+		_selected.queue_redraw()
 	)
 	_plat_rot_speed = _spin_row(_platform_row, "Rotate speed", 0, 4.0, 0.05, 1.0)
 	_plat_rot_speed.value_changed.connect(func(v: float) -> void:
@@ -314,11 +322,12 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		_selected.rotate_speed = v
 	)
 	_plat_vertical = CheckButton.new()
-	_plat_vertical.text = "Vertical path"
+	_plat_vertical.text = "Vertical path (else horizontal)"
 	_plat_vertical.toggled.connect(func(on: bool) -> void:
 		if _syncing_platform or _selected == null:
 			return
 		_selected.move_vertical = on
+		_selected.queue_redraw()
 	)
 	_platform_row.add_child(_plat_vertical)
 	_plat_rotate = CheckButton.new()

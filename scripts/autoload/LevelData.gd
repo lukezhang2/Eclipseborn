@@ -167,6 +167,9 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 				"rotate_platform": bool(p.get("rotate_platform", false)),
 				"rotation": float(p.get("rotation", 0.0)),
 				"with_gear": bool(p.get("with_gear", true)),
+				"gear_dx": float(p.get("gear_dx", -90.0)),
+				"gear_dy": float(p.get("gear_dy", -80.0)),
+				"gear_radius": float(p.get("gear_radius", 55.0)),
 			}
 			var plat := LevelCommon.add_moving_platform(parent, pos, size, cfg)
 			LevelData.tag(plat, str(p.get("id", "")))
