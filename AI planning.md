@@ -22,12 +22,13 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 - Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
 
 ### Active / claimed
-_(none)_
+_(none — tower combat design committed; waiting for “build it” before coding)_
 
 ### Queue
-_(none)_
+- Implement Clockwork Tower combat plan (`docs/CLOCKWORK_TOWER_COMBAT.md`): enemies, Wickwright boss, ascent floors, sprites
 
 ### Done recently
+- design — Clockwork Tower combat/boss/ascent plan (`docs/CLOCKWORK_TOWER_COMBAT.md`); no gameplay ship
 - v0.1.37 — editor Undo/Redo buttons + Ctrl+Z/Y/Shift+Z; snapshot history for move/resize/rotate/inspector; `index-0_1_37.pck`
 - v0.1.35 — ShadowWorld perf: 12Hz throttle, poly cache, physics umbra clip, node pool, no spin dirty; `index-0_1_35.pck`
 - v0.1.34 — editor Duplicate + Move axis arrows; piece ids numbered (not lettered); levels updated
