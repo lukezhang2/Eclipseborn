@@ -268,5 +268,10 @@ func _build_clockwork_tower() -> void:
 	var tower := ClockworkTower.new()
 	tower.position = Vector2(MAP_W - 200, FLOOR_TOP)
 	add_child(tower)
+	## After the Wickwright falls, a breach opens just before the tower door.
+	if GameState.wickwright_defeated():
+		var hole: Node = preload("res://scripts/world/TowerDescentHole.gd").new()
+		hole.position = Vector2(MAP_W - 340, FLOOR_TOP)
+		add_child(hole)
 
 

@@ -23,7 +23,8 @@ Status after the first implementation pass. ✅ in game now · 🚧 stub / parti
 ## Phase 2 — First slice
 - ✅ Cursed Cottage 4-room tutorial (hall → crate → chest → hatch)
 - ✅ Hatch breaks with F → Lantern Village
-- ✅ Lamplighter (tough enemy) unlocks double jump on defeat
+- ✅ Lamplighter (tough elite; currency on defeat)
+- ✅ Clockwork Tower climb + Wickwright boss; crystal piece unlocks double jump
 - 🚧 Sounds / music (hooks only — no audio assets yet)
 - ✅ Tab zone map with player icon (live overlay, does not pause)
 - ✅ Steel-and-steam maps with brick faces, windows, lamp posts, cobbles
@@ -38,8 +39,9 @@ Status after the first implementation pass. ✅ in game now · 🚧 stub / parti
 - ✅ Basic enemy with hit/hurt boxes + pogo bounce
 
 ## Phase 3 / 4
+- ✅ Clockwork Tower zone (ascent, enemies, Wickwright, apex checkpoint, descent hole)
 - ❌ Online co-op / group saves
-- ❌ Remaining zones, bosses, story endings
+- ❌ Remaining zones / story endings
 
 ## How to run
 ```bash

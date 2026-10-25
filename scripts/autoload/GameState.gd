@@ -84,6 +84,7 @@ func _ready() -> void:
 	discovered_rooms = {
 		"cursed_cottage": [],
 		"lantern_village": [],
+		"clockwork_tower": [],
 	}
 
 
@@ -126,12 +127,28 @@ func reset_run() -> void:
 	discovered_rooms = {
 		"cursed_cottage": [],
 		"lantern_village": [],
+		"clockwork_tower": [],
 	}
 	needs_intro_cutscene = true
 	intro_cutscene_playing = false
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
 	currency_changed.emit(currency)
+
+
+## True after the Wickwright defeat cutscene has run (opens village descent hole).
+func wickwright_defeated() -> bool:
+	return is_collected("wickwright_defeated")
+
+
+## Shadow crystal *piece* (tower reward) — unlocks double jump; separate from shade-heart fragments.
+func collect_crystal_piece(pickup_id: String) -> bool:
+	if pickup_id == "" or is_collected(pickup_id):
+		return false
+	mark_collected(pickup_id)
+	unlock_ability("double_jump")
+	SaveManager.autosave()
+	return true
 
 
 func add_currency(amount: int) -> void:

@@ -22,12 +22,13 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 - Log each ship in **Done recently** as one short line: `vX.Y.Z — …`.
 
 ### Active / claimed
-_(none — tower combat design committed; waiting for “build it” before coding)_
+_(none)_
 
 ### Queue
-- Implement Clockwork Tower combat plan (`docs/CLOCKWORK_TOWER_COMBAT.md`): enemies, Wickwright boss, ascent floors, sprites
+_(none)_
 
 ### Done recently
+- v0.1.40 — Clockwork Tower climb + Wickwright (Match the Hour), defeat cutscene, reward chest → crystal piece (double jump overlay), apex checkpoint, village descent hole; `index-0_1_40.pck`
 - v0.1.39 — lantern AoE visible on floor (wash z above floors, brighter fill + bold occluded edge); `index-0_1_39.pck`
 - v0.1.38 — realistic cheap shadows: contact-hardening umbra, soft penumbra, wash falloff (no extra rays); `index-0_1_38.pck`
 - design — Clockwork Tower combat/boss/ascent plan (`docs/CLOCKWORK_TOWER_COMBAT.md`); no gameplay ship

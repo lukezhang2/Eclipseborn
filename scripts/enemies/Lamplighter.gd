@@ -1,5 +1,5 @@
 extends "res://scripts/enemies/BasicEnemy.gd"
-## First boss stub. Beating him unlocks double jump.
+## Tough village elite. Double jump now comes from the Clockwork Tower crystal piece.
 
 
 func _ready() -> void:
@@ -14,8 +14,8 @@ func _ready() -> void:
 
 
 func _die() -> void:
-	GameState.unlock_ability("double_jump")
+	GameState.add_currency(8)
 	var ui := get_tree().get_first_node_in_group("tutorial_hint")
 	if ui and ui.has_method("show_hint"):
-		ui.show_hint("Double Jump unlocked — press Jump again in the air")
+		ui.show_hint("The Lamplighter falls. Ascend the Clockwork Tower for a true gift.")
 	await super._die()

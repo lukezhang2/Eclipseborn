@@ -1,13 +1,12 @@
 extends Area2D
 class_name ClockworkTower
-## End-of-village ascent point — where the main game continues.
+## Village exterior — enter the Clockwork Tower climb zone.
 
 
 @export var tower_width: float = 160.0
 @export var tower_height: float = 280.0
 
 var _prompt: Label
-var _used: bool = false
 
 
 func _ready() -> void:
@@ -45,7 +44,6 @@ func _build() -> void:
 		Vector2(0, -tower_height - 48)
 	])
 	add_child(peak)
-	# Clock face
 	var face := Polygon2D.new()
 	face.position = Vector2(0, -tower_height * 0.55)
 	face.color = Color(0.55, 0.5, 0.4)
@@ -61,7 +59,6 @@ func _build() -> void:
 	hand.add_point(Vector2(0, -tower_height * 0.55))
 	hand.add_point(Vector2(10, -tower_height * 0.55 - 18))
 	add_child(hand)
-	# Door niche
 	var door := Polygon2D.new()
 	door.color = Color(0.08, 0.07, 0.09)
 	door.polygon = PackedVector2Array([
@@ -84,7 +81,6 @@ func _build() -> void:
 
 	_prompt = Label.new()
 	_prompt.text = "F — Ascend"
-	# Sit just above the door niche, not above the whole tower.
 	_prompt.position = Vector2(-48, -56)
 	_prompt.add_theme_font_size_override("font_size", 14)
 	_prompt.add_theme_color_override("font_color", Color(0.92, 0.85, 0.65))
@@ -95,8 +91,8 @@ func _build() -> void:
 func _process(_delta: float) -> void:
 	var p = GameState.player
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 70.0
-	_prompt.visible = near and not _used
-	if near and not _used and Input.is_action_just_pressed("attack"):
+	_prompt.visible = near
+	if near and Input.is_action_just_pressed("attack") and GameState.can_interact():
 		_ascend()
 
 
@@ -105,11 +101,8 @@ func _on_body(_body: Node) -> void:
 
 
 func _ascend() -> void:
-	_used = true
-	_prompt.text = "The gears turn… the road ahead awaits."
-	_prompt.visible = true
+	GameState.lock_interact()
 	AudioManager.play_break()
-	await get_tree().create_timer(2.2).timeout
-	# Placeholder for the next zone — keep player here for now.
-	_used = false
-	_prompt.text = "F — Ascend"
+	GameState.pending_spawn = Vector2(390, 2640)
+	GameState.current_zone_id = "clockwork_tower"
+	get_tree().change_scene_to_file("res://scenes/rooms/ClockworkTower.tscn")

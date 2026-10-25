@@ -50,6 +50,26 @@ const ZONE_PICTURES := {
 			{"id": "puzzle", "x": 600, "y": 500, "kind": "mark", "label": "Puzzle", "room": "puzzle"},
 		],
 	},
+	"clockwork_tower": {
+		"x_range": Vector2(0, 780),
+		"y_range": Vector2(40, 2700),
+		"rooms": [
+			{"id": "arena", "x0": 0, "x1": 780},
+			{"id": "gallery", "x0": 0, "x1": 780},
+			{"id": "flue", "x0": 0, "x1": 780},
+			{"id": "pendulum", "x0": 0, "x1": 780},
+			{"id": "climb", "x0": 0, "x1": 780},
+			{"id": "lobby", "x0": 0, "x1": 780},
+		],
+		"landmarks": [
+			{"id": "arena", "x": 390, "y": 400, "kind": "lamp", "label": "Dial Arena", "room": "arena"},
+			{"id": "gallery", "x": 390, "y": 760, "kind": "mark", "label": "Switches", "room": "gallery"},
+			{"id": "flue", "x": 390, "y": 1100, "kind": "platform", "label": "Steam Flue", "room": "flue"},
+			{"id": "pendulum", "x": 390, "y": 1600, "kind": "mark", "label": "Pendulums", "room": "pendulum"},
+			{"id": "climb", "x": 390, "y": 2100, "kind": "platform", "label": "Shaft", "room": "climb"},
+			{"id": "lobby", "x": 390, "y": 2660, "kind": "tower", "label": "Lobby", "room": "lobby"},
+		],
+	},
 }
 
 @onready var root: Control = $Root

@@ -1,16 +1,14 @@
 extends Node
-## Watches for the Lamplighter node to leave the tree, then unlocks double jump.
+## Watches for the Lamplighter node to leave the tree (legacy hook — DJ moved to tower).
 
 
 func _ready() -> void:
-	set_process(true)
-
-
-func _process(_delta: float) -> void:
 	var boss := get_parent().get_node_or_null("Lamplighter")
-	if boss == null and not GameState.has_double_jump:
-		GameState.unlock_ability("double_jump")
-		var ui := get_tree().get_first_node_in_group("tutorial_hint")
-		if ui and ui.has_method("show_hint"):
-			ui.show_hint("Double Jump unlocked — press Jump again in the air")
-		queue_free()
+	if boss == null:
+		return
+	boss.tree_exiting.connect(_on_gone)
+
+
+func _on_gone() -> void:
+	## Ability unlock is no longer here; keep a quiet toast if somehow still used.
+	pass
