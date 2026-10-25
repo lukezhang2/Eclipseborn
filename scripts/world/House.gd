@@ -52,9 +52,10 @@ func _build() -> void:
 	])
 	add_child(win)
 
-	## Block light (layer 8) but not the player — street stays walkable in front.
+	## Light-only blocker (layer 128). Not in the player's mask, so the street stays walkable.
+	## ShadowWorld OCCLUDER_MASK includes 128 so washes still stop at the facade.
 	var body := StaticBody2D.new()
-	body.collision_layer = 8
+	body.collision_layer = 128
 	body.collision_mask = 0
 	var cs := CollisionPolygon2D.new()
 	cs.polygon = PackedVector2Array([
