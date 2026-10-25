@@ -79,6 +79,11 @@ func _resolve_spawn() -> Vector2:
 		GameState.pending_spawn = Vector2.ZERO
 	elif GameState.editor_playtesting:
 		spawn.x = HATCH_SPAWN.x
+	elif GameState.last_position != Vector2.ZERO:
+		## Continue / logout position — death still uses checkpoint_position (hearth).
+		var lx := GameState.last_position.x
+		if lx >= 40.0 and lx <= MAP_W - 80.0:
+			spawn.x = lx
 	elif GameState.checkpoint_position != Vector2.ZERO:
 		var cx := GameState.checkpoint_position.x
 		if cx >= 40.0 and cx <= MAP_W - 80.0:
@@ -86,6 +91,7 @@ func _resolve_spawn() -> Vector2:
 	spawn.x = clampf(spawn.x, GameState.map_min_x + 40.0, MAP_W - 80.0)
 	spawn.y = FLOOR_TOP - 40.0
 	GameState.last_position = spawn
+	## Never overwrite a real rest hearth with the continue spawn point.
 	if GameState.checkpoint_position == Vector2.ZERO or GameState.editor_playtesting:
 		GameState.checkpoint_position = spawn
 	return spawn

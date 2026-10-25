@@ -356,9 +356,29 @@ func _respawn() -> void:
 	shade = 1.0
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
+	var dest := _death_respawn_position()
 	if player and is_instance_valid(player):
-		player.global_position = checkpoint_position
+		player.global_position = dest
 		if player.has_method("notify_respawned"):
 			player.notify_respawned()
 	is_dead = false
 	respawned.emit()
+
+
+func _death_respawn_position() -> Vector2:
+	## Prefer the last rested hearth — never the continue/logout position alone.
+	if checkpoint_position != Vector2.ZERO:
+		return checkpoint_position
+	if checkpoint_path != "":
+		for raw in activated_checkpoints:
+			if typeof(raw) != TYPE_DICTIONARY:
+				continue
+			var e: Dictionary = raw
+			if str(e.get("id", "")) == checkpoint_path:
+				var p := Vector2(float(e.get("x", 0.0)), float(e.get("y", 0.0)))
+				if p != Vector2.ZERO:
+					checkpoint_position = p
+					return p
+	if player and is_instance_valid(player):
+		return (player as Node2D).global_position
+	return last_position
