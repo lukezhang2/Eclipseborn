@@ -6,10 +6,10 @@ extends Node
 
 signal shadows_rebuilt
 
-## Fewer rays = much cheaper; corner angles still catch hard edges.
-const RAY_COUNT := 36
-const CORNER_EPS := 0.004
-const ANGLE_MERGE := 0.008
+## Enough rays for a smooth rim; corner angles still catch hard edges.
+const RAY_COUNT := 48
+const CORNER_EPS := 0.003
+const ANGLE_MERGE := 0.006
 ## Cap umbra casters per light (nearest first).
 const UMBRA_MAX_PER_LIGHT := 8
 ## Max full rebuilds per second while dirty (moving platforms keep dirty=true).
@@ -18,9 +18,6 @@ const REBUILD_HZ := 12.0
 const CULL_MARGIN := 420.0
 ## Contact-hardening: hard umbra ends here; soft penumbra continues past.
 const UMBRA_CONTACT_T := 0.36
-## Soft wash shell scale (same rays, no extra casts) — cheap area-light penumbra.
-const WASH_PENUMBRA_SCALE := 1.08
-const WASH_CORE_SCALE := 0.45
 ## Matches LightSource intensity clamp. At max: fill 50% opaque, outline 100%.
 const INTENSITY_MAX := 3.0
 const FILL_ALPHA_AT_MAX := 0.5
@@ -315,7 +312,8 @@ func _cast_ray(space: PhysicsDirectSpaceState2D, origin: Vector2, dir: Vector2, 
 
 	if best_dist >= radius - 0.01:
 		return to
-	return best - dir * 0.6
+	## Tiny pullback so the rim sits just outside solid faces (avoids z-fighting).
+	return best - dir * 0.35
 
 
 func _intensity_t(intensity: float) -> float:
@@ -342,23 +340,23 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 	var fill_a := FILL_ALPHA_AT_MAX * t
 	var outline_a := OUTLINE_ALPHA_AT_MAX * t
 
-	var rgb := Color(1.0, 0.78, 0.32)
+	## One yellow/gold wash (no red soft shell). Additive so overlaps still stack.
+	var rgb := Color(1.0, 0.86, 0.38)
 	match kind:
 		GameState.LightKind.MOON:
-			rgb = Color(0.65, 0.85, 1.0)
+			rgb = Color(0.7, 0.88, 1.0)
 		GameState.LightKind.CRIMSON:
-			rgb = Color(0.95, 0.25, 0.3)
+			rgb = Color(0.95, 0.35, 0.38)
 		GameState.LightKind.SUNSHAFT:
-			rgb = Color(1.0, 1.0, 0.88)
+			rgb = Color(1.0, 1.0, 0.9)
 		GameState.LightKind.CANDLE:
-			rgb = Color(1.0, 0.72, 0.38)
+			rgb = Color(1.0, 0.84, 0.42)
 
 	var exclude: Array = []
 	if light.has_method("get_exclude_rids"):
 		exclude = light.get_exclude_rids()
 
 	var angles := _collect_ray_angles(origin, radius, view)
-	## Rim points — filled as a triangle fan from `origin`.
 	var pts := PackedVector2Array()
 	for i in angles.size():
 		var dir := Vector2.from_angle(angles[i])
@@ -370,35 +368,13 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D, view: R
 			var a := TAU * float(i) / 24.0
 			pts.append(origin + Vector2.from_angle(a) * mini(radius, 64.0))
 
-	## Soft rim (behind) + main fill at linear opacity. Additive → overlaps sum.
-	_add_wash_fan(
-		origin,
-		_scale_ring(origin, pts, WASH_PENUMBRA_SCALE),
-		Color(rgb.r, rgb.g, rgb.b, fill_a * 0.35),
-		-3,
-		true
-	)
-	_add_wash_fan(
-		origin,
-		pts,
-		Color(rgb.r, rgb.g, rgb.b, fill_a),
-		-2,
-		true
-	)
-	## Inner depth — same budget, brighter RGB, smaller radius (reads as falloff).
-	_add_wash_fan(
-		origin,
-		_scale_ring(origin, pts, WASH_CORE_SCALE),
-		Color(mini(1.0, rgb.r + 0.15), mini(1.0, rgb.g + 0.12), mini(1.0, rgb.b + 0.06), fill_a * 0.55),
-		-2,
-		true
-	)
+	## z −3: above floors (−4), below houses (−1) so facades are not painted over.
+	_add_wash_fan(origin, pts, Color(rgb.r, rgb.g, rgb.b, fill_a), -3, true)
 
-	## Outline at 100% when intensity is max; scales linearly. Normal blend (crisp edge).
 	var ring := _take_line()
-	ring.width = 2.8
+	ring.width = 2.6
 	ring.default_color = Color(rgb.r, rgb.g, rgb.b, outline_a)
-	ring.z_index = -1
+	ring.z_index = -3
 	ring.material = null
 	ring.clear_points()
 	for p in pts:
@@ -443,22 +419,13 @@ func _draw_umbrae_for_light(
 
 	var max_len: float = light.get_shadow_length() if light.has_method("get_shadow_length") else radius
 	max_len = mini(max_len, radius * 0.95)
-	## Brighter lamps → slightly denser ink; still capped for readability.
-	var ink_a := 0.48
+	## Soft ink only — loud umbra wedges read as purple “glitches” behind washes.
+	var ink_a := 0.16
 	if light.has_method("get_intensity"):
-		ink_a = clampf(0.36 + float(light.get_intensity()) * 0.12, 0.36, 0.62)
+		ink_a = clampf(0.1 + float(light.get_intensity()) * 0.04, 0.1, 0.22)
 
 	for c in candidates:
 		_draw_umbra_wedge(c["e"], light_pos, max_len, ink_a, space, exclude)
-
-
-func _scale_ring(origin: Vector2, pts: PackedVector2Array, t: float) -> PackedVector2Array:
-	## Scale silhouette about the lamp. t<1 = closer/brighter; t>1 = soft penumbra shell.
-	var out := PackedVector2Array()
-	out.resize(pts.size())
-	for i in pts.size():
-		out[i] = origin + (pts[i] - origin) * t
-	return out
 
 
 func _add_wash_fan(
@@ -512,11 +479,11 @@ func _clip_shadow_extent(
 	return from + dir_n * maxf(d - 0.8, 0.0)
 
 
-func _add_ink_poly(pts: PackedVector2Array, alpha: float, z: int = -2) -> void:
+func _add_ink_poly(pts: PackedVector2Array, alpha: float, z: int = -4) -> void:
 	if pts.size() < 3 or alpha < 0.02:
 		return
 	var ink := _take_poly()
-	ink.color = Color(0.03, 0.015, 0.06, clampf(alpha, 0.0, 0.75))
+	ink.color = Color(0.03, 0.015, 0.06, clampf(alpha, 0.0, 0.35))
 	ink.z_index = z
 	ink.polygon = pts
 	_root.add_child(ink)
@@ -569,7 +536,7 @@ func _draw_umbra_wedge(
 		## Contact hardening: hard umbra near the occluder…
 		var ca := a.lerp(far_a, UMBRA_CONTACT_T)
 		var cb := b.lerp(far_b, UMBRA_CONTACT_T)
-		_add_ink_poly(PackedVector2Array([a, b, cb, ca]), base_a * 0.92, -2)
+		_add_ink_poly(PackedVector2Array([a, b, cb, ca]), base_a * 0.85, -4)
 
 		## …then a softer, slightly wider penumbra that grows with cast length.
 		var cast_len := (len_a + len_b) * 0.5
@@ -581,7 +548,7 @@ func _draw_umbra_wedge(
 			side = side.normalized()
 		var pa := far_a + side * spread
 		var pb := far_b - side * spread
-		_add_ink_poly(PackedVector2Array([ca, cb, pb, pa]), base_a * 0.28, -3)
+		_add_ink_poly(PackedVector2Array([ca, cb, pb, pa]), base_a * 0.22, -4)
 
 
 func _take_poly() -> Polygon2D:

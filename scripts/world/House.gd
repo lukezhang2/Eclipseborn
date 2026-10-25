@@ -21,7 +21,8 @@ var _prompt: Label
 
 
 func _ready() -> void:
-	z_index = -6
+	## Above lantern washes (−3) so light does not paint through the facade.
+	z_index = -1
 	_build()
 	add_to_group("houses")
 

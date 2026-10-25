@@ -128,12 +128,13 @@ static func default_draw_layer(kind: String) -> int:
 	match kind:
 		"background", "prop_bg_gear":
 			return -8
-		"prop_house", "prop_tower":
-			return -6
 		"floor", "wall", "block":
 			return -4
 		"prop_pipe", "prop_window", "prop_valve", "prop_desk":
 			return -3
+		## Houses/towers above washes (−3) so lantern fill does not paint through facades.
+		"prop_house", "prop_tower":
+			return -1
 		"prop_bench", "prop_vent", "prop_checkpoint", "prop_crate", "prop_hatch", "prop_exit", "prop_platform":
 			return -2
 		"crate", "prop_breakable", "prop_npc", "prop_enemy", "prop_switch", "prop_door":
