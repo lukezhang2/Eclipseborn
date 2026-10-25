@@ -429,7 +429,7 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			var lamp := LightSource.new()
 			lamp.position = pos
 			lamp.light_kind = int(p.get("light_kind", GameState.LightKind.HEARTH)) as GameState.LightKind
-			lamp.pushable = bool(p.get("pushable", true))
+			lamp.pushable = false
 			parent.add_child(lamp)
 			lamp.set_radius(float(p.get("radius", 280.0)))
 			if p.has("intensity"):

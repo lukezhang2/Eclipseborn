@@ -94,7 +94,7 @@ static func _village() -> Array:
 	out.append(_phouse("house_inn", "House: Shade Inn", 1780, FLOOR_TOP, 140, 110, "house_inn", 160, 460))
 	## Editor save uses 56×56 for this puzzle crate (sits at y=472 on FLOOR_TOP 500).
 	out.append(_p("crate_puzzle", "crate", "Pushable Crate (light puzzle)", 1250, 472, 56, 56))
-	out.append(_plight("lamp_puzzle", "Pushable Hearth Lamp", 1292, 238, 300))
+	out.append(_plight("lamp_puzzle", "Hearth Lamp", 1292, 238, 300))
 	out.append(_plight("lamp_street", "Street Lamp", 748, 312, 250))
 	out.append(_plight("lamp_square", "Square Lamp", 2000, 300, 260))
 	var sw := _p("switch_street", "prop_switch", "Light Switch", 372, 488, 24, 40)

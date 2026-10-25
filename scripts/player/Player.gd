@@ -55,8 +55,8 @@ func _ready() -> void:
 	GameState.player = self
 	collision_layer = 2
 	## Green world collider: walls/crates/lamps only — enemies stay off these layers so we pass through them.
-	## 1=world, 4=shadow_ground, 8=crates, 16=pushable lamp bodies
-	collision_mask = 1 | 4 | 8 | 16
+	## 1=world, 4=shadow_ground, 8=crates (lanterns never collide)
+	collision_mask = 1 | 4 | 8
 	hurtbox.team = "player"
 	hurtbox.owner_body = self
 	hurtbox.hurt.connect(_on_hurt)
@@ -418,12 +418,6 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 					continue
 				if box.try_push(global_position, dir, delta) == "push":
 					_pushing = true
-		elif collider is Node and not pulling:
-			var lamp := _find_lamp_owner(collider)
-			var n2 := col.get_normal()
-			if lamp and lamp.has_method("try_push") and absf(n2.x) >= 0.55 and dir != 0.0 and signf(dir) != signf(n2.x):
-				lamp.try_push(dir, delta)
-				_pushing = true
 	if not pulling or dir == 0.0:
 		return
 	# Proximity pull — walk away while holding V; box follows. No player teleport.
@@ -456,15 +450,6 @@ func _try_enter_hatch() -> void:
 	for h in get_tree().get_nodes_in_group("enterable_hatches"):
 		if h.has_method("try_enter") and h.try_enter(self):
 			return
-
-
-func _find_lamp_owner(node: Node) -> Node:
-	var n: Node = node
-	while n:
-		if n.is_in_group("pushable_lamps"):
-			return n
-		n = n.get_parent()
-	return null
 
 
 func _start_attack() -> void:

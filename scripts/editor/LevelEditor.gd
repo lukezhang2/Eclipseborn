@@ -2202,7 +2202,7 @@ func _add_piece() -> void:
 		d["radius"] = 280
 		d["intensity"] = 1.0
 		d["light_kind"] = GameState.LightKind.HEARTH
-		d["pushable"] = true
+		d["pushable"] = false
 	if _palette_id == "prop_npc":
 		d["is_shopkeeper"] = true
 		d["shop_items"] = [] ## All sales off until the designer enables items.

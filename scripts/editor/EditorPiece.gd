@@ -15,7 +15,7 @@ var size: Vector2 = Vector2(64, 48)
 var light_radius: float = 280.0
 var light_intensity: float = 1.0
 var light_kind: int = 0
-var pushable: bool = true
+var pushable: bool = false
 var builtin: bool = false
 var catalog_kind: String = "floor"
 ## "center" or "bottom" — must match PieceSpecs.anchor(catalog_kind).
@@ -269,7 +269,7 @@ func apply_dict(d: Dictionary) -> void:
 			light_radius = float(d.get("radius", light_radius if light_radius > 0.0 else 280.0))
 			light_intensity = float(d.get("intensity", light_intensity if light_intensity > 0.0 else 1.0))
 			light_kind = int(d.get("light_kind", 0))
-			pushable = bool(d.get("pushable", true))
+			pushable = false
 			size = Vector2(28, 36)
 			anchor_mode = "center"
 		"floor", "block", "wall", "crate":

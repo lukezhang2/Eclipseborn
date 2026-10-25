@@ -214,7 +214,7 @@
 			"kind": "light",
 			"layer": 2,
 			"light_kind": 0,
-			"name": "Pushable Hearth Lamp",
+			"name": "Hearth Lamp",
 			"pushable": false,
 			"radius": 300,
 			"rotation": 0,
