@@ -12,6 +12,7 @@ class_name PendulumSentinel
 
 var hp: int = 40
 var _t: float = 0.0
+var _dead: bool = false
 var _blade: Node2D
 var _hurtbox: Hurtbox
 var _hitbox: Hitbox
@@ -105,7 +106,9 @@ func _lamp_is_on() -> bool:
 func _on_hurt(amount: int, from: Node) -> void:
 	hp -= amount
 	EnemyHitFX.play(_visual, self, from)
-	if hp <= 0:
+	if hp <= 0 and not _dead:
+		_dead = true
 		await get_tree().create_timer(0.1).timeout
 		if is_instance_valid(self):
+			CurrencyPickup.spawn_burst(get_parent(), global_position)
 			queue_free()

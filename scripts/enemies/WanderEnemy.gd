@@ -12,6 +12,7 @@ var hp: int = 24
 var _dir: float = 1.0
 var _hurt_cd: float = 0.0
 var _anim_t: float = 0.0
+var _dead: bool = false
 var _tex_a: ImageTexture
 var _tex_b: ImageTexture
 
@@ -159,8 +160,10 @@ func _on_hurt(amount: int, from: Node) -> void:
 	hp -= amount
 	var vis: CanvasItem = _sprite if _sprite else (get_node_or_null("BodySprite") as CanvasItem)
 	EnemyHitFX.play(vis, self, from)
-	if hp <= 0:
+	if hp <= 0 and not _dead:
+		_dead = true
 		## Let the flash start, then despawn.
 		await get_tree().create_timer(0.12).timeout
 		if is_instance_valid(self):
+			CurrencyPickup.spawn_burst(get_parent(), global_position)
 			queue_free()

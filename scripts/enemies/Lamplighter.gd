@@ -14,8 +14,13 @@ func _ready() -> void:
 
 
 func _die() -> void:
-	GameState.add_currency(8)
+	## Elite drop: eight silver gears (skips the normal 2–3 from BasicEnemy).
+	CurrencyPickup.spawn_burst(get_parent(), global_position, 8)
 	var ui := get_tree().get_first_node_in_group("tutorial_hint")
 	if ui and ui.has_method("show_hint"):
 		ui.show_hint("The Lamplighter falls. Ascend the Clockwork Tower for a true gift.")
-	await super._die()
+	# Ash fade without a second gear burst from BasicEnemy._die.
+	var tw := create_tween()
+	tw.tween_property(visual, "modulate:a", 0.0, 0.25)
+	await tw.finished
+	queue_free()

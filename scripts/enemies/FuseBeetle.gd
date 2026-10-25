@@ -12,6 +12,7 @@ var hp: int = 28
 var _dir: float = 1.0
 var _hurt_cd: float = 0.0
 var _charge_cd: float = 0.0
+var _dead: bool = false
 var _sprite: Sprite2D
 var _lamp: LightSource
 
@@ -153,9 +154,11 @@ func _touch_damage() -> void:
 func _on_hurt(amount: int, from: Node) -> void:
 	hp -= amount
 	EnemyHitFX.play(_sprite, self, from)
-	if hp <= 0:
+	if hp <= 0 and not _dead:
+		_dead = true
 		if _lamp and is_instance_valid(_lamp):
 			_lamp.set_on(false)
 		await get_tree().create_timer(0.12).timeout
 		if is_instance_valid(self):
+			CurrencyPickup.spawn_burst(get_parent(), global_position)
 			queue_free()

@@ -12,6 +12,7 @@ class_name BasicEnemy
 var hp: int
 var _cooldown: float = 0.0
 var _attacking: bool = false
+var _dead: bool = false
 
 @onready var hurtbox: Hurtbox = $Hurtbox
 @onready var hitbox: Hitbox = $Hitbox
@@ -79,13 +80,15 @@ func _on_hurt(amount: int, from: Node) -> void:
 	var eyes := get_node_or_null("Eyes") as CanvasItem
 	if eyes:
 		EnemyHitFX.play(eyes, null, null)
-	if hp <= 0:
+	if hp <= 0 and not _dead:
+		_dead = true
 		await get_tree().create_timer(0.12).timeout
 		if is_instance_valid(self):
 			_die()
 
 
 func _die() -> void:
+	CurrencyPickup.spawn_burst(get_parent(), global_position)
 	# Ash break-apart: fade and free.
 	var tw := create_tween()
 	tw.tween_property(visual, "modulate:a", 0.0, 0.25)

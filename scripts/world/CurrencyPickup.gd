@@ -5,8 +5,12 @@ class_name CurrencyPickup
 const PICKUP_RADIUS := 52.0
 const MAGNET_RADIUS := 90.0
 const VALUE := 1
-const PICKUP_DELAY := 0.5
+## Brief pop before the player can collect (also used for fade-in).
+const PICKUP_DELAY := 0.25
 const BODY_RADIUS := 8.0
+## Default loot when a normal enemy dies.
+const ENEMY_DROP_MIN := 2
+const ENEMY_DROP_MAX := 3
 
 var pop_velocity: Vector2 = Vector2.ZERO
 var _spin: float = 0.0
@@ -14,6 +18,19 @@ var _visual: Node2D
 var _age: float = 0.0
 var _can_pickup: bool = false
 var _pickup_area: Area2D
+
+
+## Scatter silver gears from a kill / smash point. `count` ≤ 0 → random enemy drop size.
+static func spawn_burst(parent: Node, at: Vector2, count: int = 0) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var n := count if count > 0 else randi_range(ENEMY_DROP_MIN, ENEMY_DROP_MAX)
+	for _i in n:
+		var gear := CurrencyPickup.new()
+		gear.pop_velocity = Vector2(randf_range(-110, 110), randf_range(-260, -140))
+		parent.add_child(gear)
+		gear.global_position = at + Vector2(randf_range(-6, 6), -10)
+		gear.velocity = gear.pop_velocity
 
 
 func _ready() -> void:

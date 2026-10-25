@@ -9,6 +9,7 @@ class_name RivetMite
 
 var hp: int = 8
 var _hurt_cd: float = 0.0
+var _dead: bool = false
 var _state: String = "cling" ## cling | drop | crawl
 var _dir: float = 1.0
 var _sprite: Sprite2D
@@ -140,7 +141,9 @@ func _touch_damage() -> void:
 func _on_hurt(amount: int, from: Node) -> void:
 	hp -= amount
 	EnemyHitFX.play(_sprite, self, from)
-	if hp <= 0:
+	if hp <= 0 and not _dead:
+		_dead = true
 		await get_tree().create_timer(0.1).timeout
 		if is_instance_valid(self):
+			CurrencyPickup.spawn_burst(get_parent(), global_position)
 			queue_free()

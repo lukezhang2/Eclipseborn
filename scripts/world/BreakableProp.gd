@@ -64,13 +64,7 @@ func _on_hurt(_amount: int, _from: Node) -> void:
 	_broken = true
 	GameState.mark_broken(breakable_id)
 	AudioManager.play_break()
-	# Spawn silver gears with a little pop.
-	for i in currency_drops:
-		var gear := CurrencyPickup.new()
-		gear.pop_velocity = Vector2(randf_range(-110, 110), randf_range(-260, -140))
-		get_parent().add_child(gear)
-		gear.global_position = global_position + Vector2(randf_range(-6, 6), -10)
-		gear.velocity = gear.pop_velocity
+	CurrencyPickup.spawn_burst(get_parent(), global_position, currency_drops)
 	# Shatter fade
 	if _visual:
 		_visual.modulate.a = 0.3
