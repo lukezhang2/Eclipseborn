@@ -96,7 +96,7 @@ static func default_size(kind: String) -> Vector2:
 		"prop_bg_gear":
 			return Vector2(110, 110)
 		"prop_pickup":
-			return Vector2(28, 28)
+			return Vector2(32, 32)
 		"prop_switch":
 			return Vector2(28, 40)
 		"prop_door":

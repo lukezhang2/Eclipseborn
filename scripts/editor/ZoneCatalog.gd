@@ -97,7 +97,7 @@ static func _village() -> Array:
 	out.append(_p("enemy_a", "prop_enemy", "Wander Enemy A", 1500, FLOOR_TOP - 20, 28, 36))
 	out.append(_p("enemy_b", "prop_enemy", "Wander Enemy B", 2050, FLOOR_TOP - 20, 28, 36))
 	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_W - 200, FLOOR_TOP, 160, 280))
-	out.append(_p("shade_heart", "prop_pickup", "Shade Heart", 2100, FLOOR_TOP - 100, 28, 28))
+	out.append(_p("shade_heart", "prop_pickup", "Shadow Crystal Fragment", 2100, FLOOR_TOP - 100, 32, 32))
 	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate) — the … hearth", 200, FLOOR_TOP, 56, 24))
 	return out
 

@@ -205,3 +205,13 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			npc.lines = HouseProfiles.lines_to_packed(p.get("lines", ["…"]))
 			parent.add_child(npc)
 			LevelData.tag(npc, str(p.get("id", "")))
+		"prop_pickup":
+			var pid := str(p.get("id", "shadow_crystal"))
+			if GameState.is_collected(pid):
+				return
+			var crystal := ShadowCrystal.new()
+			crystal.position = pos
+			crystal.pickup_id = pid
+			crystal.display_name = str(p.get("name", "Shadow Crystal Fragment"))
+			parent.add_child(crystal)
+			LevelData.tag(crystal, pid)

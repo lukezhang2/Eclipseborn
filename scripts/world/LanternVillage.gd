@@ -45,7 +45,13 @@ func _ready() -> void:
 	LevelCommon.make_room_trigger(self, Vector2(2200, 360), Vector2(500, 400), "lantern_village", "square")
 	LevelCommon.make_room_trigger(self, Vector2(2900, 360), Vector2(500, 400), "lantern_village", "tower", "Ascend the Clockwork Tower", "")
 
-	add_child(_make_shade_heart(Vector2(2100, FLOOR_TOP - 100)))
+	if not GameState.is_collected("shade_heart"):
+		var crystal := ShadowCrystal.new()
+		crystal.position = Vector2(2100, FLOOR_TOP - 100)
+		crystal.pickup_id = "shade_heart"
+		crystal.display_name = "Shadow Crystal Fragment"
+		LevelData.tag(crystal, "shade_heart")
+		add_child(crystal)
 
 	if not LevelData.is_removed("lantern_village", "checkpoint_gate"):
 		var cp := Checkpoint.new()
@@ -210,25 +216,3 @@ func _build_clockwork_tower() -> void:
 	add_child(tower)
 
 
-func _make_shade_heart(pos: Vector2) -> Area2D:
-	var a := Area2D.new()
-	a.position = pos
-	a.collision_layer = 0
-	a.collision_mask = 2
-	var cs := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = 14.0
-	cs.shape = circle
-	a.add_child(cs)
-	var gem := Polygon2D.new()
-	gem.polygon = PackedVector2Array([
-		Vector2(0, -12), Vector2(10, 0), Vector2(0, 12), Vector2(-10, 0)
-	])
-	gem.color = Color(0.55, 0.35, 0.85)
-	a.add_child(gem)
-	a.body_entered.connect(func(body: Node) -> void:
-		if body is Player or body.is_in_group("player"):
-			GameState.add_shade_heart()
-			a.queue_free()
-	)
-	return a

@@ -201,6 +201,9 @@ func load_game(slot: int) -> bool:
 	GameState.has_shadow_grip = cfg.get_value("abilities", "shadow_grip", false)
 	GameState.discovered_rooms = cfg.get_value("map", "discovered", {})
 	GameState.broken_ids = cfg.get_value("world", "broken", [])
+	GameState.collected_ids = cfg.get_value("world", "collected", [])
+	if typeof(GameState.collected_ids) != TYPE_ARRAY:
+		GameState.collected_ids = []
 	## Prefer JSON sidecar / checkpoints_json — nested Array-of-Dict can drop on web reload.
 	var hearths: Array = []
 	var json_field = cfg.get_value("map", "checkpoints_json", "")
@@ -270,6 +273,7 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("map", "checkpoints_json", JSON.stringify(hearths))
 	cfg.set_value("meta", "checkpoint_id", GameState.checkpoint_path)
 	cfg.set_value("world", "broken", GameState.broken_ids)
+	cfg.set_value("world", "collected", GameState.collected_ids)
 	var err := cfg.save(slot_path(slot))
 	_write_hearths_sidecar(slot)
 	_persist_web_fs()

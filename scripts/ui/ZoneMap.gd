@@ -68,7 +68,7 @@ func _ready() -> void:
 		(dim as ColorRect).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var hint := root.get_node_or_null("Hint")
 	if hint is Label:
-		(hint as Label).text = "Tab to close · your position updates live"
+		(hint as Label).text = "Tab to close"
 
 
 func _process(_delta: float) -> void:

@@ -368,6 +368,8 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 			col = Color(0.4, 0.26, 0.14)
 		"prop_platform":
 			col = Color(0.35, 0.42, 0.5)
+		"prop_pickup":
+			col = Color(0.28, 0.14, 0.42)
 		_:
 			col = Color(0.4, 0.42, 0.48)
 	for y in h:
@@ -385,6 +387,25 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 						var py := cy + oy
 						if px >= 0 and py >= 0 and px < w and py < h:
 							img.set_pixel(px, py, Color(0.65, 0.75, 0.95))
+	if k == "prop_pickup":
+		## Jagged shard preview — dark violet with a bright ridge.
+		img.fill(Color(0, 0, 0, 0))
+		var cx2 := w / 2
+		var cy2 := h / 2
+		for y in h:
+			for x in w:
+				var dx := float(x - cx2) / maxf(float(w) * 0.5, 1.0)
+				var dy := float(y - cy2) / maxf(float(h) * 0.5, 1.0)
+				## Rough diamond with a bite taken out.
+				var inside := absf(dx) + absf(dy) < 0.85 and not (dx > 0.25 and dy > 0.15)
+				if inside:
+					var shade := 0.2 + (0.35 * (1.0 - absf(dx) - absf(dy)))
+					var c := Color(0.18 + shade * 0.2, 0.08 + shade * 0.1, 0.32 + shade * 0.35)
+					if dx < -0.15 and dy < 0.0:
+						c = c.lightened(0.25)
+					if absf(dx) + absf(dy) > 0.7:
+						c = c.darkened(0.35)
+					img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
 

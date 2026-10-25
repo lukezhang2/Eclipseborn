@@ -46,6 +46,8 @@ var current_room_id: String = "hall"
 var discovered_rooms: Dictionary = {}
 ## Breakable ids already destroyed (persist across load).
 var broken_ids: Array = []
+## One-time permanent pickups (shadow crystals, etc.) — never respawn.
+var collected_ids: Array = []
 
 var currency: int = 0
 var currency_hud_unlocked: bool = false
@@ -115,6 +117,7 @@ func reset_run() -> void:
 	current_zone_id = "cursed_cottage"
 	current_room_id = "hall"
 	broken_ids = []
+	collected_ids = []
 	discovered_rooms = {
 		"cursed_cottage": [],
 		"lantern_village": [],
@@ -145,6 +148,26 @@ func mark_broken(id: String) -> void:
 
 func is_broken(id: String) -> bool:
 	return id != "" and broken_ids.has(id)
+
+
+func mark_collected(id: String) -> void:
+	if id == "" or collected_ids.has(id):
+		return
+	collected_ids.append(id)
+
+
+func is_collected(id: String) -> bool:
+	return id != "" and collected_ids.has(id)
+
+
+## Permanent shade-heart upgrade from a shadow crystal. Returns false if already taken.
+func collect_shadow_crystal(pickup_id: String) -> bool:
+	if pickup_id == "" or is_collected(pickup_id):
+		return false
+	mark_collected(pickup_id)
+	add_shade_heart()
+	SaveManager.autosave()
+	return true
 
 
 func set_paused(value: bool) -> void:
