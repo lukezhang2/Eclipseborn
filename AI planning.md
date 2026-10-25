@@ -15,14 +15,15 @@ Shared work board so **Cursor** and **Claude** do not overlap.
 ## Cursor
 
 ### Active / claimed
-- Fix random gaps in lantern washes (corner-aware rays + safer umbra) → v0.1.8 + web export.
+_(none)_
 
 ### Queue
 _(none)_
 
 ### Done recently
-- v0.1.7 — default `blocks_light` ON for most piece kinds (opt-out: lights/NPCs/enemies/pickups/backgrounds); web export `index-0_1_7.pck`
-- v0.1.5 — `tools/ensure-godot.sh` + `tools/export-web.sh`; versioned pack cache-bust
+- v0.1.8 — corner-aware lantern rays + safer umbra (closes random light gaps); `index-0_1_8.pck`
+- v0.1.7 — default `blocks_light` ON for most piece kinds
+- v0.1.5 — Godot export scripts + cache-busted Pages packs
 - v0.1.4 — blocks_light + Layer ±
 - v0.1.3 — houses light-only layer 128
 - v0.1.2 — AI planning board
