@@ -21,7 +21,9 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.13 — geometry house cover (burns + washes), left exit door (Interact/walk), rebuilt village/cottage lights
 - v0.1.12 — house light occlusion (layer 128 burns), left Interact exit, rebuilt lantern washes, continuous zone map
+- v0.1.11 — Settings on the title menu too
 - v0.1.10 — sync lantern_village from editor save (switch/lamp/crate/platform); `index-0_1_10.pck`
 - v0.1.8 — corner-aware lantern rays + safer umbra (closes random light gaps); `index-0_1_8.pck`
 - v0.1.7 — default `blocks_light` ON for most piece kinds

@@ -36,10 +36,10 @@ func _ready() -> void:
 	LevelData.apply(self, house_id)
 	LevelData.prune_removed(self, house_id)
 
-	## Spawn by the left exit door.
-	var spawn := Vector2(110, FLOOR_Y - 40)
+	## Spawn at the left exit door (door is always on the left wall).
+	var spawn := Vector2(120, FLOOR_Y - 40)
 	if GameState.pending_spawn != Vector2.ZERO:
-		spawn = Vector2(clampf(GameState.pending_spawn.x, 80.0, MAP_W - 80.0), FLOOR_Y - 40)
+		spawn = Vector2(clampf(GameState.pending_spawn.x, 90.0, MAP_W - 80.0), FLOOR_Y - 40)
 		GameState.pending_spawn = Vector2.ZERO
 	var player := LevelCommon.spawn_player(self, spawn)
 	LevelCommon.configure_camera(player, 160.0, FLOOR_Y + 60.0, GameState.map_min_x, GameState.map_max_x)
@@ -133,8 +133,9 @@ func _build_desk_and_keeper() -> void:
 
 
 func _build_exit() -> void:
-	## Exit is always on the left wall (street door).
+	## Exit is always on the LEFT wall (street door) — clear of the border pillar.
 	var door := HouseExitDoor.new()
-	door.position = Vector2(64, FLOOR_Y)
+	door.position = Vector2(88, FLOOR_Y)
 	door.name = "ExitDoor"
+	door.z_index = 3
 	add_child(door)

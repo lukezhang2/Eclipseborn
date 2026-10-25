@@ -342,7 +342,7 @@ static func add_lamp_post(parent: Node2D, pos: Vector2) -> void:
 	parent.add_child(head)
 
 
-static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float = 70.0) -> void:
+static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float = 70.0, radius: float = 150.0) -> void:
 	## Lantern suspended from the overhead pipe/wire at wire_pos.
 	var chain := Line2D.new()
 	chain.width = 2.0
@@ -375,8 +375,8 @@ static func add_hanging_lantern(parent: Node2D, wire_pos: Vector2, drop: float =
 	var lamp := LightSource.new()
 	lamp.position = wire_pos + Vector2(0, drop + 4)
 	lamp.light_kind = GameState.LightKind.CANDLE
-	lamp.radius = 120.0
-	lamp.shadow_length = 140.0
+	lamp.radius = radius
+	lamp.shadow_length = radius + 40.0
 	lamp.pushable = false
 	parent.add_child(lamp)
 

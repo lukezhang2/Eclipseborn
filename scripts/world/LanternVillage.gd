@@ -28,14 +28,12 @@ func _ready() -> void:
 
 	var wire_y := 90.0
 	LevelCommon.add_pipe(self, Vector2(40, wire_y), Vector2(MAP_W - 80, wire_y), 12.0)
-	LevelCommon.add_hanging_lantern(self, Vector2(280, wire_y))
-	LevelCommon.add_hanging_lantern(self, Vector2(720, wire_y))
-	LevelCommon.add_hanging_lantern(self, Vector2(1600, wire_y))
 	LevelCommon.add_window(self, 360, 220, 44, 60, false)
 	LevelCommon.add_bench(self, Vector2(450, FLOOR_TOP))
 	LevelCommon.add_steam_vent(self, Vector2(1050, FLOOR_TOP))
 
 	_build_houses()
+	_build_all_lights()
 	_build_light_puzzle()
 	_build_bg_gears_and_platforms()
 	_build_wander_enemies()
@@ -46,20 +44,6 @@ func _ready() -> void:
 	LevelCommon.make_room_trigger(self, Vector2(1500, 360), Vector2(500, 400), "lantern_village", "street_b", "Push a crate to block the lamp", "")
 	LevelCommon.make_room_trigger(self, Vector2(2200, 360), Vector2(500, 400), "lantern_village", "square")
 	LevelCommon.make_room_trigger(self, Vector2(2900, 360), Vector2(500, 400), "lantern_village", "tower", "Ascend the Clockwork Tower", "")
-
-	var street_lamp := LightSource.new()
-	street_lamp.position = Vector2(700, 280)
-	street_lamp.light_kind = GameState.LightKind.HEARTH
-	street_lamp.radius = 280.0
-	street_lamp.shadow_length = 320.0
-	street_lamp.pushable = false
-	street_lamp.name = "StreetLamp"
-	add_child(street_lamp)
-
-	var switch := LightSwitch.new()
-	switch.position = Vector2(372, 488)
-	add_child(switch)
-	switch.target_light_paths = [NodePath("../StreetLamp")]
 
 	add_child(_make_shade_heart(Vector2(2100, FLOOR_TOP - 100)))
 
@@ -98,6 +82,40 @@ func _resolve_spawn() -> Vector2:
 	if GameState.checkpoint_position == Vector2.ZERO or GameState.editor_playtesting:
 		GameState.checkpoint_position = spawn
 	return spawn
+
+
+func _build_all_lights() -> void:
+	## Rebuild every village lantern so washes + burn share the new occluder path.
+	var wire_y := 90.0
+	## Hanging candles along the wire (burn, short reach).
+	for x in [280.0, 720.0, 1180.0, 1600.0, 2100.0, 2600.0]:
+		LevelCommon.add_hanging_lantern(self, Vector2(x, wire_y), 70.0, 150.0)
+
+	## Street hearth by Lantern Keep — houses must actually cover this wash.
+	var street_lamp := LightSource.new()
+	street_lamp.position = Vector2(700, 280)
+	street_lamp.light_kind = GameState.LightKind.HEARTH
+	street_lamp.radius = 300.0
+	street_lamp.shadow_length = 360.0
+	street_lamp.pushable = false
+	street_lamp.name = "StreetLamp"
+	add_child(street_lamp)
+
+	var switch := LightSwitch.new()
+	switch.position = Vector2(372, FLOOR_TOP - 12)
+	switch.name = "StreetLampSwitch"
+	add_child(switch)
+	switch.target_light_paths = [NodePath("../StreetLamp")]
+
+	## Square hearth near the inn / tower approach.
+	var square_lamp := LightSource.new()
+	square_lamp.position = Vector2(2000, 300)
+	square_lamp.light_kind = GameState.LightKind.HEARTH
+	square_lamp.radius = 260.0
+	square_lamp.shadow_length = 300.0
+	square_lamp.pushable = false
+	square_lamp.name = "SquareLamp"
+	add_child(square_lamp)
 
 
 func _build_houses() -> void:

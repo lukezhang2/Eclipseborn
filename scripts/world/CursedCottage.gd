@@ -156,13 +156,33 @@ func _build_hatch_room() -> void:
 
 
 func _build_ambient_lamps() -> void:
+	## Safe moon pockets + a few hearths so cover/occlusion is exerciseable end-to-end.
 	var moon := LightSource.new()
 	moon.position = Vector2(400, ROOF_BOTTOM + 40)
 	moon.light_kind = GameState.LightKind.MOON
-	moon.radius = 140.0
-	moon.shadow_length = 180.0
+	moon.radius = 160.0
+	moon.shadow_length = 200.0
 	moon.pushable = false
+	moon.name = "HallMoon"
 	add_child(moon)
+
+	var hearth_b := LightSource.new()
+	hearth_b.position = Vector2(2000, ROOF_BOTTOM + 50)
+	hearth_b.light_kind = GameState.LightKind.HEARTH
+	hearth_b.radius = 220.0
+	hearth_b.shadow_length = 280.0
+	hearth_b.pushable = false
+	hearth_b.name = "PullHearth"
+	add_child(hearth_b)
+
+	var hearth_c := LightSource.new()
+	hearth_c.position = Vector2(3200, ROOF_BOTTOM + 50)
+	hearth_c.light_kind = GameState.LightKind.CANDLE
+	hearth_c.radius = 180.0
+	hearth_c.shadow_length = 220.0
+	hearth_c.pushable = false
+	hearth_c.name = "HatchCandle"
+	add_child(hearth_c)
 
 
 func _build_currency_breakables() -> void:

@@ -21,7 +21,11 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var p = GameState.player
-	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < interact_range
+	## Prefer horizontal reach — floor props sit ~40px below the player origin.
+	var near := false
+	if p and is_instance_valid(p):
+		var d: Vector2 = global_position - p.global_position
+		near = absf(d.x) < interact_range and absf(d.y) < interact_range + 36.0
 	_prompt.visible = near
 	if not near:
 		return

@@ -71,10 +71,13 @@ func set_blocks_light(on: bool) -> void:
 
 
 func _apply_light_block(hx: float) -> void:
-	## Full facade + roof — must match visual footprint so cover is real, not paint-only.
+	## Full facade + roof peak — geometry occluder drives burns AND wash cuts.
 	var poly := PackedVector2Array([
-		Vector2(-hx - 8, 0), Vector2(hx + 8, 0), Vector2(hx + 8, -height),
-		Vector2(0, -height - 36), Vector2(-hx - 8, -height)
+		Vector2(-hx - 10, 4),
+		Vector2(hx + 10, 4),
+		Vector2(hx + 10, -height),
+		Vector2(0, -height - 40),
+		Vector2(-hx - 10, -height),
 	])
 	LightOnlyBlocker.attach(self, poly, blocks_light)
 
@@ -92,8 +95,8 @@ func _process(_delta: float) -> void:
 
 func _enter() -> void:
 	GameState.set_meta("pending_house_id", house_id)
-	## Land next to the left-wall exit door inside.
-	GameState.pending_spawn = Vector2(110, 460)
+	## Land at the left-wall exit door inside.
+	GameState.pending_spawn = Vector2(120, 460)
 	GameState.current_zone_id = house_id
 	GameState.last_position = GameState.pending_spawn
 	get_tree().change_scene_to_file(interior_scene)
