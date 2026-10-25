@@ -28,6 +28,8 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.74 — LightSource never builds a solid body / never pushable (hard disable); `index-0_1_74.pck`
+- v0.1.73 — Lanterns never collide with player; editor/LevelData lights default non-pushable; `index-0_1_73.pck`
 - v0.1.72 — Playtest Zone shows session editor edits (trusted user:// mirror + sync tagged builtins on apply); `index-0_1_72.pck`
 - v0.1.71 — boot shows the real title behind the glass (no white flash); Clockwork crack look; particle steam vents; Wickwright redrawn as the Grandfather Wraith (animated wings, pendulum heart, eye tracking); `index-0_1_71.pck`
 - v0.1.70 — Clockwork Tower enemies visible/editable in Level Editor (catalog + LevelData spawn); `index-0_1_70.pck`

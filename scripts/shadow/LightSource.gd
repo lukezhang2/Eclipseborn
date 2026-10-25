@@ -9,7 +9,8 @@ class_name LightSource
 ## 1.0 = normal. Higher = brighter wash + faster shade/HP burn.
 @export var intensity: float = 1.0
 @export var is_enabled: bool = true
-@export var pushable: bool = true
+## Kept for save compatibility only — lanterns are never pushable / never solid.
+@export var pushable: bool = false
 @export var push_speed: float = 90.0
 @export var show_radius_ring: bool = true
 
@@ -26,12 +27,12 @@ var _burn_area: Area2D
 
 
 func _ready() -> void:
+	## No lantern may be shoved or body-block the player.
+	pushable = false
 	_last_pos = global_position
 	_build_visual()
 	ShadowWorld.register_light(self)
 	add_to_group("lights")
-	if pushable:
-		add_to_group("pushable_lamps")
 	call_deferred("_cache_exclude_rids")
 	ShadowWorld.mark_dirty()
 
@@ -183,21 +184,6 @@ func _build_visual() -> void:
 	add_child(_burn_area)
 	_apply_intensity_visuals()
 
-	if pushable:
-		## Layer 16 = pushable lamps only. NOT in ShadowWorld occluder mask (1|8),
-		## so invisible lamp bodies stop casting "ghost" light cutouts.
-		_body = AnimatableBody2D.new()
-		_body.collision_layer = 16
-		_body.collision_mask = 1
-		_body.name = "LampBody"
-		var bpoly := CollisionPolygon2D.new()
-		bpoly.polygon = PackedVector2Array([
-			Vector2(-12, -18), Vector2(12, -18), Vector2(14, 12), Vector2(-14, 12)
-		])
-		_body.add_child(bpoly)
-		add_child(_body)
-
-
 func _hang_chain() -> void:
 	await get_tree().physics_frame
 	if not is_instance_valid(self):
@@ -245,9 +231,6 @@ func _apply_intensity_visuals() -> void:
 	_rebuild_ring()
 
 
-func try_push(direction: float, delta: float) -> void:
-	if not pushable:
-		return
-	position.x += direction * push_speed * delta
-	position.x = clampf(position.x, GameState.map_min_x + 20.0, GameState.map_max_x - 20.0)
-	ShadowWorld.mark_dirty()
+func try_push(_direction: float, _delta: float) -> void:
+	## Intentionally empty — lanterns do not push or collide.
+	pass

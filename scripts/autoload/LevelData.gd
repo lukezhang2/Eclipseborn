@@ -270,8 +270,7 @@ static func _apply_overlay_to_node(node: Node, p: Dictionary) -> void:
 			lamp.set_intensity(float(p.get("intensity")))
 		if p.has("light_kind"):
 			lamp.light_kind = int(p.get("light_kind")) as GameState.LightKind
-		if p.has("pushable"):
-			lamp.pushable = bool(p.get("pushable"))
+		lamp.pushable = false
 		return
 	if node is PushableBox:
 		var box := node as PushableBox
