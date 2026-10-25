@@ -158,24 +158,31 @@ static func _tower() -> Array:
 	out.append(_p("bench_lobby", "prop_bench", "Lobby Bench", 340, LOBBY_TOP, 60, 20))
 	out.append(_pexit("exit_village", "Village Door", 110, LOBBY_TOP - 8, "lantern_village", ClockworkTower.VILLAGE_DOOR_X - 80.0, 460.0, "Back to Lantern Village…"))
 	out.append(_p("ladder_lobby", "prop_ladder", "Lobby Ladder", 600, LOBBY_TOP, 28, STORY_GAP))
+	## Matches ClockworkTowerZone._spawn_* positions (grubs = wander).
+	out.append(_penemy("enemy_lobby_a", "Lobby Grub A", "wander", 480, LOBBY_TOP - 18))
+	out.append(_penemy("enemy_lobby_b", "Lobby Grub B", "wander", 720, LOBBY_TOP - 18))
 
 	## Story floors + ladders up the shaft.
 	out.append(_p("floor_shaft_1", "floor", "Shaft Story 1", 400, STORY_SHAFT_1 + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_shaft_1", "prop_ladder", "Shaft Ladder 1", 220, STORY_SHAFT_1, 28, STORY_GAP))
+	out.append(_penemy("enemy_shaft_1", "Shaft Rivet Mite", "mite", 360, STORY_SHAFT_1 - 16))
 	out.append(_p("floor_shaft_2", "floor", "Shaft Story 2", 400, STORY_SHAFT_2 + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_shaft_2", "prop_ladder", "Shaft Ladder 2", 580, STORY_SHAFT_2, 28, STORY_GAP))
 	out.append(_p("ledge_workshop_door", "floor", "Workshop Door Ledge", 720, STORY_SHAFT_2 + FLOOR_H * 0.5, 140, FLOOR_H))
 	out.append(_plight("climb_lamp", "Climb Lamp", 400, STORY_SHAFT_2 - 90, 150))
+	out.append(_penemy("enemy_shaft_2", "Shaft Fuse Beetle", "beetle", 400, STORY_SHAFT_2 - 28))
 
 	## Side workshop.
 	out.append(_p("floor_workshop", "floor", "Workshop Floor", 960, STORY_SHAFT_2 + FLOOR_H * 0.5, 280, FLOOR_H))
 	out.append(_p("bench_workshop", "prop_bench", "Workshop Bench", 940, STORY_SHAFT_2, 60, 20))
 	out.append(_p("jar_workshop", "prop_breakable", "Workshop Jar", 1020, STORY_SHAFT_2 - 8, 28, 36))
+	out.append(_penemy("enemy_workshop", "Workshop Rivet Mite", "mite", 980, STORY_SHAFT_2 - 16))
 	out.append(_ptext("text_workshop", "Workshop alcove", 980, STORY_SHAFT_2 - 90, 160, 24, 12, "a69473"))
 
 	## Pendulum cloister.
 	out.append(_p("floor_cloister", "floor", "Cloister Story", 400, STORY_CLOISTER + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_cloister", "prop_ladder", "Cloister Ladder", 240, STORY_CLOISTER, 28, STORY_GAP))
+	out.append(_penemy("enemy_cloister", "Cloister Fuse Beetle", "beetle", 420, STORY_CLOISTER - 24))
 	out.append(_p("floor_cloister_l", "floor", "Cloister Floor L", 220, STORY_PENDULUM + FLOOR_H * 0.5, 220, FLOOR_H))
 	out.append(_p("floor_cloister_r", "floor", "Cloister Floor R", 560, STORY_PENDULUM + FLOOR_H * 0.5, 220, FLOOR_H))
 	out.append(_p("ladder_pendulum", "prop_ladder", "Pendulum Ladder", 560, STORY_PENDULUM, 28, STORY_GAP))
@@ -189,8 +196,10 @@ static func _tower() -> Array:
 	out.append(_p("floor_flue_1", "floor", "Flue Story 1", 400, STORY_FLUE_1 + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_flue_1", "prop_ladder", "Flue Ladder 1", 260, STORY_FLUE_1, 28, STORY_GAP))
 	out.append(_p("vent_flue_1", "prop_vent", "Flue Vent 1", 300, STORY_FLUE_1, 36, 16))
+	out.append(_penemy("enemy_flue_1", "Flue Grub", "wander", 420, STORY_FLUE_1 - 16))
 	out.append(_p("floor_flue_2", "floor", "Flue Story 2", 400, STORY_FLUE_2 + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_flue_2", "prop_ladder", "Flue Ladder 2", 560, STORY_FLUE_2, 28, STORY_GAP))
+	out.append(_penemy("enemy_flue_2", "Flue Fuse Beetle", "beetle", 400, STORY_FLUE_2 - 16))
 	out.append(_plight("flue_lamp", "Flue Floor Lamp", 400, STORY_FLUE_2 - 8, 130))
 	var fsw := _p("flue_switch", "prop_switch", "Flue Lever", 300, STORY_FLUE_2, 24, 40)
 	fsw["starts_on"] = false
@@ -203,6 +212,7 @@ static func _tower() -> Array:
 	out.append(_p("ladder_archive", "prop_ladder", "Archive Ladder", 240, STORY_ARCHIVE, 28, STORY_GAP))
 	out.append(_plight("archive_lamp", "Archive Lamp", 160, STORY_ARCHIVE - 100, 120))
 	out.append(_p("jar_archive", "prop_breakable", "Archive Jar", 120, STORY_ARCHIVE - 8, 28, 36))
+	out.append(_penemy("enemy_archive", "Archive Rivet Mite", "mite", 180, STORY_ARCHIVE - 16))
 	out.append(_p("floor_gallery", "floor", "Gallery Floor", 400, STORY_GALLERY + FLOOR_H * 0.5, 560, FLOOR_H))
 	out.append(_p("ladder_gallery", "prop_ladder", "Gallery Ladder", 560, STORY_GALLERY, 28, STORY_GAP))
 	out.append(_plight("practice_a", "Practice Lamp A", 260, STORY_GALLERY - 8, 100))
@@ -218,8 +228,11 @@ static func _tower() -> Array:
 		"Practice the Hour — flip levers to match lamp patterns.",
 		360, STORY_GALLERY - 70, 320, 28, 13, "bfad80"
 	))
+	out.append(_penemy("enemy_gallery_a", "Gallery Fuse Beetle A", "beetle", 320, STORY_GALLERY - 18))
+	out.append(_penemy("enemy_gallery_b", "Gallery Fuse Beetle B", "beetle", 480, STORY_GALLERY - 18))
 	out.append(_p("floor_pre_gate", "floor", "Pre-Gate Landing", 400, STORY_PRE_GATE + FLOOR_H * 0.5, 520, FLOOR_H))
 	out.append(_p("ladder_pre_gate", "prop_ladder", "Pre-Gate Ladder", 320, STORY_PRE_GATE, 28, STORY_PRE_GATE - ANTECHAMBER_TOP))
+	out.append(_penemy("enemy_pre_gate", "Pre-Gate Rivet Mite", "mite", 450, STORY_PRE_GATE - 16))
 
 	## Antechamber + arena.
 	out.append(_p("floor_antechamber", "floor", "Dial Gate Floor", 400, ANTECHAMBER_FLOOR, 560, FLOOR_H))
@@ -336,6 +349,12 @@ static func _pnpc(id: String, name: String, x: float, y: float, lines: Variant, 
 		"is_shopkeeper": true,
 		"shop_items": stock,
 	}
+
+
+static func _penemy(id: String, name: String, enemy_kind: String, x: float, y: float) -> Dictionary:
+	var d := _p(id, "prop_enemy", name, x, y, 28, 36)
+	d["enemy_kind"] = enemy_kind
+	return d
 
 
 static func _ptext(

@@ -649,7 +649,15 @@ func _make_prop_tex(w: int, h: int, k: String) -> ImageTexture:
 		"prop_breakable":
 			col = Color(0.45, 0.55, 0.65)
 		"prop_enemy":
-			col = Color(0.35, 0.2, 0.4)
+			match enemy_kind:
+				"mite":
+					col = Color(0.55, 0.45, 0.25)
+				"beetle":
+					col = Color(0.55, 0.28, 0.18)
+				"pendulum":
+					col = Color(0.35, 0.4, 0.55)
+				_:
+					col = Color(0.35, 0.2, 0.4)
 		"prop_lantern", "prop_tower":
 			col = Color(0.55, 0.45, 0.25)
 		"prop_ladder":

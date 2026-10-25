@@ -29,8 +29,6 @@ const STORY_GALLERY := STORY_ARCHIVE - STORY_GAP ## 1062
 const STORY_PRE_GATE := STORY_GALLERY - STORY_GAP ## 862
 
 const WickwrightScript := preload("res://scripts/enemies/Wickwright.gd")
-const RivetMiteScript := preload("res://scripts/enemies/RivetMite.gd")
-const FuseBeetleScript := preload("res://scripts/enemies/FuseBeetle.gd")
 const PendulumScript := preload("res://scripts/enemies/PendulumSentinel.gd")
 const RewardChestScript := preload("res://scripts/world/RewardChest.gd")
 const VillageDoorScript := preload("res://scripts/world/TowerVillageDoor.gd")
@@ -284,8 +282,8 @@ func _build_lobby() -> void:
 		LevelCommon.add_steam_vent(self, _piece_pos("vent_lobby", Vector2(520, LOBBY_TOP)))
 	if not LevelData.is_removed("clockwork_tower", "bench_lobby"):
 		LevelCommon.add_bench(self, _piece_pos("bench_lobby", Vector2(340, LOBBY_TOP)))
-	_spawn_grub(Vector2(480, LOBBY_TOP - 18))
-	_spawn_grub(Vector2(720, LOBBY_TOP - 18))
+	_spawn_catalog_enemy("enemy_lobby_a", "wander", Vector2(480, LOBBY_TOP - 18))
+	_spawn_catalog_enemy("enemy_lobby_b", "wander", Vector2(720, LOBBY_TOP - 18))
 	## First ladder up into the shaft (right of hearth).
 	_ladder(600, LOBBY_TOP, STORY_SHAFT_1)
 	## Village door — bottom left.
@@ -298,7 +296,7 @@ func _build_main_shaft() -> void:
 	## Hatch at 600 matches lobby ladder arrival.
 	_story(STORY_SHAFT_1, 560.0, 400.0, [600.0])
 	_ladder(220, STORY_SHAFT_1, STORY_SHAFT_2)
-	_spawn_mite(Vector2(360, STORY_SHAFT_1 - 16))
+	_spawn_catalog_enemy("enemy_shaft_1", "mite", Vector2(360, STORY_SHAFT_1 - 16))
 
 	_story(STORY_SHAFT_2, 560.0, 400.0, [220.0])
 	_ladder(580, STORY_SHAFT_2, STORY_CLOISTER)
@@ -306,7 +304,7 @@ func _build_main_shaft() -> void:
 	var mid_lamp := _make_hanging_lamp("climb_lamp", Vector2(400, STORY_SHAFT_2 - 90), 150.0, true)
 	if mid_lamp:
 		add_child(mid_lamp)
-	_spawn_beetle(Vector2(400, STORY_SHAFT_2 - 28))
+	_spawn_catalog_enemy("enemy_shaft_2", "beetle", Vector2(400, STORY_SHAFT_2 - 28))
 
 
 func _build_side_workshop() -> void:
@@ -318,7 +316,7 @@ func _build_side_workshop() -> void:
 	_ledge(880, STORY_SHAFT_2, 100.0)
 	LevelCommon.add_bench(self, Vector2(940, STORY_SHAFT_2))
 	_spawn_jar(Vector2(1020, STORY_SHAFT_2 - 8))
-	_spawn_mite(Vector2(980, STORY_SHAFT_2 - 16))
+	_spawn_catalog_enemy("enemy_workshop", "mite", Vector2(980, STORY_SHAFT_2 - 16))
 	_spawn_world_text(
 		"text_workshop",
 		"Workshop alcove",
@@ -333,7 +331,7 @@ func _build_pendulum_cloister() -> void:
 	LevelCommon.make_room_trigger(self, Vector2(430, 1960), Vector2(640, 280), "clockwork_tower", "pendulum", "Pendulum Cloister", "")
 	_story(STORY_CLOISTER, 560.0, 400.0, [580.0])
 	_ladder(240, STORY_CLOISTER, STORY_PENDULUM)
-	_spawn_beetle(Vector2(420, STORY_CLOISTER - 24))
+	_spawn_catalog_enemy("enemy_cloister", "beetle", Vector2(420, STORY_CLOISTER - 24))
 
 	## Split floors with a jumpable gap under swinging pendulums + hatch at 240 for ladder.
 	_floor_at(STORY_PENDULUM + FLOOR_H * 0.5, 180.0, 200.0)
@@ -379,13 +377,13 @@ func _build_steam_flue() -> void:
 	LevelCommon.add_steam_vent(self, Vector2(300, STORY_FLUE_1))
 	LevelCommon.add_steam_vent(self, Vector2(500, STORY_FLUE_1))
 	_ladder(260, STORY_FLUE_1, STORY_FLUE_2)
-	_spawn_grub(Vector2(420, STORY_FLUE_1 - 16))
+	_spawn_catalog_enemy("enemy_flue_1", "wander", Vector2(420, STORY_FLUE_1 - 16))
 
 	_story(STORY_FLUE_2, 560.0, 400.0, [260.0])
 	LevelCommon.add_steam_vent(self, Vector2(340, STORY_FLUE_2))
 	LevelCommon.add_steam_vent(self, Vector2(480, STORY_FLUE_2))
 	_ladder(560, STORY_FLUE_2, STORY_ARCHIVE)
-	_spawn_beetle(Vector2(400, STORY_FLUE_2 - 16))
+	_spawn_catalog_enemy("enemy_flue_2", "beetle", Vector2(400, STORY_FLUE_2 - 16))
 	var flue_lamp := _make_floor_lamp("flue_lamp", Vector2(400, STORY_FLUE_2 - 8), 130.0, false)
 	if flue_lamp:
 		add_child(flue_lamp)
@@ -409,7 +407,7 @@ func _build_side_archive() -> void:
 	_ledge(300, STORY_ARCHIVE, 110.0)
 	LevelCommon.make_room_trigger(self, Vector2(160, STORY_ARCHIVE - 70), Vector2(240, 140), "clockwork_tower", "archive", "Ash Archive", "")
 	_spawn_jar(Vector2(120, STORY_ARCHIVE - 8))
-	_spawn_mite(Vector2(180, STORY_ARCHIVE - 16))
+	_spawn_catalog_enemy("enemy_archive", "mite", Vector2(180, STORY_ARCHIVE - 16))
 	var lamp := _make_hanging_lamp("archive_lamp", Vector2(160, STORY_ARCHIVE - 100), 120.0, true)
 	if lamp:
 		add_child(lamp)
@@ -448,13 +446,13 @@ func _build_switch_gallery() -> void:
 		Color("bfad80"),
 		Vector2(320, 28)
 	)
-	_spawn_beetle(Vector2(320, floor_top - 18))
-	_spawn_beetle(Vector2(480, floor_top - 18))
+	_spawn_catalog_enemy("enemy_gallery_a", "beetle", Vector2(320, floor_top - 18))
+	_spawn_catalog_enemy("enemy_gallery_b", "beetle", Vector2(480, floor_top - 18))
 
 	## Pre-gate landing then ladder into antechamber.
 	_story(STORY_PRE_GATE, 520.0, 400.0, [560.0])
 	_ladder(320, STORY_PRE_GATE, ANTECHAMBER_TOP)
-	_spawn_mite(Vector2(450, STORY_PRE_GATE - 16))
+	_spawn_catalog_enemy("enemy_pre_gate", "mite", Vector2(450, STORY_PRE_GATE - 16))
 
 
 func _build_antechamber() -> void:
@@ -691,23 +689,21 @@ func _make_floor_lamp(id: String, pos: Vector2, radius: float, on: bool) -> Ligh
 	return lamp
 
 
-func _spawn_grub(pos: Vector2) -> void:
-	var scene := preload("res://scenes/enemies/WanderEnemy.tscn")
-	var e = scene.instantiate()
-	e.position = pos
-	add_child(e)
-
-
-func _spawn_mite(pos: Vector2) -> void:
-	var m: Node = RivetMiteScript.new()
-	m.position = pos
-	add_child(m)
-
-
-func _spawn_beetle(pos: Vector2) -> void:
-	var b: Node = FuseBeetleScript.new()
-	b.position = pos
-	add_child(b)
+func _spawn_catalog_enemy(catalog_id: String, default_kind: String, fallback_pos: Vector2) -> void:
+	## Builtin enemies live in ZoneCatalog so the Level Editor can move/edit them.
+	if LevelData.is_removed("clockwork_tower", catalog_id):
+		return
+	var saved := LevelData.merged_piece("clockwork_tower", catalog_id)
+	var pos := fallback_pos
+	var p: Dictionary = {"enemy_kind": default_kind}
+	if not saved.is_empty():
+		p = saved.duplicate(true)
+		if not p.has("enemy_kind") or str(p.get("enemy_kind", "")) == "":
+			p["enemy_kind"] = default_kind
+		if saved.has("x") and saved.has("y"):
+			pos = Vector2(float(saved.get("x")), float(saved.get("y")))
+	var enemy := LevelData.spawn_creature(self, p, pos)
+	LevelData.tag(enemy, catalog_id)
 
 
 func _spawn_jar(pos: Vector2) -> void:
