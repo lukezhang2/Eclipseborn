@@ -73,15 +73,16 @@ func _check_pogo() -> void:
 			_on_hurt(8, player)
 
 
-func _on_hurt(amount: int, _from: Node) -> void:
+func _on_hurt(amount: int, from: Node) -> void:
 	hp -= amount
-	visual.modulate = Color(1.5, 1.5, 1.5)
-	await get_tree().create_timer(0.05).timeout
-	if not is_instance_valid(self):
-		return
-	visual.modulate = Color.WHITE
+	EnemyHitFX.play(visual, self, from)
+	var eyes := get_node_or_null("Eyes") as CanvasItem
+	if eyes:
+		EnemyHitFX.play(eyes, null, null)
 	if hp <= 0:
-		_die()
+		await get_tree().create_timer(0.12).timeout
+		if is_instance_valid(self):
+			_die()
 
 
 func _die() -> void:

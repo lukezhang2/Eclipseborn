@@ -153,14 +153,12 @@ func _touch_damage() -> void:
 		_hurt_cd = 0.8
 
 
-func _on_hurt(amount: int, _from: Node) -> void:
+func _on_hurt(amount: int, from: Node) -> void:
 	hp -= amount
-	if _sprite:
-		_sprite.modulate = Color(1.6, 1.6, 1.6)
-	await get_tree().create_timer(0.05).timeout
-	if not is_instance_valid(self):
-		return
-	if _sprite:
-		_sprite.modulate = Color.WHITE
+	var vis: CanvasItem = _sprite if _sprite else (get_node_or_null("BodySprite") as CanvasItem)
+	EnemyHitFX.play(vis, self, from)
 	if hp <= 0:
-		queue_free()
+		## Let the flash start, then despawn.
+		await get_tree().create_timer(0.12).timeout
+		if is_instance_valid(self):
+			queue_free()

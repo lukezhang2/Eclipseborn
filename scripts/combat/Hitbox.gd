@@ -53,3 +53,6 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 	_hit_ids[id] = true
 	hurt.apply_hit(damage, owner_body)
+	## Only the player's swing should chirp on connect (enemy hitboxes stay silent here).
+	if team == "player":
+		AudioManager.play_hit_connect()

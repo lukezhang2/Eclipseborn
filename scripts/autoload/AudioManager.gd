@@ -15,11 +15,13 @@ var _gears: AudioStream
 var _break: AudioStream
 var _currency: AudioStream
 var _hurt: AudioStream
+var _hit: AudioStream
 var _burn_shade: AudioStream
 var _burn_health: AudioStream
 
 var _walk_cooldown: float = 0.0
 var _hurt_cooldown: float = 0.0
+var _hit_cooldown: float = 0.0
 var _players: Array[AudioStreamPlayer] = []
 var _burn_shade_player: AudioStreamPlayer
 var _burn_health_player: AudioStreamPlayer
@@ -42,6 +44,7 @@ func _ready() -> void:
 	_break = _load("res://assets/sfx/break.wav")
 	_currency = _load("res://assets/sfx/currency.wav")
 	_hurt = _load("res://assets/sfx/hurt.wav")
+	_hit = _load("res://assets/sfx/hit.wav")
 	_burn_shade = _load_loop("res://assets/sfx/burn_shade.wav")
 	_burn_health = _load_loop("res://assets/sfx/burn_health.wav")
 	for i in 10:
@@ -85,6 +88,7 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	_walk_cooldown = maxf(0.0, _walk_cooldown - delta)
 	_hurt_cooldown = maxf(0.0, _hurt_cooldown - delta)
+	_hit_cooldown = maxf(0.0, _hit_cooldown - delta)
 
 
 func _resolve_sfx_bus() -> void:
@@ -191,6 +195,14 @@ func play_hurt() -> void:
 		return
 	_hurt_cooldown = 0.12
 	_play(_hurt, -6.0, randf_range(0.94, 1.06))
+
+
+func play_hit_connect() -> void:
+	## Plays when a player attack volume actually lands on a hurtbox.
+	if _hit_cooldown > 0.0:
+		return
+	_hit_cooldown = 0.05
+	_play(_hit, -3.0, randf_range(0.94, 1.08))
 
 
 func set_shade_burning(on: bool) -> void:
