@@ -1,6 +1,6 @@
 extends CharacterBody2D
 class_name Wickwright
-## Clockwork Tower apex boss — flies, flips gallery lamps, Match-the-Hour heart.
+## Clockwork Tower apex boss — flies, dives, and slams every arena lever ON.
 
 
 signal defeated
@@ -20,9 +20,6 @@ var _state: String = "dormant"
 var _state_t: float = 0.0
 var _cooldown: float = 1.2
 var _hurt_cd: float = 0.0
-var _heart_open: bool = false
-var _heart_t: float = 0.0
-var _target_pattern: Array = [true, false, true] ## A B C lamps that should be ON
 var _dying: bool = false
 var _awake: bool = false
 var _spawn_pos: Vector2 = Vector2.ZERO
@@ -31,16 +28,12 @@ var _dive_target: Vector2 = Vector2.ZERO
 var _visual: Node2D
 var _body_poly: Polygon2D
 var _heart_poly: Polygon2D
-var _dial_label: Label
 var _wings: Array = []
 ## 0 = original flat polygons; 1..3 = WickwrightArt looks.
 var art_style: int = 3
 var _art = null ## WickwrightArt
-var _dial_label_y: float = -56.0
 var _hurtbox: Hurtbox
 var _hitbox: Hitbox
-## Left / mid / right high lamps (match arena levers a→6, b→4, c→5).
-var _lamp_ids: PackedStringArray = PackedStringArray(["tower_lamp_6", "tower_lamp_4", "tower_lamp_5"])
 var _switch_ids: PackedStringArray = PackedStringArray(["tower_switch_a", "tower_switch_b", "tower_switch_c"])
 
 
@@ -51,15 +44,12 @@ func _ready() -> void:
 	_spawn_pos = global_position
 	_hover_origin = global_position
 	_build()
-	_roll_pattern()
 	add_to_group("enemies")
 	add_to_group("bosses")
 	name = "Wickwright"
 	## Sleep until the arena wake trigger fires.
 	if _hurtbox:
 		_hurtbox.set_deferred("monitorable", false)
-	if _dial_label:
-		_dial_label.visible = false
 
 
 func awaken() -> void:
@@ -71,15 +61,12 @@ func awaken() -> void:
 	_hover_origin = _spawn_pos
 	if _hurtbox:
 		_hurtbox.set_deferred("monitorable", true)
-		## Ensure the shape is live (dormant path only toggles monitorable).
 		for c in _hurtbox.get_children():
 			if c is CollisionShape2D:
 				(c as CollisionShape2D).set_deferred("disabled", false)
-	if _dial_label:
-		_dial_label.visible = true
 	var ui := get_tree().get_first_node_in_group("tutorial_hint")
 	if ui and ui.has_method("show_hint"):
-		ui.show_hint("The Wickwright stirs — match the Hour.", 3.5)
+		ui.show_hint("The Wickwright stirs.", 3.0)
 
 
 ## Player died mid-fight — restore dormant full-HP encounter.
@@ -92,8 +79,6 @@ func reset_encounter() -> void:
 	_state_t = 0.0
 	_cooldown = 1.2
 	_hurt_cd = 0.0
-	_heart_open = false
-	_heart_t = 0.0
 	velocity = Vector2.ZERO
 	rotation = 0.0
 	modulate = Color.WHITE
@@ -104,14 +89,11 @@ func reset_encounter() -> void:
 		_hitbox.deactivate()
 	if _hurtbox:
 		_hurtbox.set_deferred("monitorable", false)
-	if _dial_label:
-		_dial_label.visible = false
 	if _heart_poly:
-		_heart_poly.color.a = 0.0
+		_heart_poly.color.a = 0.15
 	if _body_poly:
 		_body_poly.color = Color(0.32, 0.28, 0.24)
 	_restore_switches()
-	_roll_pattern()
 
 
 func _restore_switches() -> void:
@@ -191,14 +173,6 @@ func _build() -> void:
 		_art = WickwrightArtScript.new()
 		_art.style = art_style
 		_visual.add_child(_art)
-		_dial_label_y = -92.0
-
-	_dial_label = Label.new()
-	_dial_label.position = Vector2(-40, _dial_label_y)
-	_dial_label.add_theme_font_size_override("font_size", 13)
-	_dial_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
-	_visual.add_child(_dial_label)
-	_refresh_dial_label()
 
 	_hurtbox = Hurtbox.new()
 	_hurtbox.team = "enemy"
@@ -226,32 +200,6 @@ func _build() -> void:
 	_hitbox.deactivate()
 
 
-func _refresh_dial_label() -> void:
-	if _dial_label == null:
-		return
-	var marks := ""
-	for i in _target_pattern.size():
-		marks += "I" if _target_pattern[i] else "·"
-		if i < _target_pattern.size() - 1:
-			marks += " "
-	_dial_label.text = "Hour  %s" % marks
-
-
-func _roll_pattern() -> void:
-	_target_pattern = []
-	var on_count := 0
-	for i in 3:
-		var on := randf() > 0.45
-		_target_pattern.append(on)
-		if on:
-			on_count += 1
-	if on_count == 0:
-		_target_pattern[randi() % 3] = true
-	if on_count == 3:
-		_target_pattern[randi() % 3] = false
-	_refresh_dial_label()
-
-
 func _physics_process(delta: float) -> void:
 	if _dying or GameState.is_paused:
 		return
@@ -262,11 +210,10 @@ func _physics_process(delta: float) -> void:
 	_state_t += delta
 	_anim_wings(delta)
 	if not _awake:
-		## Idle hover bob while dormant — no attacks, no heart logic.
+		## Idle hover bob while dormant — no attacks.
 		var bob := Vector2(sin(Time.get_ticks_msec() * 0.0015) * 12.0, cos(Time.get_ticks_msec() * 0.002) * 8.0)
 		global_position = global_position.lerp(_hover_origin + bob, clampf(2.0 * delta, 0.0, 1.0))
 		return
-	_update_heart(delta)
 	match _state:
 		"hover":
 			_do_hover(delta)
@@ -314,50 +261,13 @@ func _pose_art(delta: float) -> void:
 		want_flap = 0.8 + sin(tt * 5.0) * 0.1
 	_art.flap = lerpf(_art.flap, want_flap, clampf(14.0 * delta, 0.0, 1.0))
 	_art.windup = lerpf(_art.windup, want_wind, clampf(10.0 * delta, 0.0, 1.0))
-	_art.heart = lerpf(_art.heart, 1.0 if _heart_open else 0.0, clampf(6.0 * delta, 0.0, 1.0))
+	_art.heart = lerpf(_art.heart, 0.35, clampf(6.0 * delta, 0.0, 1.0))
 	_art.hand_speed = 1.0 + float(phase) * 1.5
 	_art.damage = float(phase) / 2.0
 	_art.dying = _dying
 	var p = GameState.player
 	if p and is_instance_valid(p):
 		_art.look = (p.global_position - global_position).normalized()
-
-
-func _update_heart(delta: float) -> void:
-	var match_ok := _pattern_matches()
-	if match_ok and not _heart_open:
-		_heart_open = true
-		_heart_t = 4.5 if phase != Phase.THREE else 6.0
-		AudioManager.play_break()
-	if _heart_open:
-		_heart_t -= delta
-		_heart_poly.color.a = 0.95
-		_body_poly.color = Color(0.45, 0.32, 0.22)
-		if _heart_t <= 0.0:
-			_heart_open = false
-			_roll_pattern()
-	else:
-		_heart_poly.color.a = 0.15
-		_body_poly.color = Color(0.32, 0.28, 0.24)
-
-
-func _pattern_matches() -> bool:
-	for i in _lamp_ids.size():
-		var want: bool = _target_pattern[i]
-		var lamp := _find_lamp(_lamp_ids[i])
-		var is_on := true
-		if lamp and lamp.has_method("is_on"):
-			is_on = lamp.is_on()
-		if is_on != want:
-			return false
-	return true
-
-
-func _find_lamp(id: String) -> Node:
-	for lamp in get_tree().get_nodes_in_group("lights"):
-		if str(lamp.get_meta("catalog_id", "")) == id or lamp.name == id:
-			return lamp
-	return get_tree().root.find_child(id, true, false)
 
 
 func _do_hover(delta: float) -> void:
@@ -434,27 +344,26 @@ func _begin_flip() -> void:
 
 
 func _do_flip(delta: float) -> void:
-	## Fly toward high lever perch and yank a switch (turns floor lanterns).
+	## Fly toward high lever perch and slam every surviving lever ON.
 	var gallery_y := _hover_origin.y - 70.0
 	global_position.y = lerpf(global_position.y, gallery_y, 4.0 * delta)
 	if _state_t > 0.55 and _state_t < 0.7:
-		_yank_random_switch()
+		_force_all_levers_on()
 	if _state_t > 1.1:
 		_state = "hover"
 		_state_t = 0.0
 
 
-func _yank_random_switch() -> void:
-	if _switch_ids.is_empty():
+func _force_all_levers_on() -> void:
+	var tree := get_tree()
+	if tree == null:
 		return
-	var sid := _switch_ids[randi() % _switch_ids.size()]
-	var sw := get_tree().root.find_child(sid, true, false)
-	if sw == null:
-		return
-	if sw.get_meta("smashed", false):
-		return
-	if sw.has_method("interact"):
-		sw.interact()
+	for sid in _switch_ids:
+		var sw := tree.root.find_child(str(sid), true, false)
+		if sw == null or sw.get_meta("smashed", false):
+			continue
+		if sw.has_method("set_powered"):
+			sw.call("set_powered", true, true)
 
 
 func _on_hurt(amount: int, from: Node) -> void:
@@ -486,15 +395,7 @@ func _play_hurt_feedback(from: Node) -> void:
 	global_position.x += away * 22.0
 	global_position.y -= 10.0
 	EnemyHitFX.play(_art if _art else _body_poly, null, null)
-	if _heart_open and _art == null:
-		EnemyHitFX.play(_heart_poly, null, null)
 	_spawn_hit_sparks()
-	if _dial_label:
-		_dial_label.text = "Wounds  %d / %d" % [MAX_HP - hp, MAX_HP]
-		_dial_label.modulate = Color(1.0, 0.45, 0.4)
-		var tw2 := create_tween()
-		tw2.tween_property(_dial_label, "modulate", Color.WHITE, 0.35)
-		tw2.tween_callback(_refresh_dial_label)
 
 
 func _spawn_hit_sparks() -> void:
@@ -528,11 +429,9 @@ func _update_phase() -> void:
 	if ratio <= 0.33 and phase != Phase.THREE:
 		phase = Phase.THREE
 		_smash_switches(2)
-		_roll_pattern()
 	elif ratio <= 0.66 and phase == Phase.ONE:
 		phase = Phase.TWO
 		_smash_switches(1)
-		_roll_pattern()
 
 
 func _smash_switches(count: int) -> void:

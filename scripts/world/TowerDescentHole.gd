@@ -1,6 +1,6 @@
 extends Area2D
 class_name TowerDescentHole
-## Opens in the village after the Wickwright falls — descend into the tower shaft.
+## Opens in the village after the Wickwright falls — descend into the demo end.
 
 
 var _prompt: Label
@@ -54,9 +54,8 @@ func _process(_delta: float) -> void:
 	var near := p and is_instance_valid(p) and global_position.distance_to(p.global_position) < 70.0
 	_prompt.visible = near
 	if near and Input.is_action_just_pressed("attack") and GameState.can_interact():
-		GameState.current_zone_id = "clockwork_tower"
 		GameState.change_zone(
-			"res://scenes/rooms/ClockworkTower.tscn",
+			"res://scenes/ui/DemoEnd.tscn",
 			"Descending the shaft…",
-			Vector2(400, 2100)
+			Vector2.ZERO
 		)

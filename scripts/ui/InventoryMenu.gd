@@ -540,7 +540,7 @@ func _key_item_rows() -> Array:
 	if GameState.wickwright_defeated():
 		rows.append(_make_plain_row(
 			"Wickwright's Fall",
-			"The dial boss is gone. The village descent is open."
+			"The Wickwright is gone. The village descent is open."
 		))
 	return rows
 

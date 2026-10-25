@@ -442,7 +442,7 @@ func _build_switch_gallery() -> void:
 		add_child(s)
 	_spawn_world_text(
 		"text_gallery",
-		"Practice the Hour — flip levers to match lamp patterns.",
+		"Switch Gallery — practice flipping the high levers.",
 		Vector2(360, floor_top - 70),
 		13,
 		Color("bfad80"),
@@ -565,7 +565,7 @@ func _build_arena() -> void:
 			var chest: Node = RewardChestScript.new()
 			chest.position = Vector2(400, ARENA_TOP - 8)
 			add_child(chest)
-		_spawn_broken_wall_decor(Vector2(MAP_W - 80, ARENA_TOP - 100))
+		_spawn_broken_wall_decor(Vector2(60, ARENA_TOP - 100))
 	else:
 		_boss = WickwrightScript.new()
 		_boss.position = Vector2(400, ARENA_TOP - 88)
@@ -793,13 +793,14 @@ func _play_defeat_cutscene() -> void:
 		await tw.finished
 
 	await get_tree().create_timer(0.4).timeout
-	_spawn_broken_wall_decor(Vector2(MAP_W - 60, ARENA_TOP - 110))
+	## Breach the left wall and tumble out that side.
+	_spawn_broken_wall_decor(Vector2(60, ARENA_TOP - 110))
 	var tw2 := create_tween()
-	tw2.tween_property(boss, "global_position", Vector2(MAP_W + 40, ARENA_TOP - 88), 0.55).set_ease(Tween.EASE_IN)
+	tw2.tween_property(boss, "global_position", Vector2(-40, ARENA_TOP - 88), 0.55).set_ease(Tween.EASE_IN)
 	await tw2.finished
 	var tw3 := create_tween()
-	tw3.tween_property(boss, "global_position", Vector2(MAP_W + 120, ARENA_TOP + 360), 0.85).set_ease(Tween.EASE_IN)
-	tw3.parallel().tween_property(boss, "rotation", 2.8, 0.85)
+	tw3.tween_property(boss, "global_position", Vector2(-120, ARENA_TOP + 360), 0.85).set_ease(Tween.EASE_IN)
+	tw3.parallel().tween_property(boss, "rotation", -2.8, 0.85)
 	tw3.parallel().tween_property(boss, "modulate:a", 0.0, 0.85)
 	await tw3.finished
 

@@ -28,6 +28,8 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.85 — Demo end via shaft descent; Wickwright falls left; Match-the-Hour removed (levers slam all ON); `index-0_1_85.pck`
+- v0.1.84 — step off the top of a ladder smoothly instead of hopping; `index-0_1_84.pck`
 - v0.1.83 — sync clockwork_tower (arena levers→lamps 4–6, remove floor a/b/c); `index-0_1_83.pck`
 - v0.1.81 — sync clockwork_tower (arena levers→lamps 4–6, remove floor a/b/c, enemies in overlay); `index-0_1_81.pck`
 - v0.1.80 — Wickwright sword hits reach + flash/sparks/wound dial feedback; `index-0_1_80.pck`
