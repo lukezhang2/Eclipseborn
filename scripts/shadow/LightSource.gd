@@ -66,6 +66,8 @@ func set_on(value: bool) -> void:
 		_glass.modulate.a = 1.0 if value else 0.35
 	if _art:
 		_art.on = value
+		_art.queue_redraw()
+	_apply_intensity_visuals()
 	if _ring:
 		_ring.visible = value and show_radius_ring
 	ShadowWorld.mark_dirty()

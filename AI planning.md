@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.43 — tower polish: zone fades always, death anim+fade, lobby+pre-boss CPs, bottom-left spawn, connected climb (jump-reach), boss wake/seal, floor lamps+high levers, no spit, side rooms, lever flip; `index-0_1_43.pck`
 - v0.1.42 — fire band on-screen; light fill/outline linear opacity (max 50%/100%); overlaps add intensity; `index-0_1_42.pck`
 - v0.1.41 — light wash matches burns (no fake BG cuts); fan-fill depth; village fire sky only (no brick/city); `index-0_1_41.pck`
 - v0.1.40 — Clockwork Tower climb + Wickwright (Match the Hour), defeat cutscene, reward chest → crystal piece (double jump overlay), apex checkpoint, village descent hole; `index-0_1_40.pck`

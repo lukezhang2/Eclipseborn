@@ -207,11 +207,28 @@ func _detect_floor_sfx() -> String:
 	return "steel"
 
 
+func play_death() -> void:
+	## Brief collapse pose while the death fade runs.
+	_control_locked = true
+	velocity = Vector2.ZERO
+	if sprite:
+		sprite.modulate = Color(0.55, 0.45, 0.55, 1.0)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(visual, "rotation", 1.25 * facing, 0.4)
+		tw.tween_property(sprite, "modulate:a", 0.35, 0.45)
+
+
 func notify_respawned() -> void:
 	## Ignore the teleport "landing" when snapping back to a checkpoint.
 	_land_suppress = 0.45
 	_was_on_floor = true
 	velocity = Vector2.ZERO
+	_control_locked = false
+	if visual:
+		visual.rotation = 0.0
+	if sprite:
+		sprite.modulate = Color.WHITE
 
 
 func _wants_down_aim() -> bool:

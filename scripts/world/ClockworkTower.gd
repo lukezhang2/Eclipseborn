@@ -101,8 +101,11 @@ func _on_body(_body: Node) -> void:
 
 
 func _ascend() -> void:
-	GameState.lock_interact()
 	AudioManager.play_break()
-	GameState.pending_spawn = Vector2(390, 2640)
 	GameState.current_zone_id = "clockwork_tower"
-	get_tree().change_scene_to_file("res://scenes/rooms/ClockworkTower.tscn")
+	## Bottom-left lobby spawn (door side), not center.
+	GameState.change_zone(
+		"res://scenes/rooms/ClockworkTower.tscn",
+		"Ascending the Clockwork Tower…",
+		Vector2(140, 2620)
+	)

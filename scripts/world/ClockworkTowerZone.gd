@@ -1,15 +1,24 @@
 extends Node2D
-## Vertical Clockwork Tower climb — lobby through dial arena + Wickwright.
+## Vertical Clockwork Tower — climb connected by jump-reachable ledges + side rooms.
 
 
-const MAP_W := 780.0
+## Player JUMP_VELOCITY=-360, GRAVITY=980 → theoretical peak ≈66px. Design under that.
+const JUMP_REACH_Y := 52.0
+const JUMP_SAFE_GAP_X := 90.0
+const LEDGE_W := 140.0
 const FLOOR_H := 36.0
-## Bottom lobby floor center Y (player climbs upward toward smaller Y).
+
+const MAP_W := 1100.0 ## Wide enough for horizontal side rooms.
+const SHAFT_L := 80.0
+const SHAFT_R := 780.0
 const LOBBY_FLOOR := 2680.0
 const LOBBY_TOP := LOBBY_FLOOR - FLOOR_H * 0.5
-const ARENA_FLOOR := 420.0
+const ANTECHAMBER_FLOOR := 620.0
+const ANTECHAMBER_TOP := ANTECHAMBER_FLOOR - FLOOR_H * 0.5
+const ARENA_FLOOR := 360.0
 const ARENA_TOP := ARENA_FLOOR - FLOOR_H * 0.5
-const ROOF_TOP := 40.0
+const ROOF_TOP := 20.0
+const ENTRY_SPAWN := Vector2(140.0, LOBBY_TOP - 40.0) ## Bottom-left door spawn.
 
 const WickwrightScript := preload("res://scripts/enemies/Wickwright.gd")
 const RivetMiteScript := preload("res://scripts/enemies/RivetMite.gd")
@@ -20,22 +29,28 @@ const VillageDoorScript := preload("res://scripts/world/TowerVillageDoor.gd")
 
 var _boss: Node = null
 var _cutscene_running: bool = false
+var _arena_gate: StaticBody2D = null
+var _boss_awake: bool = false
 
 
 func _ready() -> void:
 	GameState.current_zone_id = "clockwork_tower"
 	GameState.map_min_x = 40.0
 	GameState.map_max_x = MAP_W - 40.0
+	## Fixed lamps hang chains to this overhead rail.
+	set_meta("ceiling_y", ROOF_TOP + 30.0)
 	LevelCommon.spawn_ui(self)
 	LevelCommon.make_shadow_root(self)
 	_build_shell()
 	_build_lobby()
-	_build_climb_a()
+	_build_main_shaft()
+	_build_side_workshop()
 	_build_pendulum_cloister()
 	_build_steam_flue()
+	_build_side_archive()
 	_build_switch_gallery()
+	_build_antechamber()
 	_build_arena()
-	_build_exit_trigger()
 
 	var spawn := _resolve_spawn()
 	var player := LevelCommon.spawn_player(self, spawn)
@@ -46,33 +61,35 @@ func _ready() -> void:
 
 
 func _room_for_y(y: float) -> String:
-	if y > 2300.0:
+	if y > 2400.0:
 		return "lobby"
-	if y > 1800.0:
+	if y > 1900.0:
 		return "climb"
-	if y > 1300.0:
+	if y > 1400.0:
 		return "pendulum"
-	if y > 900.0:
+	if y > 1000.0:
 		return "flue"
-	if y > 550.0:
+	if y > 720.0:
 		return "gallery"
+	if y > 480.0:
+		return "antechamber"
 	return "arena"
 
 
 func _resolve_spawn() -> Vector2:
-	var spawn := Vector2(MAP_W * 0.5, LOBBY_TOP - 40.0)
+	var spawn := ENTRY_SPAWN
 	if GameState.pending_spawn != Vector2.ZERO:
 		spawn = GameState.pending_spawn
 		GameState.pending_spawn = Vector2.ZERO
-	elif GameState.last_position != Vector2.ZERO and GameState.current_zone_id == "clockwork_tower":
-		spawn = GameState.last_position
-	elif GameState.checkpoint_position != Vector2.ZERO and GameState.current_zone_id == "clockwork_tower":
+	elif GameState.checkpoint_position != Vector2.ZERO \
+			and GameState.current_zone_id == "clockwork_tower" \
+			and GameState.checkpoint_path != "":
+		## Death / continue at last tower hearth — never a mid-air last_position.
 		spawn = GameState.checkpoint_position
 	spawn.x = clampf(spawn.x, 80.0, MAP_W - 80.0)
 	spawn.y = clampf(spawn.y, ROOF_TOP + 80.0, LOBBY_TOP - 20.0)
 	GameState.last_position = spawn
-	if GameState.checkpoint_position == Vector2.ZERO or GameState.editor_playtesting:
-		GameState.checkpoint_position = spawn
+	## Do not auto-claim a random spawn as the death hearth.
 	return spawn
 
 
@@ -85,11 +102,10 @@ func _configure_tower_camera(player: Node2D) -> void:
 	cam.limit_left = int(GameState.map_min_x - 20)
 	cam.limit_right = int(GameState.map_max_x + 20)
 	cam.position = Vector2(0, -30)
-	cam.zoom = Vector2(1.25, 1.25)
+	cam.zoom = Vector2(1.2, 1.2)
 
 
 func _build_shell() -> void:
-	## Tall backdrop + side walls + underfloor.
 	var bg := Polygon2D.new()
 	bg.z_index = -20
 	bg.color = Color(0.09, 0.08, 0.1)
@@ -98,15 +114,15 @@ func _build_shell() -> void:
 		Vector2(MAP_W, LOBBY_FLOOR + 200), Vector2(0, LOBBY_FLOOR + 200)
 	])
 	add_child(bg)
-	## Brick faces
-	for y in [2400.0, 1900.0, 1400.0, 900.0, 500.0]:
-		LevelCommon.add_brick_wall_face(self, MAP_W * 0.5, y - 80.0, MAP_W - 80.0, 220.0)
+	for y in [2400.0, 1900.0, 1400.0, 1000.0, 650.0, 300.0]:
+		LevelCommon.add_brick_wall_face(self, MAP_W * 0.45, y - 40.0, 700.0, 200.0)
 	LevelCommon.add_wall(self, 20, (ROOF_TOP + LOBBY_FLOOR) * 0.5, 40, LOBBY_FLOOR - ROOF_TOP + 120)
 	LevelCommon.add_wall(self, MAP_W - 20, (ROOF_TOP + LOBBY_FLOOR) * 0.5, 40, LOBBY_FLOOR - ROOF_TOP + 120)
 	LevelCommon.add_underfloor_fill(self, MAP_W, LOBBY_FLOOR + FLOOR_H * 0.5)
-	## Pipe spine
-	LevelCommon.add_pipe(self, Vector2(60, LOBBY_TOP - 40), Vector2(60, ARENA_TOP + 40), 10.0)
-	LevelCommon.add_pipe(self, Vector2(MAP_W - 60, LOBBY_TOP - 40), Vector2(MAP_W - 60, ARENA_TOP + 40), 10.0)
+	## Overhead rail so hanging lanterns attach to something.
+	LevelCommon.add_pipe(self, Vector2(60, ROOF_TOP + 30), Vector2(MAP_W - 60, ROOF_TOP + 30), 12.0)
+	LevelCommon.add_pipe(self, Vector2(50, LOBBY_TOP - 40), Vector2(50, ARENA_TOP + 20), 10.0)
+	LevelCommon.add_pipe(self, Vector2(SHAFT_R + 20, LOBBY_TOP - 40), Vector2(SHAFT_R + 20, ARENA_TOP + 20), 10.0)
 
 
 func _floor_at(y_center: float, width: float = MAP_W, x: float = -1.0) -> void:
@@ -114,140 +130,197 @@ func _floor_at(y_center: float, width: float = MAP_W, x: float = -1.0) -> void:
 	LevelCommon.add_steel_floor(self, cx, y_center, width, FLOOR_H)
 
 
-func _ledge(x: float, top_y: float, w: float = 120.0) -> void:
+func _ledge(x: float, top_y: float, w: float = LEDGE_W) -> void:
 	LevelCommon.add_steel_floor(self, x, top_y + FLOOR_H * 0.5, w, FLOOR_H)
 
 
+## Build a zig-zag of jump-reachable ledges from bottom_top_y upward.
+func _climb_run(bottom_top_y: float, steps: int, left_x: float, right_x: float) -> float:
+	var y := bottom_top_y
+	for i in steps:
+		y -= JUMP_REACH_Y
+		var x := left_x if i % 2 == 0 else right_x
+		_ledge(x, y, LEDGE_W)
+		if i % 3 == 1:
+			_spawn_mite(Vector2(x, y - 16))
+		elif i % 3 == 2:
+			_spawn_grub(Vector2(x, y - 16))
+	return y
+
+
 func _build_lobby() -> void:
-	_floor_at(LOBBY_FLOOR)
-	LevelCommon.make_room_trigger(self, Vector2(MAP_W * 0.5, LOBBY_TOP - 120), Vector2(MAP_W - 80, 200), "clockwork_tower", "lobby", "Clockwork Lobby", "")
-	## Entrance lamp + vent
-	var lamp := _make_lamp("lobby_lamp", Vector2(MAP_W * 0.5, LOBBY_TOP - 160), 200.0, true)
+	_floor_at(LOBBY_FLOOR, SHAFT_R - SHAFT_L + 80.0, (SHAFT_L + SHAFT_R) * 0.5)
+	LevelCommon.make_room_trigger(self, Vector2((SHAFT_L + SHAFT_R) * 0.5, LOBBY_TOP - 100), Vector2(SHAFT_R - SHAFT_L, 180), "clockwork_tower", "lobby", "Clockwork Lobby", "")
+	## Bottom rest hearth — death returns here until antechamber is rested.
+	var cp := Checkpoint.new()
+	cp.position = Vector2(260, LOBBY_TOP)
+	cp.checkpoint_id = "tower_lobby"
+	cp.checkpoint_name = "Tower Lobby"
+	add_child(cp)
+	## Auto-rest on first entry so dying before any rest isn't a soft-lock at apex.
+	if not GameState.is_checkpoint_activated("tower_lobby", "clockwork_tower"):
+		GameState.activate_checkpoint("tower_lobby", "clockwork_tower", cp.position, "Tower Lobby")
+
+	var lamp := _make_hanging_lamp("lobby_lamp", Vector2(420, LOBBY_TOP - 120), 180.0, true)
 	add_child(lamp)
-	LevelCommon.add_steam_vent(self, Vector2(220, LOBBY_TOP))
-	LevelCommon.add_bench(self, Vector2(140, LOBBY_TOP))
-	## Grubs
-	_spawn_grub(Vector2(360, LOBBY_TOP - 20))
-	_spawn_grub(Vector2(520, LOBBY_TOP - 20))
-	## First climb ledges
-	_ledge(220, LOBBY_TOP - 140, 140)
-	_ledge(520, LOBBY_TOP - 240, 140)
-	_ledge(300, LOBBY_TOP - 360, 130)
-	_spawn_mite(Vector2(520, LOBBY_TOP - 262))
-	_spawn_mite(Vector2(300, LOBBY_TOP - 382))
-	## Exit door back to village (left niche)
-	_make_village_exit(Vector2(100, LOBBY_TOP - 20))
+	LevelCommon.add_steam_vent(self, Vector2(520, LOBBY_TOP))
+	LevelCommon.add_bench(self, Vector2(340, LOBBY_TOP))
+	_spawn_grub(Vector2(480, LOBBY_TOP - 18))
+	_spawn_grub(Vector2(620, LOBBY_TOP - 18))
+	## Village door — bottom left.
+	_make_village_exit(Vector2(110, LOBBY_TOP - 8))
 
 
-func _build_climb_a() -> void:
-	## Mid shaft platforms ~2200–1900
-	LevelCommon.make_room_trigger(self, Vector2(MAP_W * 0.5, 2100), Vector2(MAP_W - 100, 280), "clockwork_tower", "climb", "Gear Shaft", "")
-	for i in 5:
-		var y := LOBBY_TOP - 480.0 - float(i) * 130.0
-		var x := 200.0 if i % 2 == 0 else MAP_W - 200.0
-		_ledge(x, y, 150.0)
-		if i % 2 == 0:
-			_spawn_mite(Vector2(x, y - 18))
-		else:
-			_spawn_grub(Vector2(x, y - 18))
-	_spawn_beetle(Vector2(MAP_W * 0.5, LOBBY_TOP - 700))
-	var mid_lamp := _make_lamp("climb_lamp", Vector2(MAP_W * 0.5, LOBBY_TOP - 620), 160.0, true)
+func _build_main_shaft() -> void:
+	LevelCommon.make_room_trigger(self, Vector2(430, 2200), Vector2(600, 360), "clockwork_tower", "climb", "Gear Shaft", "")
+	## Continuous climb from lobby into the shaft (no sealed gap).
+	var y := _climb_run(LOBBY_TOP - 20.0, 10, 220.0, 560.0)
+	## Landing that opens into the side workshop.
+	_floor_at(y - 10.0 + FLOOR_H * 0.5, 420.0, 400.0)
+	_ledge(700, y - JUMP_REACH_Y, 160.0) ## doorway toward side room
+	var mid_lamp := _make_hanging_lamp("climb_lamp", Vector2(400, y - 80), 150.0, true)
 	add_child(mid_lamp)
+	_spawn_beetle(Vector2(400, y - 28))
+
+
+func _build_side_workshop() -> void:
+	## Horizontal wing off the mid shaft (right side).
+	var floor_y := 2140.0
+	_floor_at(floor_y, 280.0, 960.0)
+	LevelCommon.make_room_trigger(self, Vector2(960, floor_y - 80), Vector2(260, 160), "clockwork_tower", "workshop", "Gear Workshop", "")
+	## Connect shaft landing → workshop
+	_ledge(780, floor_y - FLOOR_H * 0.5 - 4.0, 120.0)
+	_ledge(880, floor_y - FLOOR_H * 0.5 - 4.0, 100.0)
+	LevelCommon.add_bench(self, Vector2(940, floor_y - FLOOR_H * 0.5))
+	_spawn_jar(Vector2(1020, floor_y - FLOOR_H * 0.5 - 8))
+	_spawn_mite(Vector2(980, floor_y - FLOOR_H * 0.5 - 16))
+	var note := Label.new()
+	note.text = "Workshop alcove"
+	note.position = Vector2(900, floor_y - 90)
+	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_color_override("font_color", Color(0.65, 0.58, 0.45))
+	add_child(note)
 
 
 func _build_pendulum_cloister() -> void:
-	LevelCommon.make_room_trigger(self, Vector2(MAP_W * 0.5, 1600), Vector2(MAP_W - 100, 320), "clockwork_tower", "pendulum", "Pendulum Cloister", "")
-	## Partial floors with gaps
-	_floor_at(1720.0, 260.0, 180.0)
-	_floor_at(1720.0, 260.0, MAP_W - 180.0)
-	_ledge(MAP_W * 0.5, 1580.0, 160.0)
-	_ledge(220, 1450.0, 140.0)
-	_ledge(MAP_W - 220, 1450.0, 140.0)
-	var cloister_lamp := _make_lamp("cloister_lamp", Vector2(MAP_W * 0.5, 1520), 170.0, true)
+	LevelCommon.make_room_trigger(self, Vector2(430, 1650), Vector2(640, 300), "clockwork_tower", "pendulum", "Pendulum Cloister", "")
+	## Continue from shaft landing (~2122) — never leave a sealed vertical gap.
+	var start_y := 2124.0
+	var y := _climb_run(start_y, 8, 240.0, 540.0)
+	## Split floors with jumpable gap (~70px < JUMP_SAFE)
+	_floor_at(y - 8.0 + FLOOR_H * 0.5, 220.0, 220.0)
+	_floor_at(y - 8.0 + FLOOR_H * 0.5, 220.0, 560.0)
+	_ledge(390, y - JUMP_REACH_Y, 120.0)
+	var cloister_lamp := _make_hanging_lamp("cloister_lamp", Vector2(390, y - JUMP_REACH_Y - 90), 160.0, true)
 	add_child(cloister_lamp)
 	var sw := LightSwitch.new()
-	sw.position = Vector2(140, 1702)
+	sw.position = Vector2(160, y - 8.0)
 	sw.name = "cloister_switch"
 	sw.starts_on = true
 	sw.target_ids = PackedStringArray(["cloister_lamp"])
 	LevelData.tag(sw, "cloister_switch")
 	add_child(sw)
 	var pend: Node = PendulumScript.new()
-	pend.position = Vector2(MAP_W * 0.5 - 40, 1380)
+	pend.position = Vector2(320, y - JUMP_REACH_Y - 140)
 	pend.set("lamp_id", "cloister_lamp")
-	pend.set("arm_length", 130.0)
+	pend.set("arm_length", 120.0)
 	add_child(pend)
 	var pend2: Node = PendulumScript.new()
-	pend2.position = Vector2(MAP_W * 0.5 + 80, 1280)
+	pend2.position = Vector2(480, y - JUMP_REACH_Y * 2.0 - 100)
 	pend2.set("lamp_id", "cloister_lamp")
 	pend2.set("arm_length", 110.0)
-	pend2.set("swing_speed", 1.4)
+	pend2.set("swing_speed", 1.35)
 	add_child(pend2)
-	_spawn_beetle(Vector2(220, 1432))
-	_spawn_jar(Vector2(MAP_W - 200, 1432))
+	_spawn_beetle(Vector2(220, y - 24))
+	## Continue upward into flue
+	_climb_run(y - JUMP_REACH_Y * 2.0, 4, 250.0, 530.0)
 
 
 func _build_steam_flue() -> void:
-	LevelCommon.make_room_trigger(self, Vector2(MAP_W * 0.5, 1100), Vector2(MAP_W - 100, 300), "clockwork_tower", "flue", "Steam Flue", "")
-	for i in 4:
-		var y := 1280.0 - float(i) * 115.0
-		var x := 240.0 if i % 2 == 0 else MAP_W - 240.0
-		_ledge(x, y, 130.0)
+	LevelCommon.make_room_trigger(self, Vector2(430, 1180), Vector2(640, 280), "clockwork_tower", "flue", "Steam Flue", "")
+	## Pick up from cloister continuation (~1708 after 8 steps from 2124).
+	var y := 1710.0
+	for i in 10:
+		y -= JUMP_REACH_Y
+		var x := 250.0 if i % 2 == 0 else 530.0
+		_ledge(x, y, LEDGE_W)
 		LevelCommon.add_steam_vent(self, Vector2(x, y))
-		if i == 1 or i == 3:
-			_spawn_beetle(Vector2(x, y - 18))
+		if i % 2 == 1:
+			_spawn_beetle(Vector2(x, y - 16))
 		else:
-			_spawn_grub(Vector2(x, y - 18))
-	_ledge(MAP_W * 0.5, 900.0, 180.0)
-	var flue_lamp := _make_lamp("flue_lamp", Vector2(MAP_W * 0.5, 820), 150.0, false)
+			_spawn_grub(Vector2(x, y - 16))
+	_ledge(390, y - JUMP_REACH_Y, 160.0)
+	var flue_lamp := _make_floor_lamp("flue_lamp", Vector2(390, y - JUMP_REACH_Y - 8), 130.0, false)
 	add_child(flue_lamp)
 	var fsw := LightSwitch.new()
-	fsw.position = Vector2(MAP_W * 0.5 - 80, 882)
+	fsw.position = Vector2(300, y - JUMP_REACH_Y)
 	fsw.starts_on = false
 	fsw.target_ids = PackedStringArray(["flue_lamp"])
 	add_child(fsw)
 
 
+func _build_side_archive() -> void:
+	## Left horizontal wing near flue top.
+	var floor_y := 1120.0
+	_floor_at(floor_y, 260.0, 160.0)
+	_ledge(300, floor_y - FLOOR_H * 0.5 - 4.0, 110.0)
+	LevelCommon.make_room_trigger(self, Vector2(160, floor_y - 70), Vector2(240, 140), "clockwork_tower", "archive", "Ash Archive", "")
+	_spawn_jar(Vector2(120, floor_y - FLOOR_H * 0.5 - 8))
+	_spawn_mite(Vector2(180, floor_y - FLOOR_H * 0.5 - 16))
+	var lamp := _make_hanging_lamp("archive_lamp", Vector2(160, floor_y - 100), 120.0, true)
+	add_child(lamp)
+
+
 func _build_switch_gallery() -> void:
-	LevelCommon.make_room_trigger(self, Vector2(MAP_W * 0.5, 700), Vector2(MAP_W - 100, 240), "clockwork_tower", "gallery", "Switch Gallery", "")
-	_floor_at(780.0, MAP_W - 80.0)
-	## Practice dial lamps (teach Match the Hour)
-	var la := _make_lamp("practice_a", Vector2(220, 680), 100.0, true)
-	var lb := _make_lamp("practice_b", Vector2(390, 680), 100.0, false)
-	var lc := _make_lamp("practice_c", Vector2(560, 680), 100.0, true)
+	LevelCommon.make_room_trigger(self, Vector2(430, 820), Vector2(640, 220), "clockwork_tower", "gallery", "Switch Gallery", "")
+	## Flue ends ~1710-520=1190; continue without a sealed gap.
+	var y := _climb_run(1192.0, 7, 240.0, 540.0)
+	_floor_at(y - 12.0 + FLOOR_H * 0.5, 560.0, 400.0)
+	var floor_top := y - 12.0
+	var la := _make_floor_lamp("practice_a", Vector2(260, floor_top - 8), 100.0, true)
+	var lb := _make_floor_lamp("practice_b", Vector2(400, floor_top - 8), 100.0, false)
+	var lc := _make_floor_lamp("practice_c", Vector2(540, floor_top - 8), 100.0, true)
 	add_child(la)
 	add_child(lb)
 	add_child(lc)
-	for pair in [["practice_sw_a", "practice_a", 180.0, true], ["practice_sw_b", "practice_b", 350.0, false], ["practice_sw_c", "practice_c", 520.0, true]]:
+	for pair in [["practice_sw_a", "practice_a", 220.0, true], ["practice_sw_b", "practice_b", 360.0, false], ["practice_sw_c", "practice_c", 500.0, true]]:
 		var s := LightSwitch.new()
-		s.position = Vector2(float(pair[2]), 762)
+		s.position = Vector2(float(pair[2]), floor_top)
 		s.name = str(pair[0])
 		s.starts_on = bool(pair[3])
 		s.target_ids = PackedStringArray([str(pair[1])])
 		add_child(s)
 	var hint := Label.new()
-	hint.text = "Match the Hour — flip levers so the lamps match the dial before the apex."
-	hint.position = Vector2(120, 620)
+	hint.text = "Practice the Hour — flip levers to match lamp patterns."
+	hint.position = Vector2(200, floor_top - 70)
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.68, 0.5))
 	add_child(hint)
-	## Elite: winding knight stand-in — tougher fuse beetle + mites
-	_spawn_beetle(Vector2(300, 762))
-	_spawn_beetle(Vector2(480, 762))
-	_spawn_mite(Vector2(390, 640))
-	## Climb to arena
-	_ledge(MAP_W * 0.5, 600.0, 160.0)
-	_ledge(260, 520.0, 140.0)
-	_ledge(MAP_W - 260, 520.0, 140.0)
+	_spawn_beetle(Vector2(320, floor_top - 18))
+	_spawn_beetle(Vector2(480, floor_top - 18))
+	## Steps up to antechamber (keep ≤ JUMP_REACH_Y).
+	_climb_run(floor_top, 5, 260.0, 520.0)
+
+
+func _build_antechamber() -> void:
+	## Checkpoint BEFORE the boss — death during the fight returns here.
+	_floor_at(ANTECHAMBER_FLOOR, 560.0, 400.0)
+	LevelCommon.make_room_trigger(self, Vector2(400, ANTECHAMBER_TOP - 80), Vector2(520, 160), "clockwork_tower", "antechamber", "Dial Gate", "Rest before the Wickwright.")
+	var cp := Checkpoint.new()
+	cp.position = Vector2(220, ANTECHAMBER_TOP)
+	cp.checkpoint_id = "tower_antechamber"
+	cp.checkpoint_name = "Dial Gate"
+	add_child(cp)
+	## Climb into arena — ~5 jump steps from antechamber floor to arena floor.
+	_climb_run(ANTECHAMBER_TOP, 5, 320.0, 480.0)
 
 
 func _build_arena() -> void:
-	LevelCommon.make_room_trigger(self, Vector2(MAP_W * 0.5, ARENA_TOP - 100), Vector2(MAP_W - 60, 260), "clockwork_tower", "arena", "Dial Arena", "The Wickwright waits.")
-	_floor_at(ARENA_FLOOR, MAP_W - 40.0)
-	## Clock mosaic hint
+	LevelCommon.make_room_trigger(self, Vector2(400, ARENA_TOP - 90), Vector2(560, 220), "clockwork_tower", "arena", "Dial Arena", "")
+	_floor_at(ARENA_FLOOR, 620.0, 400.0)
 	var mosaic := Polygon2D.new()
 	mosaic.z_index = -5
-	mosaic.position = Vector2(MAP_W * 0.5, ARENA_TOP - 2)
+	mosaic.position = Vector2(400, ARENA_TOP - 2)
 	mosaic.color = Color(0.35, 0.28, 0.18, 0.55)
 	var mpts := PackedVector2Array()
 	for i in 20:
@@ -256,45 +329,100 @@ func _build_arena() -> void:
 	mosaic.polygon = mpts
 	add_child(mosaic)
 
-	## Checkpoint at top
-	var cp := Checkpoint.new()
-	cp.position = Vector2(120, ARENA_TOP)
-	cp.checkpoint_id = "tower_apex"
-	cp.checkpoint_name = "Tower Apex"
-	add_child(cp)
-
-	## Boss lamps + switches (gallery height)
+	## Floor lanterns (Match the Hour) — no dangling chains.
 	var ids := ["tower_lamp_a", "tower_lamp_b", "tower_lamp_c"]
-	var xs := [200.0, MAP_W * 0.5, MAP_W - 200.0]
+	var xs := [250.0, 400.0, 550.0]
 	var starts := [true, false, true]
 	for i in 3:
-		var lamp := _make_lamp(ids[i], Vector2(xs[i], ARENA_TOP - 150), 140.0, starts[i])
+		var lamp := _make_floor_lamp(ids[i], Vector2(xs[i], ARENA_TOP - 8), 130.0, starts[i])
 		add_child(lamp)
+
+	## High levers that control those floor lanterns (boss yanks these).
+	var lever_y := ARENA_TOP - 110.0
+	_ledge(250, lever_y, 90.0)
+	_ledge(400, lever_y, 90.0)
+	_ledge(550, lever_y, 90.0)
+	for i in 3:
 		var sw := LightSwitch.new()
-		sw.position = Vector2(xs[i], ARENA_TOP - 8)
+		sw.position = Vector2(xs[i], lever_y)
 		sw.name = ["tower_switch_a", "tower_switch_b", "tower_switch_c"][i]
 		sw.starts_on = starts[i]
 		sw.target_ids = PackedStringArray([ids[i]])
 		LevelData.tag(sw, sw.name)
 		add_child(sw)
 
+	## Invisible wake trigger — boss sleeps until player steps in.
+	var wake := Area2D.new()
+	wake.name = "BossWake"
+	wake.collision_layer = 0
+	wake.collision_mask = 2
+	wake.monitoring = true
+	var wcs := CollisionShape2D.new()
+	var wr := RectangleShape2D.new()
+	wr.size = Vector2(560, 180)
+	wcs.shape = wr
+	wcs.position = Vector2(400, ARENA_TOP - 70)
+	wake.add_child(wcs)
+	wake.body_entered.connect(_on_arena_entered)
+	add_child(wake)
+
+	## Gate seals the antechamber exit once the fight starts.
+	_arena_gate = StaticBody2D.new()
+	_arena_gate.name = "ArenaGate"
+	_arena_gate.collision_layer = 1
+	_arena_gate.collision_mask = 0
+	_arena_gate.position = Vector2(400, ANTECHAMBER_TOP - JUMP_REACH_Y * 2.0 + 10.0)
+	var gcs := CollisionShape2D.new()
+	var grect := RectangleShape2D.new()
+	grect.size = Vector2(180, 28)
+	gcs.shape = grect
+	gcs.disabled = true
+	_arena_gate.add_child(gcs)
+	var gvis := Polygon2D.new()
+	gvis.name = "GateVis"
+	gvis.color = Color(0.35, 0.28, 0.2, 0.0)
+	gvis.polygon = PackedVector2Array([
+		Vector2(-90, -14), Vector2(90, -14), Vector2(90, 14), Vector2(-90, 14)
+	])
+	_arena_gate.add_child(gvis)
+	add_child(_arena_gate)
+
 	if GameState.wickwright_defeated():
-		## Already beaten — leave chest if crystal not taken; no boss.
 		if not GameState.is_collected("tower_crystal_piece"):
 			var chest: Node = RewardChestScript.new()
-			chest.position = Vector2(MAP_W * 0.5, ARENA_TOP - 8)
+			chest.position = Vector2(400, ARENA_TOP - 8)
 			add_child(chest)
-		_spawn_broken_wall_decor(Vector2(MAP_W - 40, ARENA_TOP - 120))
+		_spawn_broken_wall_decor(Vector2(MAP_W - 80, ARENA_TOP - 100))
 	else:
 		_boss = WickwrightScript.new()
-		_boss.position = Vector2(MAP_W * 0.5, ARENA_TOP - 160)
+		_boss.position = Vector2(400, ARENA_TOP - 140)
 		add_child(_boss)
 		if _boss.has_signal("defeated"):
 			_boss.connect("defeated", _on_boss_defeated)
 
 
-func _build_exit_trigger() -> void:
-	pass
+func _on_arena_entered(body: Node) -> void:
+	if _boss_awake or GameState.wickwright_defeated():
+		return
+	if not (body is Player or (body and body.is_in_group("player"))):
+		return
+	_boss_awake = true
+	## Seal exit back to antechamber.
+	if _arena_gate:
+		for c in _arena_gate.get_children():
+			if c is CollisionShape2D:
+				(c as CollisionShape2D).disabled = false
+			elif c is Polygon2D:
+				(c as Polygon2D).color.a = 0.9
+	## Force rest hearth to antechamber so death mid-fight resets there.
+	GameState.activate_checkpoint(
+		"tower_antechamber",
+		"clockwork_tower",
+		Vector2(220, ANTECHAMBER_TOP),
+		"Dial Gate"
+	)
+	if _boss and _boss.has_method("awaken"):
+		_boss.call("awaken")
 
 
 func _make_village_exit(pos: Vector2) -> void:
@@ -303,7 +431,7 @@ func _make_village_exit(pos: Vector2) -> void:
 	add_child(exit)
 
 
-func _make_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSource:
+func _make_hanging_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSource:
 	var lamp := LightSource.new()
 	lamp.name = id
 	lamp.position = pos
@@ -312,7 +440,15 @@ func _make_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSourc
 	lamp.shadow_length = radius + 40.0
 	lamp.pushable = false
 	lamp.is_enabled = on
+	## Let LightSource hang a chain to ceiling_y.
 	LevelData.tag(lamp, id)
+	return lamp
+
+
+func _make_floor_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSource:
+	var lamp := _make_hanging_lamp(id, pos, radius, on)
+	## Skip auto-chain — these sit on the floor / pedestals.
+	lamp.set_meta("has_chain", true)
 	return lamp
 
 
@@ -364,6 +500,13 @@ func _on_boss_defeated() -> void:
 	if _cutscene_running:
 		return
 	_cutscene_running = true
+	## Open the gate again after victory.
+	if _arena_gate:
+		for c in _arena_gate.get_children():
+			if c is CollisionShape2D:
+				(c as CollisionShape2D).disabled = true
+			elif c is Polygon2D:
+				(c as Polygon2D).color.a = 0.0
 	await _play_defeat_cutscene()
 
 
@@ -380,13 +523,11 @@ func _play_defeat_cutscene() -> void:
 			player.set_control_locked(false)
 		return
 
-	## Drop reward chest at boss feet before the throw.
 	var chest: Node = RewardChestScript.new()
 	chest.position = Vector2(boss.global_position.x, ARENA_TOP - 8)
 	add_child(chest)
 
-	## Lock camera on boss
-	var saved_zoom := Vector2(1.25, 1.25)
+	var saved_zoom := Vector2(1.2, 1.2)
 	if cam and player:
 		saved_zoom = cam.zoom
 		cam.reparent(boss)
@@ -396,14 +537,12 @@ func _play_defeat_cutscene() -> void:
 		await tw.finished
 
 	await get_tree().create_timer(0.4).timeout
-
-	## Broken wall appears; boss flies through and falls.
-	_spawn_broken_wall_decor(Vector2(MAP_W - 30, ARENA_TOP - 130))
+	_spawn_broken_wall_decor(Vector2(MAP_W - 60, ARENA_TOP - 110))
 	var tw2 := create_tween()
-	tw2.tween_property(boss, "global_position", Vector2(MAP_W + 80, ARENA_TOP - 160), 0.55).set_ease(Tween.EASE_IN)
+	tw2.tween_property(boss, "global_position", Vector2(MAP_W + 40, ARENA_TOP - 140), 0.55).set_ease(Tween.EASE_IN)
 	await tw2.finished
 	var tw3 := create_tween()
-	tw3.tween_property(boss, "global_position", Vector2(MAP_W + 160, ARENA_TOP + 400), 0.85).set_ease(Tween.EASE_IN)
+	tw3.tween_property(boss, "global_position", Vector2(MAP_W + 120, ARENA_TOP + 360), 0.85).set_ease(Tween.EASE_IN)
 	tw3.parallel().tween_property(boss, "rotation", 2.8, 0.85)
 	tw3.parallel().tween_property(boss, "modulate:a", 0.0, 0.85)
 	await tw3.finished
@@ -411,7 +550,6 @@ func _play_defeat_cutscene() -> void:
 	GameState.mark_collected("wickwright_defeated")
 	SaveManager.autosave()
 
-	## Restore camera to player
 	if cam and player and is_instance_valid(player):
 		cam.reparent(player)
 		cam.position = Vector2(0, -30)
@@ -422,7 +560,6 @@ func _play_defeat_cutscene() -> void:
 	if is_instance_valid(boss):
 		boss.queue_free()
 	_boss = null
-
 	if player:
 		player.set_control_locked(false)
 	GameState.intro_cutscene_playing = false

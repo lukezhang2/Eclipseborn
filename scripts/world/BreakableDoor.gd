@@ -72,8 +72,6 @@ func _on_hurt(_amount: int, _from: Node) -> void:
 	if next_scene != "":
 		GameState.set_paused(false)
 		GameState.current_zone_id = "lantern_village"
-		GameState.last_position = Vector2(100, 480)
-		GameState.checkpoint_position = Vector2(100, 480)
 		SaveManager.autosave()
-		get_tree().change_scene_to_file(next_scene)
+		GameState.change_zone(next_scene, "Leaving…", Vector2(100, 480))
 	queue_free()
