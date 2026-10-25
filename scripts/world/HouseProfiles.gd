@@ -45,11 +45,11 @@ static func get_profile(house_id: String) -> Dictionary:
 				"title": "Lantern Keep",
 				"keeper_name": "Keeper",
 				"npc_id": "npc_shop",
+				"npc_y": 450.0,
 				"return_spawn": Vector2(520, 460),
 				"lines": [
-					"Everyone else thrives under lanterns. You alone need the dark.",
-					"Spirit, you're marked — the shade clings to you like a second skin.",
-					"We tend lamps. You flee them. That makes you the stranger here.",
+					"Spirit, you're marked, the shade clings to you like a second skin.",
+					"67",
 				],
 			}
 

@@ -114,7 +114,7 @@ static func _house_interior(house_id: String) -> Array:
 		str(profile.get("npc_id", "npc_shop")),
 		str(profile.get("keeper_name", "Keeper")),
 		MAP_W * 0.5,
-		FLOOR_TOP - 40,
+		float(profile.get("npc_y", FLOOR_TOP - 40)),
 		profile.get("lines", [])
 	))
 	return out

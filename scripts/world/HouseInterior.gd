@@ -116,7 +116,8 @@ func _build_desk_and_keeper() -> void:
 		return
 	var npc := NPC.new()
 	# Behind the desk (deeper into the room than the desk face).
-	var npc_pos := Vector2(MAP_W * 0.5, FLOOR_Y - 40)
+	var profile := HouseProfiles.get_profile(house_id)
+	var npc_pos := Vector2(MAP_W * 0.5, float(profile.get("npc_y", FLOOR_Y - 40)))
 	var saved := LevelData.merged_piece(house_id, _npc_id)
 	if saved.has("x"):
 		npc_pos.x = float(saved.get("x"))
