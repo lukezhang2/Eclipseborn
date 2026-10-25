@@ -114,6 +114,9 @@ func _geometry_segment_blocked(from: Vector2, to: Vector2) -> bool:
 	for occ in occluders:
 		if not is_instance_valid(occ) or not occ.has_method("get_world_polygon"):
 			continue
+		## BG murals etc. — visual wash only; never grant free shade to the player.
+		if occ.has_method("blocks_gameplay_light") and not occ.blocks_gameplay_light():
+			continue
 		var poly: PackedVector2Array = occ.get_world_polygon()
 		if poly.size() < 3:
 			continue
@@ -223,17 +226,21 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D) -> void
 	var origin: Vector2 = light.get_light_origin()
 	var radius: float = maxf(light.get_radius(), 8.0)
 	var kind: int = light.get_light_kind()
+	var intensity: float = 1.0
+	if light.has_method("get_intensity"):
+		intensity = clampf(float(light.get_intensity()), 0.15, 3.0)
 	var burns := kind in [GameState.LightKind.HEARTH, GameState.LightKind.CANDLE, GameState.LightKind.SUNSHAFT]
-	var core := Color(1.0, 0.72, 0.28, 0.34 if burns else 0.14)
+	var base_a := (0.34 if burns else 0.14) * intensity
+	var core := Color(1.0, 0.72, 0.28, mini(0.72, base_a))
 	match kind:
 		GameState.LightKind.MOON:
-			core = Color(0.65, 0.85, 1.0, 0.16)
+			core = Color(0.65, 0.85, 1.0, mini(0.4, 0.16 * intensity))
 		GameState.LightKind.CRIMSON:
-			core = Color(0.95, 0.2, 0.25, 0.28)
+			core = Color(0.95, 0.2, 0.25, mini(0.55, 0.28 * intensity))
 		GameState.LightKind.SUNSHAFT:
-			core = Color(1.0, 1.0, 0.85, 0.38)
+			core = Color(1.0, 1.0, 0.85, mini(0.75, 0.38 * intensity))
 		GameState.LightKind.CANDLE:
-			core = Color(1.0, 0.7, 0.4, 0.3)
+			core = Color(1.0, 0.7, 0.4, mini(0.65, 0.3 * intensity))
 
 	var exclude: Array = []
 	if light.has_method("get_exclude_rids"):
@@ -259,9 +266,23 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D) -> void
 	_root.add_child(fill)
 	_visuals.append(fill)
 
+	## Hotter core when intensity is high.
+	if intensity > 1.05:
+		var hot := Polygon2D.new()
+		var hot_pts := PackedVector2Array([origin])
+		var hot_r := radius * clampf(0.22 + (intensity - 1.0) * 0.12, 0.22, 0.45)
+		for i in 24:
+			var a := TAU * float(i) / 24.0
+			hot_pts.append(_cast_ray(space, origin, Vector2.from_angle(a), hot_r, exclude))
+		hot.color = Color(1.0, 0.92, 0.55, mini(0.55, 0.18 * (intensity - 0.5)))
+		hot.z_index = -12
+		hot.polygon = hot_pts
+		_root.add_child(hot)
+		_visuals.append(hot)
+
 	var ring := Line2D.new()
-	ring.width = 2.0
-	ring.default_color = Color(core.r, core.g, core.b, mini(0.75, core.a + 0.3))
+	ring.width = 1.5 + intensity * 0.75
+	ring.default_color = Color(core.r, core.g, core.b, mini(0.9, core.a + 0.25 + intensity * 0.08))
 	ring.z_index = -11
 	for i in range(1, pts.size()):
 		ring.add_point(pts[i])
@@ -271,27 +292,85 @@ func _draw_occluded_light(light: Node, space: PhysicsDirectSpaceState2D) -> void
 	_visuals.append(ring)
 
 	for occ in occluders:
-		_draw_umbra_wedge(light, occ, origin, radius)
+		_draw_umbra_wedge(light, occ, origin, radius, space, exclude)
 
 
-func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float) -> void:
+func _clip_shadow_extent(
+	space: PhysicsDirectSpaceState2D,
+	from: Vector2,
+	dir: Vector2,
+	max_len: float,
+	skip_occ: Node,
+	exclude: Array
+) -> Vector2:
+	## Stop cast shadows at floors / walls / other props — never punch through solids.
+	var dir_n := dir.normalized()
+	if dir_n.length_squared() < 0.0001:
+		return from
+	var best_d := max_len
+	var start := from + dir_n * 1.25
+	var to := from + dir_n * max_len
+
+	for occ in occluders:
+		if occ == skip_occ or not is_instance_valid(occ) or not occ.has_method("get_world_polygon"):
+			continue
+		var poly: PackedVector2Array = occ.get_world_polygon()
+		if poly.size() < 3:
+			continue
+		var n := poly.size()
+		for i in n:
+			var a := poly[i]
+			var b := poly[(i + 1) % n]
+			var hit: Variant = Geometry2D.segment_intersects_segment(start, to, a, b)
+			if hit is Vector2:
+				var d := from.distance_to(hit as Vector2)
+				if d > 2.0 and d < best_d:
+					best_d = d
+
+	var q := PhysicsRayQueryParameters2D.create(start, to)
+	q.collision_mask = OCCLUDER_MASK
+	q.hit_from_inside = true
+	q.exclude = exclude
+	var ph := space.intersect_ray(q)
+	if not ph.is_empty():
+		var d := from.distance_to(ph.position as Vector2)
+		if d > 2.0 and d < best_d:
+			best_d = d
+
+	return from + dir_n * maxf(best_d - 0.8, 0.0)
+
+
+func _draw_umbra_wedge(
+	light: Node,
+	occ: Node,
+	light_pos: Vector2,
+	radius: float,
+	space: PhysicsDirectSpaceState2D,
+	exclude: Array
+) -> void:
 	if not occ.has_method("get_world_polygon"):
 		return
 	var poly: PackedVector2Array = occ.get_world_polygon()
 	if poly.size() < 3:
 		return
 	var aabb := _poly_aabb(poly)
-	if aabb.size.x > 280.0 or aabb.size.y > 280.0:
+	## Floor/ceiling slabs receive shadows but do not cast endless umbra fans.
+	var is_slab := aabb.size.x > 400.0 and aabb.size.y < 80.0
+	var is_huge := aabb.size.x > 520.0 or aabb.size.y > 520.0
+	if is_slab or is_huge:
 		return
 	var near := false
 	for p in poly:
-		if p.distance_to(light_pos) <= radius * 1.1:
+		if p.distance_to(light_pos) <= radius * 1.15:
 			near = true
 			break
 	if not near:
 		return
 	var max_len: float = light.get_shadow_length() if light.has_method("get_shadow_length") else radius
 	max_len = mini(max_len, radius * 0.95)
+	var ink_a := 0.42
+	if light.has_method("get_intensity"):
+		ink_a = clampf(0.32 + float(light.get_intensity()) * 0.1, 0.32, 0.55)
 	var n := poly.size()
 	for i in n:
 		var a := poly[i]
@@ -302,18 +381,21 @@ func _draw_umbra_wedge(light: Node, occ: Node, light_pos: Vector2, radius: float
 			continue
 		var edge_dir := (b - a).normalized()
 		var normal := Vector2(-edge_dir.y, edge_dir.x)
-		if normal.dot(to_mid.normalized()) <= 0.2:
+		if normal.dot(to_mid.normalized()) <= 0.15:
 			continue
-		var da := (a - light_pos).normalized() * max_len
-		var db := (b - light_pos).normalized() * max_len
-		var far_a := a + da
-		var far_b := b + db
-		if far_a.distance_to(light_pos) < mid.distance_to(light_pos):
+		var da := (a - light_pos).normalized()
+		var db := (b - light_pos).normalized()
+		var far_a := _clip_shadow_extent(space, a, da, max_len, occ, exclude)
+		var far_b := _clip_shadow_extent(space, b, db, max_len, occ, exclude)
+		## Degenerate if both tips collapsed onto the edge.
+		if far_a.distance_to(a) < 4.0 and far_b.distance_to(b) < 4.0:
 			continue
-		if far_b.distance_to(light_pos) < mid.distance_to(light_pos):
+		if far_a.distance_to(light_pos) < mid.distance_to(light_pos) - 2.0:
+			continue
+		if far_b.distance_to(light_pos) < mid.distance_to(light_pos) - 2.0:
 			continue
 		var ink := Polygon2D.new()
-		ink.color = Color(0.04, 0.02, 0.07, 0.4)
+		ink.color = Color(0.04, 0.02, 0.07, ink_a)
 		ink.z_index = -11
 		ink.polygon = PackedVector2Array([a, b, far_b, far_a])
 		_root.add_child(ink)

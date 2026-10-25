@@ -178,7 +178,7 @@ static func add_underfloor_fill(parent: Node2D, width: float, floor_bottom: floa
 
 
 static func add_bg_gear(parent: Node2D, pos: Vector2, radius: float = 50.0, speed: float = 12.0) -> Node2D:
-	## Decorative background gear — no collision, no occlusion.
+	## Decorative background gear — casts light shadows, no player collision.
 	var g := Node2D.new()
 	g.position = pos
 	g.z_index = -12
@@ -201,6 +201,12 @@ static func add_bg_gear(parent: Node2D, pos: Vector2, radius: float = 50.0, spee
 		hub_pts.append(Vector2(cos(a), sin(a)) * radius * 0.3)
 	hub.polygon = hub_pts
 	g.add_child(hub)
+	## Circular occluder so spin doesn't churn shadow dirties; still clips umbra.
+	var occ_pts := PackedVector2Array()
+	for i in 16:
+		var a := TAU * float(i) / 16.0
+		occ_pts.append(Vector2(cos(a), sin(a)) * radius * 0.92)
+	LightOnlyBlocker.attach(g, occ_pts, true)
 	parent.add_child(g)
 	g.set_process(true)
 	g.process_mode = Node.PROCESS_MODE_INHERIT
@@ -250,6 +256,11 @@ static func add_brick_wall_face(parent: Node2D, x: float, y: float, width: float
 		Vector2(-hx, hy - 40), Vector2(hx, hy - 40), Vector2(hx, hy), Vector2(-hx, hy)
 	])
 	face.add_child(fade)
+	## Visual-only: washes + cast shadows stop on the mural; player burns ignore it.
+	var occ := ShadowOccluder.new()
+	occ.local_polygon = bg.polygon
+	occ.blocks_gameplay = false
+	face.add_child(occ)
 	parent.add_child(face)
 
 
@@ -262,29 +273,45 @@ static func add_window(parent: Node2D, x: float, y: float, w: float = 48.0, h: f
 	art.position = Vector2(x, y)
 	art.z_index = -8
 	parent.add_child(art)
+	var hx := w * 0.5
+	var hy := h * 0.5
+	LightOnlyBlocker.attach(art, PackedVector2Array([
+		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
+	]), true)
 
 static func add_pipe(parent: Node2D, from: Vector2, to: Vector2, thick: float = 12.0) -> void:
 	## Copper pipe with a highlight and an iron flange at the middle.
+	var holder := Node2D.new()
+	holder.position = (from + to) * 0.5
+	parent.add_child(holder)
+	var local_from := from - holder.position
+	var local_to := to - holder.position
 	var line := Line2D.new()
 	line.width = thick
 	line.default_color = Color(0.54, 0.35, 0.21)
-	line.add_point(from)
-	line.add_point(to)
-	parent.add_child(line)
+	line.add_point(local_from)
+	line.add_point(local_to)
+	holder.add_child(line)
 	var shine := Line2D.new()
 	shine.width = thick * 0.25
 	shine.default_color = Color(0.69, 0.48, 0.3, 0.8)
-	shine.add_point(from + Vector2(0, -thick * 0.25))
-	shine.add_point(to + Vector2(0, -thick * 0.25))
-	parent.add_child(shine)
-	var mid := (from + to) * 0.5
+	shine.add_point(local_from + Vector2(0, -thick * 0.25))
+	shine.add_point(local_to + Vector2(0, -thick * 0.25))
+	holder.add_child(shine)
 	var flange := Polygon2D.new()
-	flange.position = mid
 	flange.color = Color(0.22, 0.2, 0.19)
 	flange.polygon = PackedVector2Array([
 		Vector2(-5, -thick * 0.75), Vector2(5, -thick * 0.75), Vector2(5, thick * 0.75), Vector2(-5, thick * 0.75)
 	])
-	parent.add_child(flange)
+	holder.add_child(flange)
+	## Thin AABB along the run so the pipe casts a realistic shadow band.
+	var min_x := mini(local_from.x, local_to.x) - thick * 0.5
+	var max_x := maxi(local_from.x, local_to.x) + thick * 0.5
+	var min_y := mini(local_from.y, local_to.y) - thick * 0.5
+	var max_y := maxi(local_from.y, local_to.y) + thick * 0.5
+	LightOnlyBlocker.attach(holder, PackedVector2Array([
+		Vector2(min_x, min_y), Vector2(max_x, min_y), Vector2(max_x, max_y), Vector2(min_x, max_y)
+	]), true)
 
 static func add_valve(parent: Node2D, pos: Vector2) -> void:
 	## Red spoked wheel mounted flat on the wall.
@@ -293,6 +320,9 @@ static func add_valve(parent: Node2D, pos: Vector2) -> void:
 	art.style = 5
 	art.position = pos
 	parent.add_child(art)
+	LightOnlyBlocker.attach(art, PackedVector2Array([
+		Vector2(-14, -14), Vector2(14, -14), Vector2(14, 14), Vector2(-14, 14)
+	]), true)
 
 static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2(36, 28)) -> void:
 	## Non-interactive scenery crate (same dark-oak X-brace look as pushable crates).
@@ -302,6 +332,11 @@ static func add_crate_prop(parent: Node2D, pos: Vector2, size: Vector2 = Vector2
 	art.size = size
 	art.position = pos
 	parent.add_child(art)
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	LightOnlyBlocker.attach(art, PackedVector2Array([
+		Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)
+	]), true)
 
 static func add_bench(parent: Node2D, pos: Vector2) -> void:
 	## Riveted steel bench in mid-dark grey.
@@ -310,6 +345,9 @@ static func add_bench(parent: Node2D, pos: Vector2) -> void:
 	art.style = 5
 	art.position = pos
 	parent.add_child(art)
+	LightOnlyBlocker.attach(art, PackedVector2Array([
+		Vector2(-30, -28), Vector2(30, -28), Vector2(30, 2), Vector2(-30, 2)
+	]), true)
 
 static func add_lamp_post(parent: Node2D, pos: Vector2) -> void:
 	var pole := Polygon2D.new()

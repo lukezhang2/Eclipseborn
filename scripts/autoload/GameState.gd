@@ -281,7 +281,7 @@ func travel_to_checkpoint(entry: Dictionary) -> void:
 	get_tree().change_scene_to_file(scene_path)
 
 
-func apply_light_exposure(dt: float, kind: LightKind) -> void:
+func apply_light_exposure(dt: float, kind: LightKind, intensity: float = 1.0) -> void:
 	if is_paused:
 		return
 	match kind:
@@ -291,11 +291,12 @@ func apply_light_exposure(dt: float, kind: LightKind) -> void:
 		_:
 			pass
 
-	var drain := SHADE_DRAIN_HEARTH
-	var burn := HEALTH_BURN_HEARTH
+	var scale := clampf(intensity, 0.15, 3.0)
+	var drain := SHADE_DRAIN_HEARTH * scale
+	var burn := HEALTH_BURN_HEARTH * scale
 	if kind == LightKind.SUNSHAFT:
-		drain = SHADE_DRAIN_SUNSHAFT
-		burn = HEALTH_BURN_SUNSHAFT
+		drain = SHADE_DRAIN_SUNSHAFT * scale
+		burn = HEALTH_BURN_SUNSHAFT * scale
 
 	if shade > 0.0:
 		shade = maxf(0.0, shade - drain * dt)

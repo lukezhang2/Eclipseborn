@@ -6,6 +6,8 @@ class_name LightSource
 @export var light_kind: GameState.LightKind = GameState.LightKind.HEARTH
 @export var radius: float = 280.0
 @export var shadow_length: float = 320.0
+## 1.0 = normal. Higher = brighter wash + faster shade/HP burn.
+@export var intensity: float = 1.0
 @export var is_enabled: bool = true
 @export var pushable: bool = true
 @export var push_speed: float = 90.0
@@ -20,6 +22,7 @@ var _ring: Line2D
 var _burn_shape: CircleShape2D
 var _body: AnimatableBody2D
 var _exclude_rids: Array = []
+var _burn_area: Area2D
 
 
 func _ready() -> void:
@@ -77,6 +80,14 @@ func set_radius(value: float) -> void:
 	ShadowWorld.mark_dirty()
 
 
+func set_intensity(value: float) -> void:
+	intensity = clampf(value, 0.15, 3.0)
+	_apply_intensity_visuals()
+	if _burn_area:
+		_burn_area.set_meta("light_intensity", intensity)
+	ShadowWorld.mark_dirty()
+
+
 func get_light_origin() -> Vector2:
 	# Cast from the glass, not the collider interior.
 	return global_position + Vector2(0, -8)
@@ -96,6 +107,10 @@ func get_light_kind() -> int:
 
 func get_radius() -> float:
 	return radius
+
+
+func get_intensity() -> float:
+	return intensity
 
 
 func burns() -> bool:
@@ -148,21 +163,23 @@ func _build_visual() -> void:
 		_ring.visible = false
 		show_radius_ring = false
 
-	var area := Area2D.new()
-	area.collision_layer = 64
-	area.collision_mask = 0
-	area.monitoring = false
-	area.monitorable = true
+	_burn_area = Area2D.new()
+	_burn_area.collision_layer = 64
+	_burn_area.collision_mask = 0
+	_burn_area.monitoring = false
+	_burn_area.monitorable = true
 	_burn_shape = CircleShape2D.new()
 	_burn_shape.radius = radius
 	var cs := CollisionShape2D.new()
 	cs.shape = _burn_shape
 	cs.position = Vector2(0, -8)
-	area.add_child(cs)
-	area.name = "BurnArea"
-	area.set_meta("light_kind", light_kind)
-	area.set_meta("light_source", self)
-	add_child(area)
+	_burn_area.add_child(cs)
+	_burn_area.name = "BurnArea"
+	_burn_area.set_meta("light_kind", light_kind)
+	_burn_area.set_meta("light_source", self)
+	_burn_area.set_meta("light_intensity", intensity)
+	add_child(_burn_area)
+	_apply_intensity_visuals()
 
 	if pushable:
 		## Layer 16 = pushable lamps only. NOT in ShadowWorld occluder mask (1|8),
@@ -200,13 +217,22 @@ func _rebuild_ring() -> void:
 		return
 	_ring.clear_points()
 	var col := color_for_kind()
-	_ring.default_color = Color(col.r, col.g, col.b, 0.55)
+	_ring.default_color = Color(col.r, col.g, col.b, clampf(0.4 + intensity * 0.2, 0.4, 0.85))
+	_ring.width = 1.25 + intensity * 0.5
 	for i in 48:
 		var a := TAU * float(i) / 48.0
 		_ring.add_point(Vector2(cos(a), sin(a)) * radius + Vector2(0, -8))
 	_ring.add_point(_ring.get_point_position(0))
 	## Gameplay uses ShadowWorld's occluded outline; this ring is opt-in debug only.
 	_ring.visible = is_enabled and show_radius_ring
+
+
+func _apply_intensity_visuals() -> void:
+	if _art:
+		## Hotter glass glow at higher intensity (lantern sprite itself).
+		var glow := clampf(0.85 + (intensity - 1.0) * 0.35, 0.7, 1.6)
+		_art.modulate = Color(glow, glow * 0.95, glow * 0.85, 1.0) if is_enabled else Color(0.6, 0.6, 0.6, 0.7)
+	_rebuild_ring()
 
 
 func try_push(direction: float, delta: float) -> void:

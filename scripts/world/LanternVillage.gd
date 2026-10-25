@@ -105,25 +105,13 @@ func _build_all_lights() -> void:
 		LevelCommon.add_hanging_lantern(self, Vector2(x, wire_y), 70.0, 150.0)
 
 	## Street hearth by Lantern Keep — houses must actually cover this wash.
-	var street_lamp := LightSource.new()
-	street_lamp.position = Vector2(748, 312)
-	street_lamp.light_kind = GameState.LightKind.HEARTH
-	street_lamp.radius = 250.0
-	street_lamp.shadow_length = 300.0
-	street_lamp.pushable = false
+	var street_lamp := _make_hearth_lamp("lamp_street", Vector2(748, 312), 250.0)
 	street_lamp.name = "StreetLamp"
-	LevelData.tag(street_lamp, "lamp_street")
 	add_child(street_lamp)
 
 	## Square hearth near the inn / tower approach.
-	var square_lamp := LightSource.new()
-	square_lamp.position = Vector2(2000, 300)
-	square_lamp.light_kind = GameState.LightKind.HEARTH
-	square_lamp.radius = 260.0
-	square_lamp.shadow_length = 300.0
-	square_lamp.pushable = false
+	var square_lamp := _make_hearth_lamp("lamp_square", Vector2(2000, 300), 260.0)
 	square_lamp.name = "SquareLamp"
-	LevelData.tag(square_lamp, "lamp_square")
 	add_child(square_lamp)
 
 	var switch := LightSwitch.new()
@@ -166,14 +154,27 @@ func _spawn_house(id: String, title: String, pos: Vector2, w: float, h: float) -
 	add_child(house)
 
 
-func _build_light_puzzle() -> void:
+func _make_hearth_lamp(catalog_id: String, fallback_pos: Vector2, fallback_r: float) -> LightSource:
 	var lamp := LightSource.new()
-	lamp.position = Vector2(1292, 238)
+	lamp.position = fallback_pos
 	lamp.light_kind = GameState.LightKind.HEARTH
-	lamp.radius = 250.0
-	lamp.shadow_length = 300.0
+	lamp.radius = fallback_r
+	lamp.shadow_length = fallback_r + 50.0
 	lamp.pushable = false
-	LevelData.tag(lamp, "lamp_puzzle")
+	var saved := LevelData.merged_piece("lantern_village", catalog_id)
+	if not saved.is_empty():
+		if saved.has("x") and saved.has("y"):
+			lamp.position = Vector2(float(saved.get("x")), float(saved.get("y")))
+		if saved.has("radius"):
+			lamp.set_radius(float(saved.get("radius")))
+		if saved.has("intensity"):
+			lamp.set_intensity(float(saved.get("intensity")))
+	LevelData.tag(lamp, catalog_id)
+	return lamp
+
+
+func _build_light_puzzle() -> void:
+	var lamp := _make_hearth_lamp("lamp_puzzle", Vector2(1292, 238), 250.0)
 	add_child(lamp)
 
 	var crate := PushableBox.new()
@@ -212,6 +213,21 @@ func _build_bg_gears_and_platforms() -> void:
 	})
 	LevelCommon.add_bg_gear(self, Vector2(800, 240), 40.0, 10.0)
 	LevelCommon.add_bg_gear(self, Vector2(2600, 220), 48.0, -8.0)
+	_spawn_catalog_bg_gear("bg_gear_a", Vector2(1450, 300), 55.0, 6.0)
+	_spawn_catalog_bg_gear("bg_gear_b", Vector2(2200, 260), 70.0, -5.0)
+
+
+func _spawn_catalog_bg_gear(catalog_id: String, fallback_pos: Vector2, fallback_r: float, spin: float) -> void:
+	if LevelData.is_removed("lantern_village", catalog_id):
+		return
+	var saved := LevelData.merged_piece("lantern_village", catalog_id)
+	var pos := fallback_pos
+	var r := fallback_r
+	if not saved.is_empty():
+		pos = Vector2(float(saved.get("x", pos.x)), float(saved.get("y", pos.y)))
+		r = maxf(float(saved.get("w", r * 2.0)), float(saved.get("h", r * 2.0))) * 0.5
+	var gear := LevelCommon.add_bg_gear(self, pos, r, spin)
+	LevelData.tag(gear, catalog_id)
 
 
 func _spawn_catalog_platform(catalog_id: String, fallback_pos: Vector2, fallback_size: Vector2, defaults: Dictionary) -> void:

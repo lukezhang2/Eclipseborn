@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.31 — clipped realistic shadows (floors/walls/BG); editor light intensity (wash + burn rate); `index-0_1_31.pck`
 - v0.1.30 — first death uses last hearth, not continue/logout position; save checkpoint_x/y separately; `index-0_1_30.pck`
 - v0.1.29 — Brass & Rivets UI theme and steampunk world art
 - v0.1.28 — steel floor walk bank; jump matched; no death land spam; burn loops fixed; realistic hurt (keeps 0.1.27 hit-connect)

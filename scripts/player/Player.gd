@@ -32,6 +32,7 @@ var _pushing: bool = false
 var _pulling: bool = false
 var _in_vulnerable_light: bool = false
 var _active_light_kind: int = GameState.LightKind.HEARTH
+var _active_light_intensity: float = 1.0
 var _anim_name: String = "idle"
 var _was_on_floor: bool = true
 var _control_locked: bool = false
@@ -451,7 +452,11 @@ func _update_light_exposure(delta: float) -> void:
 		AudioManager.stop_all_burns()
 		return
 	if _in_vulnerable_light:
-		GameState.apply_light_exposure(delta, _active_light_kind as GameState.LightKind)
+		GameState.apply_light_exposure(
+			delta,
+			_active_light_kind as GameState.LightKind,
+			_active_light_intensity
+		)
 		# Quiet crackle while shade drains; a bit louder once HP burns in light.
 		if GameState.shade > 0.0:
 			AudioManager.set_shade_burning(true)
@@ -465,7 +470,9 @@ func _update_light_exposure(delta: float) -> void:
 func _recompute_light_state() -> void:
 	_in_vulnerable_light = false
 	_active_light_kind = GameState.LightKind.HEARTH
+	_active_light_intensity = 1.0
 	var center := global_position + Vector2(0, -18)
+	var best_score := -1.0
 	for light in get_tree().get_nodes_in_group("lights"):
 		if not light.has_method("is_on") or not light.is_on():
 			continue
@@ -477,10 +484,17 @@ func _recompute_light_state() -> void:
 			continue
 		if _occluded(origin, center):
 			continue
-		_in_vulnerable_light = true
-		_active_light_kind = light.get_light_kind()
-		if _active_light_kind == GameState.LightKind.SUNSHAFT:
-			break
+		var inten := 1.0
+		if light.has_method("get_intensity"):
+			inten = float(light.get_intensity())
+		var kind: int = light.get_light_kind()
+		## Prefer sunshaft; otherwise the strongest overlapping lamp.
+		var score := inten + (100.0 if kind == GameState.LightKind.SUNSHAFT else 0.0)
+		if score > best_score:
+			best_score = score
+			_in_vulnerable_light = true
+			_active_light_kind = kind
+			_active_light_intensity = inten
 
 
 func _occluded(from: Vector2, to: Vector2) -> bool:

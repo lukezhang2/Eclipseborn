@@ -149,6 +149,8 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			lamp.pushable = bool(p.get("pushable", true))
 			parent.add_child(lamp)
 			lamp.set_radius(float(p.get("radius", 280.0)))
+			if p.has("intensity"):
+				lamp.set_intensity(float(p.get("intensity", 1.0)))
 			LevelData.tag(lamp, str(p.get("id", "")))
 			if str(p.get("id", "")) != "":
 				lamp.name = str(p.get("id"))
@@ -156,6 +158,13 @@ static func _spawn_piece(parent: Node2D, p: Dictionary) -> void:
 			LevelCommon.add_bench(parent, pos)
 		"prop_vent":
 			LevelCommon.add_steam_vent(parent, pos)
+		"prop_window":
+			LevelCommon.add_window(parent, pos.x, pos.y, size.x, size.y, false)
+		"prop_bg_gear":
+			var gear := LevelCommon.add_bg_gear(
+				parent, pos, maxf(size.x, size.y) * 0.5, float(p.get("spin_speed", 8.0))
+			)
+			LevelData.tag(gear, str(p.get("id", "")))
 		"prop_platform":
 			var cfg := {
 				"move_amplitude": float(p.get("move_amplitude", p.get("amplitude", 90.0))),

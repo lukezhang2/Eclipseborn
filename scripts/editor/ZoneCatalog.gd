@@ -167,6 +167,7 @@ static func _plight(id: String, name: String, x: float, y: float, radius: float)
 		"w": 28,
 		"h": 36,
 		"radius": radius,
+		"intensity": 1.0,
 		"anchor": "center",
 		"blocks_light": false,
 		"layer": PieceSpecs.default_draw_layer("light"),

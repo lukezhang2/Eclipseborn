@@ -13,6 +13,7 @@ var piece_id: String = ""
 var display_name: String = "Piece"
 var size: Vector2 = Vector2(64, 48)
 var light_radius: float = 280.0
+var light_intensity: float = 1.0
 var light_kind: int = 0
 var pushable: bool = true
 var builtin: bool = false
@@ -98,6 +99,7 @@ func to_dict() -> Dictionary:
 	if kind == Kind.LIGHT:
 		d["kind"] = "light"
 		d["radius"] = light_radius
+		d["intensity"] = light_intensity
 		d["light_kind"] = light_kind
 		d["pushable"] = pushable
 	elif kind == Kind.BACKGROUND:
@@ -171,6 +173,7 @@ func apply_dict(d: Dictionary) -> void:
 		"light":
 			kind = Kind.LIGHT
 			light_radius = float(d.get("radius", light_radius if light_radius > 0.0 else 280.0))
+			light_intensity = float(d.get("intensity", light_intensity if light_intensity > 0.0 else 1.0))
 			light_kind = int(d.get("light_kind", 0))
 			pushable = bool(d.get("pushable", true))
 			size = Vector2(28, 36)
@@ -321,14 +324,25 @@ func _rebuild() -> void:
 
 	if kind == Kind.LIGHT:
 		var ring := Line2D.new()
-		ring.width = 1.0
-		ring.default_color = Color(1.0, 0.85, 0.4, 0.45)
+		ring.width = 1.0 + light_intensity * 0.5
+		ring.default_color = Color(1.0, 0.85, 0.4, clampf(0.35 + light_intensity * 0.2, 0.35, 0.85))
 		for i in 24:
 			var a := TAU * float(i) / 24.0
 			## Match LightSource ring offset (burn center slightly above body).
 			ring.add_point(Vector2(cos(a), sin(a)) * light_radius + Vector2(0, -8))
 		ring.add_point(ring.get_point_position(0))
 		_body.add_child(ring)
+		## Intensity preview disc (brighter = hotter).
+		if light_intensity > 1.01:
+			var hot := Polygon2D.new()
+			var hot_pts := PackedVector2Array()
+			var hr := mini(light_radius * 0.2 * light_intensity, 48.0)
+			for i in 16:
+				var a := TAU * float(i) / 16.0
+				hot_pts.append(Vector2(cos(a), sin(a)) * hr + Vector2(0, -8))
+			hot.polygon = hot_pts
+			hot.color = Color(1.0, 0.9, 0.45, clampf(0.15 * (light_intensity - 0.5), 0.08, 0.4))
+			_body.add_child(hot)
 
 	set_selected(is_selected)
 

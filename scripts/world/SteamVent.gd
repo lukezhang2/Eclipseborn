@@ -14,6 +14,9 @@ func _build() -> void:
 	grate.style = 1
 	grate.position = Vector2(0, 2)
 	add_child(grate)
+	LightOnlyBlocker.attach(self, PackedVector2Array([
+		Vector2(-18, -6), Vector2(18, -6), Vector2(18, 8), Vector2(-18, 8)
+	]), true)
 
 	var particles := CPUParticles2D.new()
 	particles.emitting = true
