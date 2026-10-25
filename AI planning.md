@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.46 — Clockwork Tower in Level Editor (zone seed, playtest, tall-map camera, lamp/checkpoint overlays); `index-0_1_46.pck`
 - v0.1.45 — single yellow light wash; houses above wash (no paint-through); quieter umbras; `index-0_1_45.pck`
 - v0.1.44 — tower polish: zone fades, death anim+fade, lobby+pre-boss CPs, bottom-left spawn, jump-reach climb, boss wake/seal, floor lamps+high levers, side rooms, lever flip; keeps village exit left-of-tower; `index-0_1_44.pck`
 - v0.1.43 — tower exit spawns left of the village tower (not on the door); `index-0_1_43.pck`

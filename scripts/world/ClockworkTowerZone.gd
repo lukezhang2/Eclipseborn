@@ -51,6 +51,8 @@ func _ready() -> void:
 	_build_switch_gallery()
 	_build_antechamber()
 	_build_arena()
+	## Editor overlays (non-builtin pieces) + prune catalog removals.
+	LevelData.apply(self, "clockwork_tower")
 
 	var spawn := _resolve_spawn()
 	var player := LevelCommon.spawn_player(self, spawn)
@@ -152,23 +154,29 @@ func _build_lobby() -> void:
 	_floor_at(LOBBY_FLOOR, SHAFT_R - SHAFT_L + 80.0, (SHAFT_L + SHAFT_R) * 0.5)
 	LevelCommon.make_room_trigger(self, Vector2((SHAFT_L + SHAFT_R) * 0.5, LOBBY_TOP - 100), Vector2(SHAFT_R - SHAFT_L, 180), "clockwork_tower", "lobby", "Clockwork Lobby", "")
 	## Bottom rest hearth — death returns here until antechamber is rested.
-	var cp := Checkpoint.new()
-	cp.position = Vector2(260, LOBBY_TOP)
-	cp.checkpoint_id = "tower_lobby"
-	cp.checkpoint_name = "Tower Lobby"
-	add_child(cp)
-	## Auto-rest on first entry so dying before any rest isn't a soft-lock at apex.
-	if not GameState.is_checkpoint_activated("tower_lobby", "clockwork_tower"):
-		GameState.activate_checkpoint("tower_lobby", "clockwork_tower", cp.position, "Tower Lobby")
+	if not LevelData.is_removed("clockwork_tower", "checkpoint_lobby"):
+		var cp := Checkpoint.new()
+		var cp_pos := _piece_pos("checkpoint_lobby", Vector2(260, LOBBY_TOP))
+		cp.position = cp_pos
+		cp.checkpoint_id = "tower_lobby"
+		cp.checkpoint_name = "Tower Lobby"
+		LevelData.tag(cp, "checkpoint_lobby")
+		add_child(cp)
+		## Auto-rest on first entry so dying before any rest isn't a soft-lock at apex.
+		if not GameState.is_checkpoint_activated("tower_lobby", "clockwork_tower"):
+			GameState.activate_checkpoint("tower_lobby", "clockwork_tower", cp.position, "Tower Lobby")
 
-	var lamp := _make_hanging_lamp("lobby_lamp", Vector2(420, LOBBY_TOP - 120), 180.0, true)
-	add_child(lamp)
-	LevelCommon.add_steam_vent(self, Vector2(520, LOBBY_TOP))
-	LevelCommon.add_bench(self, Vector2(340, LOBBY_TOP))
+	var lobby_lamp := _make_hanging_lamp("lobby_lamp", Vector2(420, LOBBY_TOP - 120), 180.0, true)
+	if lobby_lamp:
+		add_child(lobby_lamp)
+	if not LevelData.is_removed("clockwork_tower", "vent_lobby"):
+		LevelCommon.add_steam_vent(self, _piece_pos("vent_lobby", Vector2(520, LOBBY_TOP)))
+	if not LevelData.is_removed("clockwork_tower", "bench_lobby"):
+		LevelCommon.add_bench(self, _piece_pos("bench_lobby", Vector2(340, LOBBY_TOP)))
 	_spawn_grub(Vector2(480, LOBBY_TOP - 18))
 	_spawn_grub(Vector2(620, LOBBY_TOP - 18))
 	## Village door — bottom left.
-	_make_village_exit(Vector2(110, LOBBY_TOP - 8))
+	_make_village_exit(_piece_pos("exit_village", Vector2(110, LOBBY_TOP - 8)))
 
 
 func _build_main_shaft() -> void:
@@ -179,7 +187,8 @@ func _build_main_shaft() -> void:
 	_floor_at(y - 10.0 + FLOOR_H * 0.5, 420.0, 400.0)
 	_ledge(700, y - JUMP_REACH_Y, 160.0) ## doorway toward side room
 	var mid_lamp := _make_hanging_lamp("climb_lamp", Vector2(400, y - 80), 150.0, true)
-	add_child(mid_lamp)
+	if mid_lamp:
+		add_child(mid_lamp)
 	_spawn_beetle(Vector2(400, y - 28))
 
 
@@ -212,14 +221,25 @@ func _build_pendulum_cloister() -> void:
 	_floor_at(y - 8.0 + FLOOR_H * 0.5, 220.0, 560.0)
 	_ledge(390, y - JUMP_REACH_Y, 120.0)
 	var cloister_lamp := _make_hanging_lamp("cloister_lamp", Vector2(390, y - JUMP_REACH_Y - 90), 160.0, true)
-	add_child(cloister_lamp)
-	var sw := LightSwitch.new()
-	sw.position = Vector2(160, y - 8.0)
-	sw.name = "cloister_switch"
-	sw.starts_on = true
-	sw.target_ids = PackedStringArray(["cloister_lamp"])
-	LevelData.tag(sw, "cloister_switch")
-	add_child(sw)
+	if cloister_lamp:
+		add_child(cloister_lamp)
+	if not LevelData.is_removed("clockwork_tower", "cloister_switch"):
+		var sw := LightSwitch.new()
+		sw.position = _piece_pos("cloister_switch", Vector2(160, y - 8.0))
+		sw.name = "cloister_switch"
+		sw.starts_on = true
+		sw.target_ids = PackedStringArray(["cloister_lamp"])
+		var csw_saved := LevelData.merged_piece("clockwork_tower", "cloister_switch")
+		if csw_saved.has("starts_on"):
+			sw.starts_on = bool(csw_saved.get("starts_on"))
+		if csw_saved.has("target_ids"):
+			var tids: PackedStringArray = PackedStringArray()
+			for t in csw_saved.get("target_ids", []):
+				tids.append(str(t))
+			if not tids.is_empty():
+				sw.target_ids = tids
+		LevelData.tag(sw, "cloister_switch")
+		add_child(sw)
 	var pend: Node = PendulumScript.new()
 	pend.position = Vector2(320, y - JUMP_REACH_Y - 140)
 	pend.set("lamp_id", "cloister_lamp")
@@ -251,12 +271,18 @@ func _build_steam_flue() -> void:
 			_spawn_grub(Vector2(x, y - 16))
 	_ledge(390, y - JUMP_REACH_Y, 160.0)
 	var flue_lamp := _make_floor_lamp("flue_lamp", Vector2(390, y - JUMP_REACH_Y - 8), 130.0, false)
-	add_child(flue_lamp)
-	var fsw := LightSwitch.new()
-	fsw.position = Vector2(300, y - JUMP_REACH_Y)
-	fsw.starts_on = false
-	fsw.target_ids = PackedStringArray(["flue_lamp"])
-	add_child(fsw)
+	if flue_lamp:
+		add_child(flue_lamp)
+	if not LevelData.is_removed("clockwork_tower", "flue_switch"):
+		var fsw := LightSwitch.new()
+		fsw.position = _piece_pos("flue_switch", Vector2(300, y - JUMP_REACH_Y))
+		fsw.starts_on = false
+		fsw.target_ids = PackedStringArray(["flue_lamp"])
+		var fsw_saved := LevelData.merged_piece("clockwork_tower", "flue_switch")
+		if fsw_saved.has("starts_on"):
+			fsw.starts_on = bool(fsw_saved.get("starts_on"))
+		LevelData.tag(fsw, "flue_switch")
+		add_child(fsw)
 
 
 func _build_side_archive() -> void:
@@ -268,7 +294,8 @@ func _build_side_archive() -> void:
 	_spawn_jar(Vector2(120, floor_y - FLOOR_H * 0.5 - 8))
 	_spawn_mite(Vector2(180, floor_y - FLOOR_H * 0.5 - 16))
 	var lamp := _make_hanging_lamp("archive_lamp", Vector2(160, floor_y - 100), 120.0, true)
-	add_child(lamp)
+	if lamp:
+		add_child(lamp)
 
 
 func _build_switch_gallery() -> void:
@@ -280,15 +307,22 @@ func _build_switch_gallery() -> void:
 	var la := _make_floor_lamp("practice_a", Vector2(260, floor_top - 8), 100.0, true)
 	var lb := _make_floor_lamp("practice_b", Vector2(400, floor_top - 8), 100.0, false)
 	var lc := _make_floor_lamp("practice_c", Vector2(540, floor_top - 8), 100.0, true)
-	add_child(la)
-	add_child(lb)
-	add_child(lc)
+	if la:
+		add_child(la)
+	if lb:
+		add_child(lb)
+	if lc:
+		add_child(lc)
 	for pair in [["practice_sw_a", "practice_a", 220.0, true], ["practice_sw_b", "practice_b", 360.0, false], ["practice_sw_c", "practice_c", 500.0, true]]:
+		var sid := str(pair[0])
+		if LevelData.is_removed("clockwork_tower", sid):
+			continue
 		var s := LightSwitch.new()
-		s.position = Vector2(float(pair[2]), floor_top)
-		s.name = str(pair[0])
+		s.position = _piece_pos(sid, Vector2(float(pair[2]), floor_top))
+		s.name = sid
 		s.starts_on = bool(pair[3])
 		s.target_ids = PackedStringArray([str(pair[1])])
+		LevelData.tag(s, sid)
 		add_child(s)
 	var hint := Label.new()
 	hint.text = "Practice the Hour — flip levers to match lamp patterns."
@@ -306,11 +340,13 @@ func _build_antechamber() -> void:
 	## Checkpoint BEFORE the boss — death during the fight returns here.
 	_floor_at(ANTECHAMBER_FLOOR, 560.0, 400.0)
 	LevelCommon.make_room_trigger(self, Vector2(400, ANTECHAMBER_TOP - 80), Vector2(520, 160), "clockwork_tower", "antechamber", "Dial Gate", "Rest before the Wickwright.")
-	var cp := Checkpoint.new()
-	cp.position = Vector2(220, ANTECHAMBER_TOP)
-	cp.checkpoint_id = "tower_antechamber"
-	cp.checkpoint_name = "Dial Gate"
-	add_child(cp)
+	if not LevelData.is_removed("clockwork_tower", "checkpoint_antechamber"):
+		var cp := Checkpoint.new()
+		cp.position = _piece_pos("checkpoint_antechamber", Vector2(220, ANTECHAMBER_TOP))
+		cp.checkpoint_id = "tower_antechamber"
+		cp.checkpoint_name = "Dial Gate"
+		LevelData.tag(cp, "checkpoint_antechamber")
+		add_child(cp)
 	## Climb into arena — ~5 jump steps from antechamber floor to arena floor.
 	_climb_run(ANTECHAMBER_TOP, 5, 320.0, 480.0)
 
@@ -335,17 +371,22 @@ func _build_arena() -> void:
 	var starts := [true, false, true]
 	for i in 3:
 		var lamp := _make_floor_lamp(ids[i], Vector2(xs[i], ARENA_TOP - 8), 130.0, starts[i])
-		add_child(lamp)
+		if lamp:
+			add_child(lamp)
 
 	## High levers that control those floor lanterns (boss yanks these).
 	var lever_y := ARENA_TOP - 110.0
 	_ledge(250, lever_y, 90.0)
 	_ledge(400, lever_y, 90.0)
 	_ledge(550, lever_y, 90.0)
+	var switch_ids := ["tower_switch_a", "tower_switch_b", "tower_switch_c"]
 	for i in 3:
+		var sw_id: String = str(switch_ids[i])
+		if LevelData.is_removed("clockwork_tower", sw_id):
+			continue
 		var sw := LightSwitch.new()
-		sw.position = Vector2(xs[i], lever_y)
-		sw.name = ["tower_switch_a", "tower_switch_b", "tower_switch_c"][i]
+		sw.position = _piece_pos(sw_id, Vector2(xs[i], lever_y))
+		sw.name = sw_id
 		sw.starts_on = starts[i]
 		sw.target_ids = PackedStringArray([ids[i]])
 		LevelData.tag(sw, sw.name)
@@ -431,7 +472,24 @@ func _make_village_exit(pos: Vector2) -> void:
 	add_child(exit)
 
 
+func _piece_pos(catalog_id: String, fallback: Vector2) -> Vector2:
+	var saved := LevelData.merged_piece("clockwork_tower", catalog_id)
+	if saved.is_empty():
+		return fallback
+	if saved.has("x") and saved.has("y"):
+		return Vector2(float(saved.get("x")), float(saved.get("y")))
+	return fallback
+
+
 func _make_hanging_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSource:
+	if LevelData.is_removed("clockwork_tower", id):
+		return null
+	var saved := LevelData.merged_piece("clockwork_tower", id)
+	if not saved.is_empty():
+		if saved.has("x") and saved.has("y"):
+			pos = Vector2(float(saved.get("x")), float(saved.get("y")))
+		if saved.has("radius"):
+			radius = float(saved.get("radius"))
 	var lamp := LightSource.new()
 	lamp.name = id
 	lamp.position = pos
@@ -440,13 +498,16 @@ func _make_hanging_lamp(id: String, pos: Vector2, radius: float, on: bool) -> Li
 	lamp.shadow_length = radius + 40.0
 	lamp.pushable = false
 	lamp.is_enabled = on
+	if saved.has("intensity"):
+		lamp.set_intensity(float(saved.get("intensity", 1.0)))
 	## Let LightSource hang a chain to ceiling_y.
 	LevelData.tag(lamp, id)
 	return lamp
 
-
 func _make_floor_lamp(id: String, pos: Vector2, radius: float, on: bool) -> LightSource:
 	var lamp := _make_hanging_lamp(id, pos, radius, on)
+	if lamp == null:
+		return null
 	## Skip auto-chain — these sit on the floor / pedestals.
 	lamp.set_meta("has_chain", true)
 	return lamp

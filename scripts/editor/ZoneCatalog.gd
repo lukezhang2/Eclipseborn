@@ -1,7 +1,8 @@
 extends RefCounted
 class_name ZoneCatalog
 ## Named props that make up each zone (mirrors the live room scripts).
-## Sizes/anchors come from PieceSpecs — keep in sync with CursedCottage / LanternVillage / HouseInterior.
+## Sizes/anchors come from PieceSpecs — keep in sync with CursedCottage / LanternVillage /
+## HouseInterior / ClockworkTowerZone.
 ## See docs/LEVEL_EDITOR.md for the JSON schema.
 
 
@@ -9,6 +10,7 @@ static func zone_ids() -> PackedStringArray:
 	return PackedStringArray([
 		"cursed_cottage",
 		"lantern_village",
+		"clockwork_tower",
 		"house_keep",
 		"house_gear",
 		"house_inn",
@@ -19,6 +21,8 @@ static func pieces_for(zone_id: String) -> Array:
 	match zone_id:
 		"lantern_village":
 			return _village()
+		"clockwork_tower":
+			return _tower()
 		"house_keep", "house_gear", "house_inn":
 			return _house_interior(zone_id)
 		_:
@@ -109,6 +113,121 @@ static func _village() -> Array:
 	out.append(_p("tower", "prop_tower", "Clockwork Tower", MAP_W - 200, FLOOR_TOP, 160, 280))
 	out.append(_p("shade_heart", "prop_pickup", "Shade Heart", 2407.53247070312, 256, 28, 28))
 	out.append(_p("checkpoint_gate", "prop_checkpoint", "Checkpoint (village gate) — the … hearth", 200, FLOOR_TOP, 56, 24))
+	return out
+
+
+static func _tower() -> Array:
+	## Mirrors ClockworkTowerZone constants (JUMP_REACH_Y=52, FLOOR_H=36).
+	const MAP_W := 1100.0
+	const SHAFT_L := 80.0
+	const SHAFT_R := 780.0
+	const FLOOR_H := 36.0
+	const JUMP_REACH_Y := 52.0
+	const LEDGE_W := 140.0
+	const LOBBY_FLOOR := 2680.0
+	const LOBBY_TOP := LOBBY_FLOOR - FLOOR_H * 0.5
+	const ANTECHAMBER_FLOOR := 620.0
+	const ANTECHAMBER_TOP := ANTECHAMBER_FLOOR - FLOOR_H * 0.5
+	const ARENA_FLOOR := 360.0
+	const ARENA_TOP := ARENA_FLOOR - FLOOR_H * 0.5
+	const ROOF_TOP := 20.0
+	var out: Array = []
+	var mid_y := (ROOF_TOP + LOBBY_FLOOR) * 0.5
+	var wall_h := LOBBY_FLOOR - ROOF_TOP + 120.0
+	out.append(_p("floor_lobby", "floor", "Lobby Floor", (SHAFT_L + SHAFT_R) * 0.5, LOBBY_FLOOR, SHAFT_R - SHAFT_L + 80.0, FLOOR_H))
+	out.append(_p("border_left", "wall", "Tower Wall Left", 20, mid_y, 40, wall_h))
+	out.append(_p("border_right", "wall", "Tower Wall Right", MAP_W - 20, mid_y, 40, wall_h))
+	out.append(_p("pipe_ceiling", "prop_pipe", "Ceiling Rail", MAP_W * 0.5, ROOF_TOP + 30, MAP_W - 120, 12))
+	out.append(_p("checkpoint_lobby", "prop_checkpoint", "Tower Lobby", 260, LOBBY_TOP, 56, 24))
+	out.append(_plight("lobby_lamp", "Lobby Lamp", 420, LOBBY_TOP - 120, 180))
+	out.append(_p("vent_lobby", "prop_vent", "Lobby Steam Vent", 520, LOBBY_TOP, 36, 16))
+	out.append(_p("bench_lobby", "prop_bench", "Lobby Bench", 340, LOBBY_TOP, 60, 20))
+	out.append(_p("exit_village", "prop_exit", "Village Door", 110, LOBBY_TOP - 8, 40, 50))
+
+	## Main shaft climb from lobby (10 ledges).
+	var y := LOBBY_TOP - 20.0
+	for i in 10:
+		y -= JUMP_REACH_Y
+		var x := 220.0 if i % 2 == 0 else 560.0
+		out.append(_p("ledge_shaft_%d" % (i + 1), "floor", "Shaft Ledge %d" % (i + 1), x, y + FLOOR_H * 0.5, LEDGE_W, FLOOR_H))
+	out.append(_p("floor_shaft_landing", "floor", "Shaft Landing", 400, y - 10.0 + FLOOR_H * 0.5, 420, FLOOR_H))
+	out.append(_p("ledge_workshop_door", "floor", "Workshop Door Ledge", 700, y - JUMP_REACH_Y + FLOOR_H * 0.5, 160, FLOOR_H))
+	out.append(_plight("climb_lamp", "Climb Lamp", 400, y - 80, 150))
+
+	## Side workshop.
+	var workshop_floor := 2140.0
+	out.append(_p("floor_workshop", "floor", "Workshop Floor", 960, workshop_floor, 280, FLOOR_H))
+	out.append(_p("bench_workshop", "prop_bench", "Workshop Bench", 940, workshop_floor - FLOOR_H * 0.5, 60, 20))
+	out.append(_p("jar_workshop", "prop_breakable", "Workshop Jar", 1020, workshop_floor - FLOOR_H * 0.5 - 8, 28, 36))
+
+	## Pendulum cloister climb (8 ledges from 2124).
+	y = 2124.0
+	for i in 8:
+		y -= JUMP_REACH_Y
+		var cx := 240.0 if i % 2 == 0 else 540.0
+		out.append(_p("ledge_cloister_%d" % (i + 1), "floor", "Cloister Ledge %d" % (i + 1), cx, y + FLOOR_H * 0.5, LEDGE_W, FLOOR_H))
+	out.append(_p("floor_cloister_l", "floor", "Cloister Floor L", 220, y - 8.0 + FLOOR_H * 0.5, 220, FLOOR_H))
+	out.append(_p("floor_cloister_r", "floor", "Cloister Floor R", 560, y - 8.0 + FLOOR_H * 0.5, 220, FLOOR_H))
+	out.append(_p("ledge_cloister_gap", "floor", "Cloister Gap Ledge", 390, y - JUMP_REACH_Y + FLOOR_H * 0.5, 120, FLOOR_H))
+	out.append(_plight("cloister_lamp", "Cloister Lamp", 390, y - JUMP_REACH_Y - 90, 160))
+	var csw := _p("cloister_switch", "prop_switch", "Cloister Lever", 160, y - 8.0, 24, 40)
+	csw["starts_on"] = true
+	csw["target_ids"] = ["cloister_lamp"]
+	out.append(csw)
+
+	## Steam flue (10 vent ledges from 1710).
+	y = 1710.0
+	for i in 10:
+		y -= JUMP_REACH_Y
+		var fx := 250.0 if i % 2 == 0 else 530.0
+		out.append(_p("ledge_flue_%d" % (i + 1), "floor", "Flue Ledge %d" % (i + 1), fx, y + FLOOR_H * 0.5, LEDGE_W, FLOOR_H))
+		out.append(_p("vent_flue_%d" % (i + 1), "prop_vent", "Flue Vent %d" % (i + 1), fx, y, 36, 16))
+	out.append(_p("ledge_flue_top", "floor", "Flue Top Ledge", 390, y - JUMP_REACH_Y + FLOOR_H * 0.5, 160, FLOOR_H))
+	out.append(_plight("flue_lamp", "Flue Floor Lamp", 390, y - JUMP_REACH_Y - 8, 130))
+	var fsw := _p("flue_switch", "prop_switch", "Flue Lever", 300, y - JUMP_REACH_Y, 24, 40)
+	fsw["starts_on"] = false
+	fsw["target_ids"] = ["flue_lamp"]
+	out.append(fsw)
+
+	## Ash archive (left wing).
+	var archive_floor := 1120.0
+	out.append(_p("floor_archive", "floor", "Archive Floor", 160, archive_floor, 260, FLOOR_H))
+	out.append(_plight("archive_lamp", "Archive Lamp", 160, archive_floor - 100, 120))
+	out.append(_p("jar_archive", "prop_breakable", "Archive Jar", 120, archive_floor - FLOOR_H * 0.5 - 8, 28, 36))
+
+	## Switch gallery (7 climb from 1192).
+	y = 1192.0
+	for i in 7:
+		y -= JUMP_REACH_Y
+		var gx := 240.0 if i % 2 == 0 else 540.0
+		out.append(_p("ledge_gallery_%d" % (i + 1), "floor", "Gallery Ledge %d" % (i + 1), gx, y + FLOOR_H * 0.5, LEDGE_W, FLOOR_H))
+	out.append(_p("floor_gallery", "floor", "Gallery Floor", 400, y - 12.0 + FLOOR_H * 0.5, 560, FLOOR_H))
+	var gallery_top := y - 12.0
+	out.append(_plight("practice_a", "Practice Lamp A", 260, gallery_top - 8, 100))
+	out.append(_plight("practice_b", "Practice Lamp B", 400, gallery_top - 8, 100))
+	out.append(_plight("practice_c", "Practice Lamp C", 540, gallery_top - 8, 100))
+	for pair in [["practice_sw_a", "practice_a", 220.0, true], ["practice_sw_b", "practice_b", 360.0, false], ["practice_sw_c", "practice_c", 500.0, true]]:
+		var psw := _p(str(pair[0]), "prop_switch", "Practice Lever", float(pair[2]), gallery_top, 24, 40)
+		psw["starts_on"] = bool(pair[3])
+		psw["target_ids"] = [str(pair[1])]
+		out.append(psw)
+
+	## Antechamber + arena.
+	out.append(_p("floor_antechamber", "floor", "Dial Gate Floor", 400, ANTECHAMBER_FLOOR, 560, FLOOR_H))
+	out.append(_p("checkpoint_antechamber", "prop_checkpoint", "Dial Gate", 220, ANTECHAMBER_TOP, 56, 24))
+	out.append(_p("floor_arena", "floor", "Dial Arena Floor", 400, ARENA_FLOOR, 620, FLOOR_H))
+	out.append(_plight("tower_lamp_a", "Arena Lamp A", 250, ARENA_TOP - 8, 130))
+	out.append(_plight("tower_lamp_b", "Arena Lamp B", 400, ARENA_TOP - 8, 130))
+	out.append(_plight("tower_lamp_c", "Arena Lamp C", 550, ARENA_TOP - 8, 130))
+	var lever_y := ARENA_TOP - 110.0
+	out.append(_p("ledge_lever_a", "floor", "Lever Ledge A", 250, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
+	out.append(_p("ledge_lever_b", "floor", "Lever Ledge B", 400, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
+	out.append(_p("ledge_lever_c", "floor", "Lever Ledge C", 550, lever_y + FLOOR_H * 0.5, 90, FLOOR_H))
+	for pair2 in [["tower_switch_a", "tower_lamp_a", 250.0, true], ["tower_switch_b", "tower_lamp_b", 400.0, false], ["tower_switch_c", "tower_lamp_c", 550.0, true]]:
+		var asw := _p(str(pair2[0]), "prop_switch", "Arena Lever", float(pair2[2]), lever_y, 24, 40)
+		asw["starts_on"] = bool(pair2[3])
+		asw["target_ids"] = [str(pair2[1])]
+		out.append(asw)
 	return out
 
 

@@ -8,7 +8,8 @@ const PANEL_W := 320.0
 const BOTTOM_H := 44.0
 const OVERSCROLL := 960.0 ## How far past the rightmost piece you can pan to keep building.
 const MIN_WORLD_RIGHT := 1600.0
-const CAM_Y := 360.0
+const MIN_WORLD_BOTTOM := 900.0
+const CAM_Y := 360.0 ## Default Y for short horizontal zones.
 const SNAP_DIST := 12.0
 const HISTORY_MAX := 80
 
@@ -67,6 +68,8 @@ var _syncing_scrub: bool = false
 var _syncing_dialogue: bool = false
 var _syncing_light: bool = false
 var _world_right: float = MIN_WORLD_RIGHT
+var _world_top: float = -80.0
+var _world_bottom: float = MIN_WORLD_BOTTOM
 ## Undo / redo: snapshots of zone JSON + selected piece id.
 var _undo_stack: Array = []
 var _redo_stack: Array = []
@@ -614,6 +617,19 @@ func _piece_right_edge(p: EditorPiece) -> float:
 			return p.position.x + maxf(p.size.x, 8.0) * 0.5
 
 
+func _piece_y_extent(p: EditorPiece) -> Vector2:
+	## Returns (top, bottom) world Y for a piece.
+	if p == null or not is_instance_valid(p):
+		return Vector2(0, 0)
+	match p.kind:
+		EditorPiece.Kind.LIGHT:
+			var r := maxf(p.light_radius, 40.0)
+			return Vector2(p.position.y - r, p.position.y + r)
+		_:
+			var half := maxf(p.size.y, 8.0) * 0.5
+			return Vector2(p.position.y - half, p.position.y + half)
+
+
 func _compute_world_right() -> float:
 	var right := MIN_WORLD_RIGHT
 	for p in _pieces:
@@ -622,8 +638,20 @@ func _compute_world_right() -> float:
 	return right
 
 
+func _compute_world_y_bounds() -> void:
+	_world_top = -80.0
+	_world_bottom = MIN_WORLD_BOTTOM
+	for p in _pieces:
+		if not is_instance_valid(p):
+			continue
+		var ext := _piece_y_extent(p)
+		_world_top = mini(_world_top, ext.x - 80.0)
+		_world_bottom = maxf(_world_bottom, ext.y + 80.0)
+
+
 func _refresh_world_extent() -> void:
 	_world_right = _compute_world_right()
+	_compute_world_y_bounds()
 	_rebuild_bg()
 	_sync_scrub_from_camera(true)
 
@@ -633,7 +661,8 @@ func _rebuild_bg() -> void:
 		return
 	var right := _world_right + OVERSCROLL + 400.0
 	_bg.polygon = PackedVector2Array([
-		Vector2(-400, -400), Vector2(right, -400), Vector2(right, 1100), Vector2(-400, 1100)
+		Vector2(-400, _world_top - 200.0), Vector2(right, _world_top - 200.0),
+		Vector2(right, _world_bottom + 200.0), Vector2(-400, _world_bottom + 200.0)
 	])
 
 
@@ -641,6 +670,18 @@ func _view_page_width() -> float:
 	## Approximate visible world width behind the camera at current zoom.
 	var cont_w := maxf(_vp_container.size.x, 1.0)
 	return cont_w / maxf(_cam.zoom.x, 0.05)
+
+
+func _view_page_height() -> float:
+	var cont_h := maxf(_vp_container.size.y, 1.0)
+	return cont_h / maxf(_cam.zoom.y, 0.05)
+
+
+func _default_cam_y() -> float:
+	## Tall vertical zones start near the lobby / bottom; short zones use CAM_Y.
+	if zone_id == "clockwork_tower":
+		return clampf(2400.0, _world_top + 80.0, _world_bottom - 80.0)
+	return CAM_Y
 
 
 func _sync_scrub_from_camera(_force_range: bool = false) -> void:
@@ -656,8 +697,8 @@ func _sync_scrub_from_camera(_force_range: bool = false) -> void:
 	var left := _cam.position.x - page * 0.5
 	_scrub.set_value_no_signal(clampf(left, 0.0, maxf(0.0, max_scroll - _scrub.page)))
 	if _extent_label:
-		_extent_label.text = "%.0f" % _world_right
-	_scrub_label.text = "x %.0f" % _cam.position.x
+		_extent_label.text = "%.0f×%.0f" % [_world_right, _world_bottom]
+	_scrub_label.text = "x %.0f  y %.0f" % [_cam.position.x, _cam.position.y]
 	_syncing_scrub = false
 
 
@@ -666,18 +707,21 @@ func _on_scrub_changed(value: float) -> void:
 		return
 	var page := _view_page_width()
 	_cam.position.x = value + page * 0.5
-	_cam.position.y = CAM_Y
-	_scrub_label.text = "x %.0f" % _cam.position.x
+	_clamp_camera()
+	_scrub_label.text = "x %.0f  y %.0f" % [_cam.position.x, _cam.position.y]
 
 
 func _clamp_camera() -> void:
 	if _cam == null:
 		return
-	var page := _view_page_width()
-	var max_left := maxf(0.0, _world_right + OVERSCROLL - page)
-	var left := clampf(_cam.position.x - page * 0.5, 0.0, max_left)
-	_cam.position.x = left + page * 0.5
-	_cam.position.y = CAM_Y
+	var page_w := _view_page_width()
+	var max_left := maxf(0.0, _world_right + OVERSCROLL - page_w)
+	var left := clampf(_cam.position.x - page_w * 0.5, 0.0, max_left)
+	_cam.position.x = left + page_w * 0.5
+	var page_h := _view_page_height()
+	var min_cy := _world_top + page_h * 0.5
+	var max_cy := maxf(min_cy, _world_bottom - page_h * 0.5)
+	_cam.position.y = clampf(_cam.position.y, min_cy, max_cy)
 	_sync_scrub_from_camera()
 
 
@@ -723,10 +767,11 @@ func _load_zone() -> void:
 		if bool(raw.get("builtin", false)):
 			continue
 		_spawn_piece_dict(raw)
-	_cam.position = Vector2(700, CAM_Y)
-	_cam.zoom = Vector2.ONE
 	_refresh_list()
 	_refresh_world_extent()
+	_cam.position = Vector2(700 if zone_id != "clockwork_tower" else 430, _default_cam_y())
+	_cam.zoom = Vector2.ONE
+	_clamp_camera()
 	_clear_history()
 	_status.text = "Loaded %s — %d pieces." % [zone_id, _pieces.size()]
 
@@ -945,7 +990,7 @@ func _on_list_selected(index: int) -> void:
 	if _syncing_list or index < 0 or index >= _pieces.size():
 		return
 	_select(_pieces[index])
-	_cam.position = Vector2(_selected.position.x, CAM_Y)
+	_cam.position = Vector2(_selected.position.x, _selected.position.y)
 	_clamp_camera()
 
 
@@ -1428,15 +1473,23 @@ func _playtest() -> void:
 		GameState.checkpoint_position = GameState.pending_spawn
 		get_tree().change_scene_to_file("res://scenes/rooms/HouseInterior.tscn")
 		return
-	GameState.pending_spawn = Vector2(120, 440) if zone_id == "cursed_cottage" else Vector2(160, 460)
+	match zone_id:
+		"clockwork_tower":
+			## ClockworkTowerZone.ENTRY_SPAWN — lobby bottom-left.
+			GameState.pending_spawn = Vector2(140, 2622)
+		"cursed_cottage":
+			GameState.pending_spawn = Vector2(120, 440)
+		_:
+			GameState.pending_spawn = Vector2(160, 460)
 	GameState.last_position = GameState.pending_spawn
 	GameState.checkpoint_position = GameState.pending_spawn
 	match zone_id:
 		"lantern_village":
 			get_tree().change_scene_to_file("res://scenes/rooms/LanternVillage.tscn")
+		"clockwork_tower":
+			get_tree().change_scene_to_file("res://scenes/rooms/ClockworkTower.tscn")
 		_:
 			get_tree().change_scene_to_file("res://scenes/rooms/CursedCottage.tscn")
-
 
 func _on_vp_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

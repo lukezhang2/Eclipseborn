@@ -220,6 +220,8 @@ static func floor_top_for_zone(zone_id: String) -> float:
 	match zone_id:
 		"lantern_village":
 			return 500.0 ## FLOOR_CENTER 520, H 40
+		"clockwork_tower":
+			return 2662.0 ## LOBBY_TOP (LOBBY_FLOOR 2680, H 36)
 		"house_keep", "house_gear", "house_inn":
 			return 500.0 ## HouseInterior FLOOR_Y
 		_:

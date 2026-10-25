@@ -9,12 +9,12 @@ First stop for anyone (human or AI) editing Eclipseborn levels.
 | Editor UI | `scenes/editor/LevelEditor.tscn`, `scripts/editor/LevelEditor.gd` |
 | Piece proxy (draw/select/resize) | `scripts/editor/EditorPiece.gd` |
 | Canonical sizes & anchors | `scripts/editor/PieceSpecs.gd` |
-| Builtin zone seeds | `scripts/editor/ZoneCatalog.gd` (`cursed_cottage`, `lantern_village`, `house_keep`, `house_gear`, `house_inn`) |
+| Builtin zone seeds | `scripts/editor/ZoneCatalog.gd` (`cursed_cottage`, `lantern_village`, `clockwork_tower`, `house_keep`, `house_gear`, `house_inn`) |
 | House shopkeeper defaults | `scripts/world/HouseProfiles.gd` |
 | Load / save / spawn overlays | `scripts/autoload/LevelData.gd` |
 | Saved overlays (repo) | `data/levels/<zone_id>.json` |
 | Browser autosave | `user://editor/<zone_id>.json` |
-| Live rooms (authoritative gameplay) | `scripts/world/CursedCottage.gd`, `LanternVillage.gd`, `HouseInterior.gd` |
+| Live rooms (authoritative gameplay) | `scripts/world/CursedCottage.gd`, `LanternVillage.gd`, `HouseInterior.gd`, `ClockworkTowerZone.gd` |
 | Build version (title menu) | `project.godot` → `application/config/version` (bump patch each change) |
 
 ### Piece IDs (numbered)
