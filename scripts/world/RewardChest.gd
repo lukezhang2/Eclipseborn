@@ -92,3 +92,8 @@ func _on_hurt(_amount: int, _from: Node) -> void:
 		piece.call("pop_out")
 	_hurtbox.set_deferred("monitorable", false)
 	SaveManager.autosave()
+	## Fade the empty pot away so it doesn't sit as a glow blob on the arena floor.
+	var fade := create_tween()
+	fade.tween_interval(0.45)
+	fade.tween_property(self, "modulate:a", 0.0, 0.35)
+	fade.tween_callback(queue_free)

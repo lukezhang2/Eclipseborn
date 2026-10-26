@@ -60,6 +60,9 @@ func _ready() -> void:
 	_build_arena()
 	## Editor overlays (non-builtin pieces) + prune catalog removals.
 	LevelData.apply(self, "clockwork_tower")
+	## Lamps spawn enabled by default; switches may have _ready'd before lamps existed.
+	if GameState.wickwright_defeated():
+		call_deferred("_snuff_arena_lamps")
 
 	var spawn := _resolve_spawn()
 	var player := LevelCommon.spawn_player(self, spawn)
@@ -144,6 +147,21 @@ func _reset_arena_lamps() -> void:
 			var lamp := find_child(str(ids[i]), true, false)
 			if lamp and lamp.has_method("set_on"):
 				lamp.call("set_on", starts[i])
+
+
+func _snuff_arena_lamps() -> void:
+	## After the Wickwright falls, kill the blaze he forced ON — leftover washes
+	## read as orphaned light circles on the arena floor.
+	var ids := ["tower_lamp_6", "tower_lamp_4", "tower_lamp_5"]
+	var switch_ids := ["tower_switch_a", "tower_switch_b", "tower_switch_c"]
+	for i in 3:
+		var sw := find_child(str(switch_ids[i]), true, false)
+		if sw and sw.has_method("set_powered"):
+			sw.call("set_powered", false, false)
+		var lamp := find_child(str(ids[i]), true, false)
+		if lamp and lamp.has_method("set_on"):
+			lamp.call("set_on", false)
+	ShadowWorld.mark_dirty()
 
 
 func _maybe_hint_ladder() -> void:
@@ -481,21 +499,24 @@ func _build_arena() -> void:
 	LevelCommon.make_room_trigger(self, Vector2(400, ARENA_TOP - 90), Vector2(560, 220), "clockwork_tower", "arena", "Dial Arena", "")
 	## Hatch at 480 for antechamber ladder arrival.
 	_story(ARENA_TOP, 620.0, 400.0, [480.0])
-	var mosaic := Polygon2D.new()
-	mosaic.z_index = -5
-	mosaic.position = Vector2(400, ARENA_TOP - 2)
-	mosaic.color = Color(0.35, 0.28, 0.18, 0.55)
-	var mpts := PackedVector2Array()
-	for i in 20:
-		var a := TAU * float(i) / 20.0
-		mpts.append(Vector2(cos(a), sin(a)) * 70.0)
-	mosaic.polygon = mpts
-	add_child(mosaic)
+	## Subtle dial etching (not a filled disc — a solid circle reads as a stuck light wash).
+	var dial := Line2D.new()
+	dial.z_index = -5
+	dial.position = Vector2(400, ARENA_TOP - 2)
+	dial.width = 1.5
+	dial.default_color = Color(0.42, 0.32, 0.2, 0.35)
+	for i in 25:
+		var a := TAU * float(i) / 24.0
+		dial.add_point(Vector2(cos(a), sin(a)) * 48.0)
+	add_child(dial)
 
 	## High arena lamps (tower_lamp_6/4/5) spawn from overlay via apply(); floor a/b/c removed.
 	var ids := ["tower_lamp_6", "tower_lamp_4", "tower_lamp_5"]
 	var xs := [250.0, 400.0, 550.0]
+	## Fight starts with L/R lit; after defeat we snuff all so washes don't linger as floor circles.
 	var starts := [true, false, true]
+	if GameState.wickwright_defeated():
+		starts = [false, false, false]
 
 	## High levers that control those lamps (boss yanks these).
 	var lever_y := ARENA_TOP - 110.0
@@ -517,7 +538,8 @@ func _build_arena() -> void:
 		sw.starts_on = starts[i]
 		sw.target_ids = PackedStringArray([ids[i]])
 		var saved := LevelData.merged_piece("clockwork_tower", sw_id)
-		if saved.has("starts_on"):
+		## Don't re-apply editor starts_on after the boss is dead — keep the arena snuffed.
+		if not GameState.wickwright_defeated() and saved.has("starts_on"):
 			sw.starts_on = bool(saved.get("starts_on"))
 		if saved.has("target_ids"):
 			var tids: PackedStringArray = PackedStringArray()
@@ -972,6 +994,7 @@ func _finish_defeat_cutscene(cam: Camera2D, player: Player, saved_zoom: Vector2,
 	if boss != null and is_instance_valid(boss):
 		boss.queue_free()
 	_boss = null
+	_snuff_arena_lamps()
 	if player and is_instance_valid(player):
 		player.set_control_locked(false)
 	GameState.intro_cutscene_playing = false

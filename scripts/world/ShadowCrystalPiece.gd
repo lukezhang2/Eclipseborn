@@ -100,22 +100,18 @@ func _on_body(body: Node) -> void:
 	if not (body is Player or (body and body.is_in_group("player"))):
 		return
 	_taken = true
+	set_deferred("monitoring", false)
 	if not GameState.collect_crystal_piece(pickup_id):
 		queue_free()
 		return
+	## Hide immediately so a failed/interrupted tween can't leave the disc on the floor.
+	if _root:
+		_root.visible = false
 	var overlay: Node = preload("res://scripts/ui/AbilityUnlockOverlay.gd").new()
 	get_tree().root.add_child(overlay)
 	if overlay.has_method("play_double_jump"):
 		overlay.call("play_double_jump")
-	_play_collect()
-
-
-func _play_collect() -> void:
-	set_deferred("monitoring", false)
-	var tw := create_tween()
-	tw.set_parallel(true)
-	if _root:
-		tw.tween_property(_root, "scale", Vector2(1.8, 1.8), 0.28)
-		tw.tween_property(_root, "modulate:a", 0.0, 0.32)
-	await tw.finished
-	queue_free()
+	## Tree-bound tween so unlock overlay / pause can't stall free forever.
+	var tw := get_tree().create_tween()
+	tw.tween_interval(0.05)
+	tw.tween_callback(queue_free)
