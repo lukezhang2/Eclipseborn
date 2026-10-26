@@ -16,6 +16,8 @@ const ARENA_FLOOR := 360.0
 const ARENA_TOP := ARENA_FLOOR - FLOOR_H * 0.5
 const ROOF_TOP := 20.0
 const ENTRY_SPAWN := Vector2(140.0, LOBBY_TOP - 40.0) ## Bottom-left door spawn.
+## Lever ledges sit at ARENA_TOP - 110; boss hovers above them so floor jumps can't reach.
+const BOSS_HOVER_Y := ARENA_TOP - 195.0
 
 ## Story tops (walkable surface Y), bottom → top. Ladders span between consecutive stories.
 const STORY_SHAFT_1 := LOBBY_TOP - STORY_GAP ## 2462
@@ -108,8 +110,8 @@ func _reset_boss_encounter() -> void:
 	_set_arena_gate_sealed(false)
 	if _boss == null or not is_instance_valid(_boss):
 		_boss = WickwrightScript.new()
-		## Low enough that jump / up-slash sword volumes overlap the hurtbox.
-		_boss.position = Vector2(400, ARENA_TOP - 88)
+		## High perch — only reachable with a jump from the lever ledges.
+		_boss.position = Vector2(400, BOSS_HOVER_Y)
 		add_child(_boss)
 		if _boss.has_signal("defeated"):
 			_boss.connect("defeated", _on_boss_defeated)
@@ -594,7 +596,7 @@ func _build_arena() -> void:
 		_spawn_broken_wall_decor(Vector2(36.0, ARENA_TOP - 100.0))
 	else:
 		_boss = WickwrightScript.new()
-		_boss.position = Vector2(400, ARENA_TOP - 88)
+		_boss.position = Vector2(400, BOSS_HOVER_Y)
 		add_child(_boss)
 		if _boss.has_signal("defeated"):
 			_boss.connect("defeated", _on_boss_defeated)

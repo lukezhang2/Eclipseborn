@@ -179,10 +179,10 @@ func _build() -> void:
 	_hurtbox.owner_body = self
 	var hcs := CollisionShape2D.new()
 	var hr := RectangleShape2D.new()
-	## Tall strike volume: body + drop so jump/side swings reach the hover perch.
-	hr.size = Vector2(84, 160)
+	## Body-centered volume — no long drop into floor-jump range; hit from lever ledges.
+	hr.size = Vector2(84, 96)
 	hcs.shape = hr
-	hcs.position = Vector2(0, 20)
+	hcs.position = Vector2(0, -4)
 	_hurtbox.add_child(hcs)
 	_hurtbox.hurt.connect(_on_hurt)
 	add_child(_hurtbox)
@@ -272,10 +272,13 @@ func _pose_art(delta: float) -> void:
 
 func _do_hover(delta: float) -> void:
 	var p = GameState.player
-	var bob := Vector2(sin(Time.get_ticks_msec() * 0.002) * 40.0, cos(Time.get_ticks_msec() * 0.003) * 18.0)
+	## Keep vertical bob modest so the perch stays above floor-jump reach.
+	var bob := Vector2(sin(Time.get_ticks_msec() * 0.002) * 40.0, cos(Time.get_ticks_msec() * 0.003) * 10.0)
 	var want := _hover_origin + bob
 	if p and is_instance_valid(p):
 		want.x = lerpf(want.x, p.global_position.x, 0.15)
+	## Never drift below the hover perch (dives/sweeps handle descending attacks).
+	want.y = minf(want.y, _hover_origin.y + 12.0)
 	global_position = global_position.lerp(want, clampf(3.0 * delta, 0.0, 1.0))
 	if _cooldown <= 0.0:
 		_pick_attack()
@@ -328,7 +331,8 @@ var _dir_sign: float = 1.0
 
 func _do_sweep(delta: float) -> void:
 	global_position.x += _dir_sign * 280.0 * delta
-	global_position.y = lerpf(global_position.y, _hover_origin.y + 30.0, 4.0 * delta)
+	## Sweep across at perch height — still above the arena floor.
+	global_position.y = lerpf(global_position.y, _hover_origin.y + 8.0, 4.0 * delta)
 	_visual.rotation = lerpf(_visual.rotation, _dir_sign * 0.35, 8.0 * delta)
 	if _state_t > 1.1:
 		_visual.rotation = 0.0

@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.93 — Wickwright hovers above lever ledges (floor jumps can't reach); tighter hurtbox; `index-0_1_93.pck`
 - v0.1.92 — Attack while climbing; hold on rung during swing; climb anim resumes only if still on ladder; `index-0_1_92.pck`
 - v0.1.91 — Unwedge stuck fall-in-place (snap to nearby floor / cancel phantom fall anim); `index-0_1_91.pck`
 - v0.1.90 — Fix crate pull self-acceleration (double-move) and wall-wedge (stand-off gap + wall block); `index-0_1_90.pck`
