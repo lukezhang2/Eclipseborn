@@ -38,10 +38,22 @@ Editor **Save (this session)** and auto-saves only last until you refresh the pa
 - Add **Text label** from Decor; edit text/font size in the inspector. Zone plaques (e.g. tower workshop/gallery) appear as `prop_text` pieces in the editor.
 - **Right-click** (or middle-mouse) drag pans the viewport.
 
+### Add palette tabs
+
+| Tab | Contents |
+|-----|----------|
+| **Terrain** | Steel floor, block, wall, moving platform, ladder, pipe |
+| **Lights** | Lantern, lever |
+| **Doors** | Switchable door, zone door, hatch, **house facade**, clockwork tower |
+| **Props** | Pushable/decor crates, bench, vent, desk, valve, glowing jar, rest hearth |
+| **Scenery** | Brick mural, backdrop styles, bg gear, window, text label |
+| **Actors** | NPC/shopkeeper, enemy, shadow crystal |
+
 ### Zone doors & houses
 
-- **Zone door** (`prop_exit`) and **House facade** (`prop_house`): select → **Zone link** (target zone, spawn X/Y, fade caption). Builds on existing house exits / tower→village door.
-- Palette also includes hatch, pipe, jar, enemy, tower so more builtins can be placed as non-catalog overlays.
+- **Zone door** (`prop_exit`) and **House facade** (`prop_house`): select → **Zone link** (target zone, spawn X/Y, fade caption).
+- Placing a **House facade** creates a new selectable interior zone (`house_1`, `house_2`, …) seeded with a blank shop. Open it from the Zone dropdown to edit the interior.
+- Deleting the last facade that points at a custom house zone removes that zone from the list (builtin `house_keep` / `house_gear` / `house_inn` are never deleted).
 
 ### Lanterns
 

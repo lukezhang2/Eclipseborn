@@ -6,7 +6,7 @@ class_name ZoneCatalog
 ## See docs/LEVEL_EDITOR.md for the JSON schema.
 
 
-static func zone_ids() -> PackedStringArray:
+static func builtin_zone_ids() -> PackedStringArray:
 	return PackedStringArray([
 		"cursed_cottage",
 		"lantern_village",
@@ -15,6 +15,14 @@ static func zone_ids() -> PackedStringArray:
 		"house_gear",
 		"house_inn",
 	])
+
+
+static func zone_ids() -> PackedStringArray:
+	var out := builtin_zone_ids()
+	for id in LevelData.editor_house_zone_ids():
+		if not out.has(id):
+			out.append(id)
+	return out
 
 
 static func pieces_for(zone_id: String) -> Array:
@@ -26,7 +34,29 @@ static func pieces_for(zone_id: String) -> Array:
 		"house_keep", "house_gear", "house_inn":
 			return _house_interior(zone_id)
 		_:
+			if LevelData.is_house_zone(zone_id):
+				return _house_interior(zone_id)
 			return _cottage()
+
+
+## Fresh shop interior JSON for an editor-created house zone.
+static func default_house_data(zone_id: String, title: String = "House") -> Dictionary:
+	var pieces: Array = []
+	for raw in _house_interior(zone_id):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var p: Dictionary = (raw as Dictionary).duplicate(true)
+		## New interiors are fully editable overlays (not catalog builtins).
+		p["builtin"] = false
+		pieces.append(p)
+	return {
+		"schema": PieceSpecs.SCHEMA_VERSION,
+		"zone": zone_id,
+		"pieces": pieces,
+		"removed_ids": [],
+		"backdrop": LevelData.default_backdrop(zone_id),
+		"title": title,
+	}
 
 
 static func _cottage() -> Array:

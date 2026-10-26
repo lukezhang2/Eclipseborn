@@ -260,8 +260,7 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	zone_row.add_child(_lbl("Zone"))
 	_zone_option = OptionButton.new()
 	_zone_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for i in ZoneCatalog.zone_ids().size():
-		_zone_option.add_item(ZoneCatalog.zone_ids()[i], i)
+	_rebuild_zone_option()
 	_zone_option.item_selected.connect(func(i: int) -> void:
 		zone_id = _zone_option.get_item_text(i)
 		_load_zone()
@@ -342,6 +341,8 @@ func _build_sidebar(col: VBoxContainer) -> void:
 		if _selected and _selected.display_name != t:
 			_push_undo()
 			_selected.display_name = t
+			if _selected.catalog_kind == "prop_house" and LevelData.is_editor_house_zone(_selected.target_zone):
+				LevelData.rename_editor_house_zone(_selected.target_zone, t)
 			_selected._rebuild()
 			_selected.set_selected(true)
 			_refresh_list()
@@ -570,13 +571,16 @@ func _build_sidebar(col: VBoxContainer) -> void:
 	_link_zone_row.add_child(zl_hint)
 	_link_zone_row.add_child(_lbl("Target zone"))
 	_target_zone_option = OptionButton.new()
-	for zid in ZoneCatalog.zone_ids():
-		_target_zone_option.add_item(zid)
+	_rebuild_target_zone_option()
 	_target_zone_option.item_selected.connect(func(i: int) -> void:
 		if _syncing_zone_link or _history_restoring or _selected == null:
 			return
 		_push_undo()
-		_selected.target_zone = _target_zone_option.get_item_text(i)
+		var prev := _selected.target_zone
+		var next := _target_zone_option.get_item_text(i)
+		_selected.target_zone = next
+		if _selected.catalog_kind == "prop_house":
+			_on_house_target_changed(_selected, prev, next)
 		_status.text = "Links to %s." % _selected.target_zone
 	)
 	_link_zone_row.add_child(_target_zone_option)
@@ -1088,14 +1092,51 @@ func _refresh_sky_preview() -> void:
 		_bg.color = vc
 
 
-## Add palette: [tab title, [[kind, label], ...]]. Only kinds LevelData can spawn (plus the desk).
+## Add palette: [tab title, [[kind, label], ...]]. Every kind LevelData can spawn.
 const ADD_CATEGORIES := [
-	["Build", [["floor", "Steel floor"], ["prop_platform", "Moving platform"], ["wall", "Wall"], ["prop_door", "Door (switchable)"], ["prop_exit", "Zone door"], ["prop_ladder", "Ladder"], ["prop_pipe", "Pipe / rail"]]],
-	["Lights", [["light", "Lantern"], ["prop_switch", "Lever"]]],
-	["Props", [["crate", "Pushable crate"], ["prop_crate", "Decor crate"], ["prop_bench", "Bench"], ["prop_vent", "Steam vent"], ["prop_desk", "Desk"], ["prop_hatch", "Hatch"], ["prop_breakable", "Glowing jar"], ["prop_valve", "Valve"]]],
-	["Background", [["background", "Brick wall mural"], ["prop_backdrop", "Brick & copper"], ["prop_backdrop_1", "Teal foundry"], ["prop_backdrop_2", "Riveted bulkhead"], ["prop_bg_gear", "Background gear"], ["prop_window", "Window"], ["prop_text", "Text label"]]],
-	["Decor", [["prop_house", "House facade"], ["prop_tower", "Clockwork tower"]]],
-	["People", [["prop_checkpoint", "Checkpoint"], ["prop_npc", "NPC / Shopkeeper"], ["prop_enemy", "Enemy"], ["prop_pickup", "Shadow crystal"]]],
+	["Terrain", [
+		["floor", "Steel floor"],
+		["block", "Block"],
+		["wall", "Wall"],
+		["prop_platform", "Moving platform"],
+		["prop_ladder", "Ladder"],
+		["prop_pipe", "Pipe / rail"],
+	]],
+	["Lights", [
+		["light", "Lantern"],
+		["prop_switch", "Lever"],
+	]],
+	["Doors", [
+		["prop_door", "Door (switchable)"],
+		["prop_exit", "Zone door"],
+		["prop_hatch", "Hatch"],
+		["prop_house", "House facade"],
+		["prop_tower", "Clockwork tower"],
+	]],
+	["Props", [
+		["crate", "Pushable crate"],
+		["prop_crate", "Decor crate"],
+		["prop_bench", "Bench"],
+		["prop_vent", "Steam vent"],
+		["prop_desk", "Desk"],
+		["prop_valve", "Valve"],
+		["prop_breakable", "Glowing jar"],
+		["prop_checkpoint", "Rest hearth"],
+	]],
+	["Scenery", [
+		["background", "Brick wall mural"],
+		["prop_backdrop", "Brick & copper"],
+		["prop_backdrop_1", "Teal foundry"],
+		["prop_backdrop_2", "Riveted bulkhead"],
+		["prop_bg_gear", "Background gear"],
+		["prop_window", "Window"],
+		["prop_text", "Text label"],
+	]],
+	["Actors", [
+		["prop_npc", "NPC / Shopkeeper"],
+		["prop_enemy", "Enemy"],
+		["prop_pickup", "Shadow crystal"],
+	]],
 ]
 
 
@@ -1103,8 +1144,8 @@ const ADD_CATEGORIES := [
 func _build_add_palette() -> Control:
 	var tabs := TabContainer.new()
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Five tabs must fit the narrow sidebar without scroll arrows.
-	tabs.add_theme_font_size_override("font_size", 12)
+	## Compact labels so Terrain/Lights/Doors/Props/Scenery/Actors fit.
+	tabs.add_theme_font_size_override("font_size", 11)
 	for sb_name in ["tab_selected", "tab_unselected", "tab_hovered"]:
 		var sb := tabs.get_theme_stylebox(sb_name).duplicate() as StyleBox
 		sb.content_margin_left = 6
@@ -1162,7 +1203,7 @@ func _palette_preview(kind: String) -> Texture2D:
 	var scale := 1.0
 	var offset := Vector2.ZERO
 	match kind:
-		"floor", "prop_platform":
+		"floor", "block", "prop_platform":
 			art.kind = WorldArt.Kind.PLATFORM
 			art.style = LevelCommon.platform_style
 			art.size = Vector2(100, 18)
@@ -1505,6 +1546,8 @@ func _load_zone() -> void:
 		if bool(raw.get("builtin", false)):
 			continue
 		_spawn_piece_dict(raw)
+	_sync_houses_from_pieces()
+	_rebuild_zone_dropdowns()
 	_refresh_list()
 	_refresh_world_extent()
 	_sync_backdrop_inspector()
@@ -1967,14 +2010,23 @@ func _delete_selected() -> void:
 	_selected = null
 	_selection.clear()
 	_group_drag_starts.clear()
+	var house_zones_to_check: Array = []
 	for piece in doomed:
 		var id := piece.piece_id
 		ids.append(id)
+		if piece.catalog_kind == "prop_house":
+			var hz := piece.target_zone.strip_edges()
+			if hz == "":
+				hz = piece.piece_id
+			house_zones_to_check.append(hz)
 		_pieces.erase(piece)
 		if piece.builtin and id != "" and not _removed_ids.has(id):
 			_removed_ids.append(id)
 		if is_instance_valid(piece):
 			piece.queue_free()
+	for hz in house_zones_to_check:
+		_maybe_unregister_house_zone(str(hz))
+	_rebuild_zone_dropdowns()
 	_refresh_list()
 	_refresh_world_extent()
 	if ids.size() == 1:
@@ -1992,6 +2044,113 @@ func _existing_piece_ids() -> Array:
 	for rid in _removed_ids:
 		ids.append(str(rid))
 	return ids
+
+
+func _rebuild_zone_option() -> void:
+	if _zone_option == null:
+		return
+	var keep := zone_id
+	_zone_option.clear()
+	var ids := ZoneCatalog.zone_ids()
+	for i in ids.size():
+		_zone_option.add_item(ids[i], i)
+	var found := false
+	for i in _zone_option.item_count:
+		if _zone_option.get_item_text(i) == keep:
+			_zone_option.select(i)
+			found = true
+			break
+	if not found and _zone_option.item_count > 0:
+		_zone_option.select(0)
+		zone_id = _zone_option.get_item_text(0)
+
+
+func _rebuild_target_zone_option() -> void:
+	if _target_zone_option == null:
+		return
+	var keep := ""
+	if _target_zone_option.item_count > 0 and _target_zone_option.selected >= 0:
+		keep = _target_zone_option.get_item_text(_target_zone_option.selected)
+	_target_zone_option.clear()
+	for zid in ZoneCatalog.zone_ids():
+		_target_zone_option.add_item(zid)
+	if keep != "":
+		for i in _target_zone_option.item_count:
+			if _target_zone_option.get_item_text(i) == keep:
+				_target_zone_option.select(i)
+				return
+	if _target_zone_option.item_count > 0:
+		_target_zone_option.select(0)
+
+
+func _rebuild_zone_dropdowns() -> void:
+	_rebuild_zone_option()
+	_rebuild_target_zone_option()
+
+
+func _house_zone_still_referenced(zone_id_check: String, ignore: EditorPiece = null) -> bool:
+	for p in _pieces:
+		if p == null or not is_instance_valid(p) or p == ignore:
+			continue
+		if p.catalog_kind != "prop_house":
+			continue
+		var tz := p.target_zone.strip_edges()
+		if tz == "":
+			tz = p.piece_id
+		if tz == zone_id_check:
+			return true
+	return false
+
+
+func _maybe_unregister_house_zone(hz: String) -> void:
+	if hz == "" or LevelData.is_builtin_house_zone(hz):
+		return
+	if not LevelData.is_editor_house_zone(hz) and not hz.begins_with("house_"):
+		return
+	if _house_zone_still_referenced(hz):
+		return
+	var was_editing := zone_id == hz
+	LevelData.unregister_editor_house_zone(hz)
+	if was_editing:
+		zone_id = "lantern_village"
+		_load_zone()
+
+
+func _on_house_target_changed(piece: EditorPiece, prev: String, next: String) -> void:
+	if piece == null:
+		return
+	## Leaving a custom house zone with no remaining facade → drop that zone.
+	if prev != next:
+		_maybe_unregister_house_zone(prev)
+	## Pointing at a fresh house_* id creates / ensures the interior zone.
+	if LevelData.is_editor_house_zone(next) or (next.begins_with("house_") and not LevelData.is_builtin_house_zone(next)):
+		LevelData.register_editor_house_zone(next, piece.display_name)
+	_rebuild_zone_dropdowns()
+
+
+func _register_new_house_for_piece(piece: EditorPiece) -> void:
+	if piece == null or piece.catalog_kind != "prop_house":
+		return
+	var hz := piece.target_zone.strip_edges()
+	if hz == "" or LevelData.is_builtin_house_zone(hz):
+		hz = LevelData.alloc_editor_house_zone_id()
+		piece.target_zone = hz
+	LevelData.register_editor_house_zone(hz, piece.display_name)
+	_rebuild_zone_dropdowns()
+
+
+## Re-attach custom house zones referenced by facades after a zone load / import.
+func _sync_houses_from_pieces() -> void:
+	for p in _pieces:
+		if p == null or not is_instance_valid(p) or p.catalog_kind != "prop_house":
+			continue
+		var hz := p.target_zone.strip_edges()
+		if hz == "":
+			continue
+		if LevelData.is_builtin_house_zone(hz):
+			continue
+		if hz.begins_with("house_"):
+			LevelData.register_editor_house_zone(hz, p.display_name)
 
 
 func _id_base_for_palette(palette: String) -> String:
@@ -2058,6 +2217,8 @@ func _pretty_palette_name(palette: String) -> String:
 			return "Enemy"
 		"prop_pipe":
 			return "Pipe"
+		"block":
+			return "Block"
 		_:
 			return palette.replace("prop_", "").replace("_", " ").capitalize()
 
@@ -2082,8 +2243,16 @@ func _duplicate_selected() -> void:
 		d["name"] = PieceSpecs.number_display_name(str(d.get("name", base)), num)
 		d["x"] = float(d.get("x", src.position.x)) + 28.0
 		d["y"] = float(d.get("y", src.position.y)) - 28.0
+		if src.catalog_kind == "prop_house":
+			## Duplicate gets a fresh interior — don't share the source house zone.
+			var hz := LevelData.alloc_editor_house_zone_id()
+			d["target_zone"] = hz
+			d["house_id"] = hz
 		_spawn_piece_dict(d)
-		created.append(_pieces.back())
+		var neo: EditorPiece = _pieces.back()
+		if src.catalog_kind == "prop_house":
+			_register_new_house_for_piece(neo)
+		created.append(neo)
 		new_ids.append(new_id)
 	## Replace selection with the duplicates.
 	for p in _selection:
@@ -2224,7 +2393,10 @@ func _add_piece() -> void:
 		d["spawn_y"] = 460
 		d["caption"] = "Traveling…"
 	if _palette_id == "prop_house":
-		d["target_zone"] = "house_keep"
+		## Each new facade gets its own editable interior zone.
+		var hz := LevelData.alloc_editor_house_zone_id()
+		d["target_zone"] = hz
+		d["house_id"] = hz
 		d["spawn_x"] = 160
 		d["spawn_y"] = 460
 		d["caption"] = "Entering…"
@@ -2254,7 +2426,11 @@ func _add_piece() -> void:
 	d["layer"] = PieceSpecs.default_draw_layer(_palette_id)
 	d["rotation"] = 0
 	_spawn_piece_dict(d)
-	_select(_pieces.back())
+	var created: EditorPiece = _pieces.back()
+	if _palette_id == "prop_house":
+		_register_new_house_for_piece(created)
+		_status.text = "Added house → zone '%s' (open it from the Zone list)." % created.target_zone
+	_select(created)
 	tool = Tool.MOVE
 	_tool_label.text = "Tool: Move"
 	_sync_move_arrows()
@@ -2384,6 +2560,8 @@ func _apply_snapshot(snap: Dictionary) -> void:
 	for raw_p in pieces:
 		if typeof(raw_p) == TYPE_DICTIONARY:
 			_spawn_piece_dict(raw_p)
+	_sync_houses_from_pieces()
+	_rebuild_zone_dropdowns()
 	_refresh_list()
 	_refresh_world_extent()
 	var want := str(snap.get("selected_id", ""))

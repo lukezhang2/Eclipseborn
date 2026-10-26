@@ -21,6 +21,11 @@ static var _session_overlays: Dictionary = {}
 ## True after this tab writes a session save. Lets load_raw read user:// mid-session
 ## (playtest) without resurrecting IndexedDB leftovers from a previous page load.
 static var _session_disk_trusted: bool = false
+## Editor-created house interiors: zone_id -> { title: String }.
+## Placing a House facade registers one; deleting the last facade removes it.
+static var _editor_house_zones: Dictionary = {}
+
+const BUILTIN_HOUSE_ZONES := ["house_keep", "house_gear", "house_inn"]
 
 
 func _ready() -> void:
@@ -48,9 +53,85 @@ func _clear_editor_after_idbfs() -> void:
 ## Wipe session memory + on-disk editor overlays (call on boot / refresh).
 static func clear_session_editor_overlays(wipe_disk: bool = true) -> void:
 	_session_overlays.clear()
+	_editor_house_zones.clear()
 	_session_disk_trusted = false
 	if wipe_disk:
 		clear_user_editor_files_only()
+
+
+static func is_builtin_house_zone(zone_id: String) -> bool:
+	return zone_id in BUILTIN_HOUSE_ZONES
+
+
+static func is_editor_house_zone(zone_id: String) -> bool:
+	if zone_id == "" or is_builtin_house_zone(zone_id):
+		return false
+	if _editor_house_zones.has(zone_id):
+		return true
+	## Session overlay left behind after a refresh of the registry map.
+	return zone_id.begins_with("house_") and _session_overlays.has(zone_id)
+
+
+static func is_house_zone(zone_id: String) -> bool:
+	return is_builtin_house_zone(zone_id) or is_editor_house_zone(zone_id) \
+		or (zone_id.begins_with("house_") and zone_id != "house_")
+
+
+static func editor_house_zone_ids() -> PackedStringArray:
+	var out := PackedStringArray()
+	for id in _editor_house_zones.keys():
+		out.append(str(id))
+	out.sort()
+	return out
+
+
+static func editor_house_title(zone_id: String) -> String:
+	if _editor_house_zones.has(zone_id):
+		return str((_editor_house_zones[zone_id] as Dictionary).get("title", zone_id))
+	return zone_id.replace("house_", "").replace("_", " ").capitalize()
+
+
+static func alloc_editor_house_zone_id() -> String:
+	var n := 1
+	while true:
+		var cand := "house_%d" % n
+		if not is_builtin_house_zone(cand) and not _editor_house_zones.has(cand) \
+				and not _session_overlays.has(cand):
+			return cand
+		n += 1
+	return "house_1" ## unreachable
+
+
+static func register_editor_house_zone(zone_id: String, title: String = "House") -> void:
+	if zone_id == "" or is_builtin_house_zone(zone_id):
+		return
+	var nice := title.strip_edges()
+	if nice == "":
+		nice = "House"
+	_editor_house_zones[zone_id] = {"title": nice}
+	if not _session_overlays.has(zone_id):
+		## Seed a blank shop interior so the zone is editable / playable immediately.
+		var seed := ZoneCatalog.default_house_data(zone_id, nice)
+		save_raw(zone_id, seed, false)
+
+
+static func unregister_editor_house_zone(zone_id: String) -> void:
+	if zone_id == "" or is_builtin_house_zone(zone_id):
+		return
+	_editor_house_zones.erase(zone_id)
+	_session_overlays.erase(zone_id)
+	var user_path := USER_DIR + zone_id + ".json"
+	if FileAccess.file_exists(user_path):
+		DirAccess.remove_absolute(user_path)
+
+
+static func rename_editor_house_zone(zone_id: String, title: String) -> void:
+	if not _editor_house_zones.has(zone_id):
+		return
+	var nice := title.strip_edges()
+	if nice == "":
+		nice = "House"
+	(_editor_house_zones[zone_id] as Dictionary)["title"] = nice
 
 
 static func clear_user_editor_files_only() -> void:

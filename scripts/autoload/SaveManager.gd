@@ -171,10 +171,12 @@ func scene_for_zone(zone_id: String) -> String:
 			return "res://scenes/rooms/LanternVillage.tscn"
 		"clockwork_tower":
 			return "res://scenes/rooms/ClockworkTower.tscn"
-		"house_keep", "house_gear", "house_inn":
-			GameState.set_meta("pending_house_id", zone_id)
-			return "res://scenes/rooms/HouseInterior.tscn"
+		"cursed_cottage":
+			return "res://scenes/rooms/CursedCottage.tscn"
 		_:
+			if HouseProfiles.is_house(zone_id):
+				GameState.set_meta("pending_house_id", zone_id)
+				return "res://scenes/rooms/HouseInterior.tscn"
 			return "res://scenes/rooms/CursedCottage.tscn"
 
 

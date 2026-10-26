@@ -4,11 +4,15 @@ class_name HouseProfiles
 
 
 static func all_ids() -> PackedStringArray:
-	return PackedStringArray(["house_keep", "house_gear", "house_inn"])
+	var out := PackedStringArray(["house_keep", "house_gear", "house_inn"])
+	for id in LevelData.editor_house_zone_ids():
+		if not out.has(id):
+			out.append(id)
+	return out
 
 
 static func is_house(zone_id: String) -> bool:
-	return zone_id in all_ids()
+	return LevelData.is_house_zone(zone_id)
 
 
 static func get_profile(house_id: String) -> Dictionary:
@@ -43,7 +47,7 @@ static func get_profile(house_id: String) -> Dictionary:
 					{"id": "snuff", "stock": 1},
 				],
 			}
-		_:
+		"house_keep":
 			return {
 				"id": "house_keep",
 				"title": "Lantern Keep",
@@ -52,6 +56,18 @@ static func get_profile(house_id: String) -> Dictionary:
 				"npc_y": 450.0,
 				"return_spawn": Vector2(520, 460),
 				"shop_items": ShopCatalog.default_shop_stock(),
+			}
+		_:
+			## Editor-created house — blank shop until the designer fills it.
+			var title := LevelData.editor_house_title(house_id)
+			return {
+				"id": house_id,
+				"title": title,
+				"keeper_name": title,
+				"npc_id": "npc_shop",
+				"return_spawn": Vector2(520, 460),
+				"shop_items": [],
+				"lines": [],
 			}
 
 
