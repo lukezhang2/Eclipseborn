@@ -233,6 +233,18 @@ func load_game(slot: int) -> bool:
 	GameState.checkpoint_path = str(cfg.get_value("meta", "checkpoint_id", ""))
 	## Death respawn uses the rest hearth — never the continue/logout position.
 	GameState.checkpoint_position = _resolve_checkpoint_position(cfg, hearths, continue_pos)
+	GameState.checkpoint_zone_id = str(cfg.get_value("meta", "checkpoint_zone", ""))
+	if GameState.checkpoint_zone_id == "" and GameState.checkpoint_path != "":
+		## Legacy saves: infer zone from the matching hearth entry.
+		for raw in hearths:
+			if typeof(raw) != TYPE_DICTIONARY:
+				continue
+			var e: Dictionary = raw
+			if str(e.get("id", "")) == GameState.checkpoint_path:
+				GameState.checkpoint_zone_id = str(e.get("zone", GameState.current_zone_id))
+				break
+	if GameState.checkpoint_zone_id == "":
+		GameState.checkpoint_zone_id = GameState.current_zone_id
 	GameState.health_changed.emit(GameState.health, GameState.max_health)
 	GameState.shade_changed.emit(GameState.shade)
 	GameState.currency_changed.emit(GameState.currency)
@@ -359,6 +371,7 @@ func save_game(slot: int = -1) -> void:
 	cfg.set_value("map", "checkpoints", hearths)
 	cfg.set_value("map", "checkpoints_json", JSON.stringify(hearths))
 	cfg.set_value("meta", "checkpoint_id", GameState.checkpoint_path)
+	cfg.set_value("meta", "checkpoint_zone", GameState.checkpoint_zone_id)
 	cfg.set_value("world", "broken", GameState.broken_ids)
 	cfg.set_value("world", "collected", GameState.collected_ids)
 	cfg.set_value("world", "shop_stock", GameState.shop_stock)

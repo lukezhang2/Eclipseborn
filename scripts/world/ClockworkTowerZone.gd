@@ -79,6 +79,10 @@ func _exit_tree() -> void:
 		GameState.respawned.disconnect(_on_player_respawned)
 	if GameState.died.is_connected(_on_player_died):
 		GameState.died.disconnect(_on_player_died)
+	## Leaving mid-boss cutscene must not leave the world locked.
+	_cutscene_running = false
+	if GameState.current_zone_id != "clockwork_tower":
+		GameState.intro_cutscene_playing = false
 
 
 func _on_player_died() -> void:

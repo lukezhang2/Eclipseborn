@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.86 — Tower door Interact-only; death/cutscene state cleared on zone change; checkpoints zone-aware so leaving tower can't softlock death; `index-0_1_86.pck`
 - v0.1.85 — Demo end via shaft descent; Wickwright falls left; Match-the-Hour removed (levers slam all ON); `index-0_1_85.pck`
 - v0.1.84 — step off the top of a ladder smoothly instead of hopping; `index-0_1_84.pck`
 - v0.1.83 — sync clockwork_tower (arena levers→lamps 4–6, remove floor a/b/c); `index-0_1_83.pck`

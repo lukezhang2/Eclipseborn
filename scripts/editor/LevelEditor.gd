@@ -2567,11 +2567,11 @@ func _playtest() -> void:
 	GameState.editor_playtest_zone = zone_id
 	GameState.needs_intro_cutscene = false
 	GameState.current_zone_id = zone_id
+	GameState.clear_transient_zone_state()
 	if HouseProfiles.is_house(zone_id):
 		GameState.set_meta("pending_house_id", zone_id)
 		GameState.pending_spawn = Vector2(120, 460)
-		GameState.last_position = GameState.pending_spawn
-		GameState.checkpoint_position = GameState.pending_spawn
+		GameState.set_checkpoint(GameState.pending_spawn, "playtest", zone_id)
 		get_tree().change_scene_to_file("res://scenes/rooms/HouseInterior.tscn")
 		return
 	match zone_id:
@@ -2582,8 +2582,7 @@ func _playtest() -> void:
 			GameState.pending_spawn = Vector2(120, 440)
 		_:
 			GameState.pending_spawn = Vector2(160, 460)
-	GameState.last_position = GameState.pending_spawn
-	GameState.checkpoint_position = GameState.pending_spawn
+	GameState.set_checkpoint(GameState.pending_spawn, "playtest", zone_id)
 	match zone_id:
 		"lantern_village":
 			get_tree().change_scene_to_file("res://scenes/rooms/LanternVillage.tscn")

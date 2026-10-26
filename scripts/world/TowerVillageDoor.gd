@@ -1,6 +1,7 @@
 extends ZoneLinkDoor
 class_name TowerVillageDoor
 ## Lobby door back to Lantern Village (left of the tower facade).
+## Interact only — walking into the door must not auto-leave.
 
 
 func _ready() -> void:
@@ -13,4 +14,5 @@ func _ready() -> void:
 	if verb == "" or verb == "Interact":
 		verb = "Village"
 	show_exit_arrow = false
+	walk_to_exit = false
 	super._ready()

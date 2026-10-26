@@ -77,7 +77,7 @@ func _process(_delta: float) -> void:
 
 
 func _enter() -> void:
-	if not GameState.can_interact():
+	if not GameState.can_interact() or GameState.is_dead:
 		return
 	var zone := house_id if house_id != "" else "house_keep"
 	GameState.set_meta("pending_house_id", zone)
@@ -85,7 +85,6 @@ func _enter() -> void:
 	GameState.pending_spawn = interior_spawn
 	GameState.current_zone_id = zone
 	GameState.last_position = GameState.pending_spawn
-	GameState.lock_interact(1.25)
 	var title := house_name if house_name != "" else "the house"
 	var caption := travel_caption.strip_edges()
 	if caption == "":
@@ -93,4 +92,4 @@ func _enter() -> void:
 	var scene := interior_scene
 	if scene == "" or scene == "res://scenes/rooms/HouseInterior.tscn":
 		scene = SaveManager.scene_for_zone(zone)
-	ZoneTransition.go(get_tree(), scene, caption)
+	GameState.change_zone(scene, caption, interior_spawn)

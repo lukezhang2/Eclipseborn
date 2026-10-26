@@ -35,6 +35,8 @@ var has_snuff: bool = false
 
 var checkpoint_path: String = ""
 var checkpoint_position: Vector2 = Vector2.ZERO
+## Zone the active rest hearth belongs to — death must not snap into another zone's coords.
+var checkpoint_zone_id: String = ""
 ## Activated rest hearths for fast travel: [{id, zone, x, y, name}, ...]
 var activated_checkpoints: Array = []
 ## Live position written on exit / autosave (may differ from checkpoint).
@@ -46,6 +48,8 @@ var editor_playtesting: bool = false
 var editor_playtest_zone: String = ""
 var current_zone_id: String = "cursed_cottage"
 var current_room_id: String = "hall"
+## Bumped to cancel an in-flight death fade when changing zones mid-sequence.
+var _death_seq: int = 0
 ## zone_id -> Array of room_id strings discovered
 var discovered_rooms: Dictionary = {}
 ## World cells the camera has actually framed, per zone. Terraria-style map reveal.
@@ -90,6 +94,8 @@ func lock_interact(seconds: float = 0.85) -> void:
 
 
 func can_interact() -> bool:
+	if is_dead or intro_cutscene_playing:
+		return false
 	return Time.get_ticks_msec() >= _interact_lock_until_msec
 
 
@@ -213,6 +219,7 @@ func reset_run() -> void:
 	has_snuff = false
 	checkpoint_path = ""
 	checkpoint_position = Vector2.ZERO
+	checkpoint_zone_id = ""
 	activated_checkpoints = []
 	last_position = Vector2.ZERO
 	current_zone_id = "cursed_cottage"
@@ -228,6 +235,9 @@ func reset_run() -> void:
 	map_seen_rev = 0
 	needs_intro_cutscene = true
 	intro_cutscene_playing = false
+	is_dead = false
+	_death_seq += 1
+	_clear_death_fade()
 	health_changed.emit(health, max_health)
 	shade_changed.emit(shade)
 	currency_changed.emit(currency)
@@ -467,21 +477,24 @@ func enter_room(zone_id: String, room_id: String) -> void:
 	room_entered.emit(zone_id, room_id)
 
 
-func set_checkpoint(pos: Vector2, path: String = "") -> void:
+func set_checkpoint(pos: Vector2, path: String = "", zone: String = "", heal_full: bool = true) -> void:
 	checkpoint_position = pos
 	last_position = pos
 	checkpoint_path = path
-	health = max_health
-	shade = 1.0
-	health_changed.emit(health, max_health)
-	shade_changed.emit(shade)
+	checkpoint_zone_id = zone if zone != "" else current_zone_id
+	if heal_full:
+		health = max_health
+		shade = 1.0
+		health_changed.emit(health, max_health)
+		shade_changed.emit(shade)
 
 
 func activate_checkpoint(id: String, zone: String, pos: Vector2, label: String = "") -> void:
-	set_checkpoint(pos, id)
+	var z := zone if zone != "" else current_zone_id
+	set_checkpoint(pos, id, z)
 	var entry := {
 		"id": id if id != "" else "cp_%d" % int(pos.x),
-		"zone": zone if zone != "" else current_zone_id,
+		"zone": z,
 		"x": pos.x,
 		"y": pos.y,
 		"name": label if label != "" else (id if id != "" else "Rest"),
@@ -525,9 +538,7 @@ func travel_to_checkpoint(entry: Dictionary) -> void:
 	var zone := str(entry.get("zone", current_zone_id))
 	var pos := Vector2(float(entry.get("x", 0)), float(entry.get("y", 0)))
 	pending_spawn = pos
-	checkpoint_position = pos
-	checkpoint_path = str(entry.get("id", ""))
-	last_position = pos
+	set_checkpoint(pos, str(entry.get("id", "")), zone)
 	current_zone_id = zone
 	var scene_path := SaveManager.scene_for_zone(zone)
 	var label := str(entry.get("name", "Rest"))
@@ -536,11 +547,31 @@ func travel_to_checkpoint(entry: Dictionary) -> void:
 
 ## Prefer this over raw change_scene_to_file so the gear fade always plays.
 func change_zone(scene_path: String, caption: String = "", spawn: Vector2 = Vector2.ZERO) -> void:
+	## Leaving a zone must not carry death fades / cutscene locks into the next room.
+	clear_transient_zone_state()
 	if spawn != Vector2.ZERO:
 		pending_spawn = spawn
 		last_position = spawn
 	lock_interact(1.25)
 	ZoneTransition.go(get_tree(), scene_path, caption if caption != "" else "…")
+
+
+## Call before any scene change so death/cutscene flags don't leak (tower → village, etc.).
+func clear_transient_zone_state() -> void:
+	_death_seq += 1
+	is_dead = false
+	intro_cutscene_playing = false
+	_clear_death_fade()
+	AudioManager.stop_all_burns()
+
+
+func _clear_death_fade() -> void:
+	var tree := get_tree()
+	if tree == null or tree.root == null:
+		return
+	var fade := tree.root.get_node_or_null("DeathFade")
+	if fade:
+		fade.queue_free()
 
 
 func apply_light_exposure(dt: float, kind: LightKind, intensity: float = 1.0) -> void:
@@ -617,12 +648,15 @@ func _die() -> void:
 
 func _run_death_sequence() -> void:
 	## Death pose + screen fade, then soft respawn at the last rest hearth.
+	var seq := _death_seq
 	if player and is_instance_valid(player) and player.has_method("play_death"):
 		player.play_death()
 	var tree := get_tree()
 	if tree == null:
-		_respawn()
+		if seq == _death_seq:
+			_respawn()
 		return
+	_clear_death_fade()
 	var layer := CanvasLayer.new()
 	layer.layer = 90
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -637,13 +671,25 @@ func _run_death_sequence() -> void:
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.tween_property(dim, "color:a", 1.0, 0.55)
 	await tw.finished
+	if seq != _death_seq:
+		if is_instance_valid(layer):
+			layer.queue_free()
+		return
 	await tree.create_timer(0.2).timeout
+	if seq != _death_seq:
+		if is_instance_valid(layer):
+			layer.queue_free()
+		return
 	_respawn()
 	if is_instance_valid(dim):
 		var tw2 := tree.create_tween()
 		tw2.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 		tw2.tween_property(dim, "color:a", 0.0, 0.55)
 		await tw2.finished
+	if seq != _death_seq:
+		if is_instance_valid(layer):
+			layer.queue_free()
+		return
 	if is_instance_valid(layer):
 		layer.queue_free()
 
@@ -663,19 +709,35 @@ func _respawn() -> void:
 
 
 func _death_respawn_position() -> Vector2:
-	## Prefer the last rested hearth — never the continue/logout position alone.
-	if checkpoint_position != Vector2.ZERO:
+	## Only use the active hearth if it belongs to this zone (leaving the tower
+	## must not teleport you to lobby Y coords while standing in the village).
+	if checkpoint_position != Vector2.ZERO and checkpoint_zone_id == current_zone_id:
 		return checkpoint_position
 	if checkpoint_path != "":
 		for raw in activated_checkpoints:
 			if typeof(raw) != TYPE_DICTIONARY:
 				continue
 			var e: Dictionary = raw
-			if str(e.get("id", "")) == checkpoint_path:
+			if str(e.get("id", "")) == checkpoint_path and str(e.get("zone", "")) == current_zone_id:
 				var p := Vector2(float(e.get("x", 0.0)), float(e.get("y", 0.0)))
 				if p != Vector2.ZERO:
 					checkpoint_position = p
+					checkpoint_zone_id = current_zone_id
 					return p
+	## Most recently activated hearth in this zone.
+	for i in range(activated_checkpoints.size() - 1, -1, -1):
+		var raw2 = activated_checkpoints[i]
+		if typeof(raw2) != TYPE_DICTIONARY:
+			continue
+		var e2: Dictionary = raw2
+		if str(e2.get("zone", "")) != current_zone_id:
+			continue
+		var p2 := Vector2(float(e2.get("x", 0.0)), float(e2.get("y", 0.0)))
+		if p2 != Vector2.ZERO:
+			checkpoint_position = p2
+			checkpoint_zone_id = current_zone_id
+			checkpoint_path = str(e2.get("id", checkpoint_path))
+			return p2
 	if player and is_instance_valid(player):
 		return (player as Node2D).global_position
 	return last_position

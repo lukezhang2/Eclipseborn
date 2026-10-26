@@ -527,9 +527,12 @@ static func spawn_player(parent: Node2D, pos: Vector2) -> Player:
 	p.global_position = pos
 	parent.add_child(p)
 	GameState.last_position = pos
-	# Heal-reset checkpoint only on first spawn of a new run.
+	# First spawn, or entering a zone whose rest hearth is still another zone's.
 	if GameState.checkpoint_position == Vector2.ZERO:
-		GameState.set_checkpoint(pos)
+		GameState.set_checkpoint(pos, "zone_entry", GameState.current_zone_id)
+	elif GameState.checkpoint_zone_id != GameState.current_zone_id:
+		## Soft death point for this zone — don't free-heal just for walking through a door.
+		GameState.set_checkpoint(pos, "zone_entry", GameState.current_zone_id, false)
 	return p
 
 

@@ -60,6 +60,8 @@ func _on_body(_body: Node) -> void:
 
 
 func _ascend() -> void:
+	if GameState.is_dead:
+		return
 	AudioManager.play_break()
 	GameState.current_zone_id = "clockwork_tower"
 	## Bottom-left lobby spawn (door side), not center.

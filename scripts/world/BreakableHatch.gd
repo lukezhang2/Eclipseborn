@@ -127,12 +127,12 @@ func _begin_transition() -> void:
 	GameState.current_zone_id = "lantern_village"
 	GameState.pending_spawn = spawn_in_next
 	GameState.last_position = spawn_in_next
-	GameState.checkpoint_position = spawn_in_next
+	## Soft village rest until a real hearth is used — zone-tagged so tower deaths don't stick.
+	GameState.set_checkpoint(spawn_in_next, "cottage_exit", "lantern_village")
 	GameState.needs_intro_cutscene = false
 	SaveManager.autosave()
 	# Re-assert after autosave — capture must not keep the cottage X.
 	GameState.last_position = spawn_in_next
-	GameState.checkpoint_position = spawn_in_next
+	GameState.set_checkpoint(spawn_in_next, "cottage_exit", "lantern_village")
 	GameState.pending_spawn = spawn_in_next
-	# Transition lives on the root so awaits survive this hatch freeing with the cottage.
-	ZoneTransition.go(get_tree(), next_scene, "Leaving the cottage…")
+	GameState.change_zone(next_scene, "Leaving the cottage…", spawn_in_next)

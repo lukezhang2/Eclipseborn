@@ -1,12 +1,15 @@
 extends Interactable
 class_name ZoneLinkDoor
-## Zone travel door (editor `prop_exit`) — Interact / walk-into to change zones.
+## Zone travel door (editor `prop_exit`) — Interact to change zones.
+## Optional walk-into exit (house doors); tower lobby disables it.
 
 
 @export var target_zone: String = "lantern_village"
 @export var spawn_pos: Vector2 = Vector2(520, 460)
 @export var travel_caption: String = ""
 @export var show_exit_arrow: bool = true
+## When false, only Interact leaves (Clockwork Tower lobby door).
+@export var walk_to_exit: bool = true
 
 var _walk_armed: bool = false
 var _player_inside: bool = false
@@ -19,6 +22,8 @@ func _ready() -> void:
 	prompt_offset = Vector2(-40, -70)
 	_build_visual()
 	super._ready()
+	if not walk_to_exit:
+		return
 	var area := Area2D.new()
 	area.name = "WalkExit"
 	area.collision_layer = 0
@@ -77,10 +82,12 @@ func _build_visual() -> void:
 
 
 func _on_walk_enter(body: Node) -> void:
+	if not walk_to_exit:
+		return
 	if not (body is Player or (body and body.is_in_group("player"))):
 		return
 	_player_inside = true
-	if _walk_armed and GameState.can_interact():
+	if _walk_armed and GameState.can_interact() and not GameState.is_dead:
 		interact()
 
 
@@ -91,7 +98,7 @@ func _on_walk_exit(body: Node) -> void:
 
 
 func interact() -> void:
-	if not GameState.can_interact():
+	if not GameState.can_interact() or GameState.is_dead:
 		return
 	var zone := target_zone.strip_edges()
 	if zone == "":
@@ -103,5 +110,5 @@ func interact() -> void:
 	GameState.current_zone_id = zone
 	GameState.pending_spawn = spawn_pos
 	GameState.last_position = spawn_pos
-	GameState.lock_interact(1.25)
-	ZoneTransition.go(get_tree(), scene, caption)
+	## Clears death fades / cutscene locks before the scene swap.
+	GameState.change_zone(scene, caption, spawn_pos)

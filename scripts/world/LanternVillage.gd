@@ -96,8 +96,12 @@ func _resolve_spawn() -> Vector2:
 	spawn.y = FLOOR_TOP - 40.0
 	GameState.last_position = spawn
 	## Never overwrite a real rest hearth with the continue spawn point.
-	if GameState.checkpoint_position == Vector2.ZERO or GameState.editor_playtesting:
-		GameState.checkpoint_position = spawn
+	if GameState.editor_playtesting:
+		GameState.set_checkpoint(spawn, "playtest", "lantern_village", false)
+	elif GameState.checkpoint_position == Vector2.ZERO:
+		GameState.set_checkpoint(spawn, "zone_entry", "lantern_village")
+	elif GameState.checkpoint_zone_id != "lantern_village":
+		GameState.set_checkpoint(spawn, "zone_entry", "lantern_village", false)
 	return spawn
 
 
