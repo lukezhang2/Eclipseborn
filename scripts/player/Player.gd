@@ -42,6 +42,9 @@ var _was_on_floor: bool = true
 var _control_locked: bool = false
 var _land_suppress: float = 0.0
 var _floor_sfx: String = "steel"
+## True when gravity wants us to fall but collisions hold us in a gap (no real descent).
+var _air_lodged: bool = false
+var _slide_origin: Vector2 = Vector2.ZERO
 
 @onready var visual: Node2D = $Visual
 @onready var sprite: AnimatedSprite2D = $Visual/Sprite
@@ -57,6 +60,10 @@ func _ready() -> void:
 	## Green world collider: walls/crates/lamps only — enemies stay off these layers so we pass through them.
 	## 1=world, 4=shadow_ground, 8=crates (lanterns never collide)
 	collision_mask = 1 | 4 | 8
+	up_direction = Vector2.UP
+	floor_snap_length = 10.0
+	floor_max_angle = deg_to_rad(50.0)
+	safe_margin = 0.12
 	hurtbox.team = "player"
 	hurtbox.owner_body = self
 	hurtbox.hurt.connect(_on_hurt)
@@ -155,10 +162,12 @@ func _physics_process(delta: float) -> void:
 		_sync_hitbox()
 		return
 
-	if not is_on_floor():
+	if not _is_grounded():
 		velocity.y += GRAVITY * delta
 	else:
 		_jumps_remaining = 2 if GameState.has_double_jump else 1
+		if _air_lodged and velocity.y > 0.0:
+			velocity.y = 0.0
 
 	var dir := _get_move_axis()
 	if dir != 0.0:
@@ -183,9 +192,11 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("attack") and _attack_phase == "none":
 		_start_attack()
 
+	_slide_origin = global_position
 	move_and_slide()
+	_resolve_stuck_fall()
 	_finish_floor_audio(fall_speed)
-	if is_on_floor() and absf(dir) > 0.1 and not GameState.is_dead:
+	if _is_grounded() and absf(dir) > 0.1 and not GameState.is_dead:
 		AudioManager.play_walk(_floor_sfx)
 	# Push/pull after slide so contact + proximity both work.
 	if dir != 0.0 or Input.is_action_pressed("pull"):
@@ -351,7 +362,7 @@ func notify_respawned() -> void:
 
 
 func _wants_down_aim() -> bool:
-	if is_on_floor():
+	if _is_grounded():
 		return crouching
 	return Input.is_action_pressed("look_down") or Input.is_action_pressed("crouch")
 
@@ -360,7 +371,7 @@ func _update_aim_and_crouch() -> void:
 	if _climbing:
 		crouching = false
 		return
-	crouching = Input.is_action_pressed("crouch") and is_on_floor()
+	crouching = Input.is_action_pressed("crouch") and _is_grounded()
 	if _attack_phase != "none":
 		return
 	# Strict cardinal aim only — never diagonal.
@@ -396,10 +407,73 @@ func _update_crouch_collision() -> void:
 		_apply_standing_collision()
 
 
+func _is_grounded() -> bool:
+	return is_on_floor() or _air_lodged
+
+
+func _resolve_stuck_fall() -> void:
+	## Wedged in a gap: fall velocity builds but the body never descends → stuck fall anim.
+	_air_lodged = false
+	if _climbing or is_on_floor() or GameState.is_dead:
+		return
+	if velocity.y <= 40.0:
+		return
+	var dy := global_position.y - _slide_origin.y
+	var real_vy := get_real_velocity().y
+	## Actually falling through open air.
+	if dy > 1.25 or real_vy > 35.0:
+		return
+	## Prefer snapping onto a supporting floor just under the feet.
+	if _try_snap_to_nearby_floor():
+		return
+	## No clean floor — cancel the phantom fall so anim/controls recover.
+	velocity.y = 0.0
+	_air_lodged = true
+	_jumps_remaining = 2 if GameState.has_double_jump else 1
+
+
+func _try_snap_to_nearby_floor() -> bool:
+	var space := get_world_2d().direct_space_state
+	if space == null:
+		return false
+	## Cast from mid-body down past the soles; catch ledge lips that don't report as floor.
+	var from := global_position + Vector2(0, -8)
+	var to := global_position + Vector2(0, 28)
+	var q := PhysicsRayQueryParameters2D.create(from, to)
+	q.collision_mask = collision_mask
+	q.exclude = [get_rid()]
+	var hit := space.intersect_ray(q)
+	if hit.is_empty():
+		## Slight left/right probes for corner catches.
+		for ox in [-8.0, 8.0]:
+			q = PhysicsRayQueryParameters2D.create(from + Vector2(ox, 0), to + Vector2(ox, 0))
+			q.collision_mask = collision_mask
+			q.exclude = [get_rid()]
+			hit = space.intersect_ray(q)
+			if not hit.is_empty():
+				break
+	if hit.is_empty():
+		return false
+	var n: Vector2 = hit.normal
+	if n.y > -0.55:
+		return false
+	var hit_y: float = hit.position.y
+	## Only snap when already nearly on the surface (wedged, not mid-air).
+	if hit_y - global_position.y > 20.0 or hit_y - global_position.y < -2.0:
+		return false
+	global_position.y = hit_y
+	velocity.y = 0.0
+	_air_lodged = true
+	_jumps_remaining = 2 if GameState.has_double_jump else 1
+	apply_floor_snap()
+	return true
+
+
 func _try_jump() -> void:
-	if is_on_floor():
+	if _is_grounded():
 		velocity.y = JUMP_VELOCITY
 		_jumps_remaining = 1 if GameState.has_double_jump else 0
+		_air_lodged = false
 		AudioManager.play_jump()
 		return
 	if GameState.has_double_jump and _jumps_remaining > 0:
@@ -674,7 +748,7 @@ func _update_visual(dir: float) -> void:
 		base = "push"
 	elif crouching:
 		base = "crouch_walk" if absf(dir) > 0.01 else "crouch"
-	elif not is_on_floor():
+	elif not _is_grounded():
 		base = "fall" if velocity.y > 40.0 else "jump"
 	elif absf(dir) > 0.01:
 		base = "run" if Input.is_action_pressed("run") else "walk"
