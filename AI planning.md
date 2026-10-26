@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.90 — Fix crate pull self-acceleration (double-move) and wall-wedge (stand-off gap + wall block); `index-0_1_90.pck`
 - v0.1.89 — Snuff arena lamps after Wickwright defeat (no leftover wash circles); dial etching replaces floor disc; crystal/chest cleanup; `index-0_1_89.pck`
 - v0.1.88 — Wickwright defeat cutscene: wind-up slam, impact shake, debris burst; layered brick wall breach replaces flat hole; `index-0_1_88.pck`
 - v0.1.87 — Editor palette reorganized (Terrain/Lights/Doors/Props/Scenery/Actors); new houses create selectable zones (removed when facade deleted); `index-0_1_87.pck`

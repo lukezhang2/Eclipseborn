@@ -418,19 +418,13 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 			var box := collider as PushableBox
 			var n := col.get_normal()
 			if pulling:
-				# Only pull when walking away from the crate (no teleport snap).
-				var away := signf(global_position.x - box.global_position.x)
-				if dir != 0.0 and signf(dir) == away:
-					if box.try_pull(global_position, dir, delta) == "pull":
-						_pulling = true
-						facing = away
-			else:
-				if absf(n.x) < 0.55:
-					continue
-				if dir == 0.0 or signf(dir) == signf(n.x):
-					continue
-				if box.try_push(global_position, dir, delta) == "push":
-					_pushing = true
+				continue  ## Pull is proximity-only once per frame (below) — avoids double-move boost.
+			if absf(n.x) < 0.55:
+				continue
+			if dir == 0.0 or signf(dir) == signf(n.x):
+				continue
+			if box.try_push(global_position, dir, delta) == "push":
+				_pushing = true
 	if not pulling or dir == 0.0:
 		return
 	# Proximity pull — walk away while holding V; box follows. No player teleport.
@@ -452,9 +446,30 @@ func _try_move_boxes(dir: float, delta: float) -> void:
 	var away2 := signf(global_position.x - nearest.global_position.x)
 	if signf(dir) != away2:
 		return
-	if nearest.try_pull(global_position, dir, delta) == "pull":
+	## Don't drag the crate into the player's back when a wall blocks them.
+	if _wall_blocks_pull(dir):
+		return
+	## Cap pull to current move speed so crouch/walk never gets rear-ended.
+	var pull_cap := maxf(absf(velocity.x), 1.0) * 0.92
+	if nearest.try_pull(global_position, dir, delta, pull_cap) == "pull":
 		_pulling = true
 		facing = away2
+
+
+func _wall_blocks_pull(dir: float) -> bool:
+	## True when a solid wall sits immediately behind the player in the walk direction.
+	var space := get_world_2d().direct_space_state
+	if space == null:
+		return false
+	var half_w := 10.0
+	if body_shape and body_shape.shape is RectangleShape2D:
+		half_w = (body_shape.shape as RectangleShape2D).size.x * 0.5
+	var from := global_position + Vector2(0, -18)
+	var to := from + Vector2(dir * (half_w + 6.0), 0)
+	var q := PhysicsRayQueryParameters2D.create(from, to)
+	q.collision_mask = 1  ## world walls/floors only — not the crate
+	q.exclude = [get_rid()]
+	return not space.intersect_ray(q).is_empty()
 
 
 func _try_enter_hatch() -> void:

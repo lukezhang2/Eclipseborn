@@ -98,13 +98,37 @@ func try_push(from_global: Vector2, direction: float, delta: float) -> String:
 	return "push"
 
 
-func try_pull(from_global: Vector2, pull_direction: float, delta: float) -> String:
+func try_pull(from_global: Vector2, pull_direction: float, delta: float, max_speed: float = -1.0) -> String:
+	## Pull the crate toward the player, never closing past a stand-off gap (stops
+	## self-acceleration from ramming and wall-wedging when the player backs up).
 	var my_center := global_position
 	if absf(from_global.y - my_center.y) > box_size.y * 1.15:
 		return ""
 	if absf(from_global.x - my_center.x) > box_size.x * 0.5 + 60.0:
 		return ""
-	var dx := pull_direction * push_speed * 0.95 * delta
+	if pull_direction == 0.0:
+		return ""
+	## Must move toward the player (close the gap), not shove past them.
+	var toward_player := signf(from_global.x - my_center.x)
+	if toward_player == 0.0 or signf(pull_direction) != toward_player:
+		return ""
+
+	var gap := absf(my_center.x - from_global.x)
+	## Half-crate + ~player body half-width + small cushion.
+	var min_gap := box_size.x * 0.5 + 22.0
+	if gap <= min_gap + 0.5:
+		return ""
+
+	var speed := push_speed * 0.95
+	if max_speed > 0.0:
+		speed = minf(speed, max_speed)
+	var dx := pull_direction * speed * delta
+	## Cap so this step cannot close past min_gap (no overlap / eject boost).
+	var max_close := gap - min_gap
+	if absf(dx) > max_close:
+		dx = signf(dx) * max_close
+	if absf(dx) < 0.001:
+		return ""
 	if not _can_move(dx):
 		return ""
 	global_position.x += dx
