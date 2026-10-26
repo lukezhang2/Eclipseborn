@@ -569,7 +569,7 @@ func _build_arena() -> void:
 			var chest: Node = RewardChestScript.new()
 			chest.position = Vector2(400, ARENA_TOP - 8)
 			add_child(chest)
-		_spawn_broken_wall_decor(Vector2(60, ARENA_TOP - 100))
+		_spawn_broken_wall_decor(Vector2(36.0, ARENA_TOP - 100.0))
 	else:
 		_boss = WickwrightScript.new()
 		_boss.position = Vector2(400, ARENA_TOP - 88)
@@ -744,22 +744,141 @@ func _spawn_jar(pos: Vector2) -> void:
 	add_child(jar)
 
 
-func _spawn_broken_wall_decor(pos: Vector2) -> void:
-	var hole := Polygon2D.new()
-	hole.position = pos
-	hole.z_index = -4
-	hole.color = Color(0.05, 0.05, 0.07)
-	hole.polygon = PackedVector2Array([
-		Vector2(-10, -80), Vector2(50, -100), Vector2(60, 40), Vector2(-20, 50)
+func _spawn_broken_wall_decor(pos: Vector2) -> Node2D:
+	## Layered brick breach through the left tower wall — void, rim, cracks, rubble.
+	if has_node("WickwrightWallBreach"):
+		return get_node("WickwrightWallBreach") as Node2D
+
+	var root := Node2D.new()
+	root.name = "WickwrightWallBreach"
+	root.z_index = 2
+	add_child(root)
+	root.global_position = pos
+
+	## Night void punched through the masonry.
+	var void_poly := Polygon2D.new()
+	void_poly.color = Color(0.03, 0.01, 0.05, 1.0)
+	void_poly.polygon = PackedVector2Array([
+		Vector2(-22, -78), Vector2(14, -92), Vector2(36, -58), Vector2(44, -18),
+		Vector2(38, 22), Vector2(22, 58), Vector2(-6, 70), Vector2(-28, 48),
+		Vector2(-36, 10), Vector2(-32, -36),
 	])
-	add_child(hole)
+	root.add_child(void_poly)
+
+	## Soft depth so the hole isn't a flat blotch.
+	var depth := Polygon2D.new()
+	depth.color = Color(0.09, 0.04, 0.11, 0.88)
+	depth.polygon = PackedVector2Array([
+		Vector2(-12, -58), Vector2(14, -66), Vector2(26, -24),
+		Vector2(22, 24), Vector2(2, 48), Vector2(-18, 34), Vector2(-22, -6),
+	])
+	root.add_child(depth)
+
+	## Broken brick chunks framing the void (separate pieces, no self-intersecting ring).
+	var rim_chunks: Array = [
+		[Vector2(-8, -88), PackedVector2Array([Vector2(-28, -12), Vector2(22, -18), Vector2(30, 8), Vector2(-18, 14), Vector2(-32, 0)])],
+		[Vector2(40, -40), PackedVector2Array([Vector2(-10, -28), Vector2(16, -20), Vector2(18, 18), Vector2(-4, 30), Vector2(-14, 4)])],
+		[Vector2(36, 30), PackedVector2Array([Vector2(-12, -16), Vector2(14, -10), Vector2(10, 28), Vector2(-16, 22)])],
+		[Vector2(4, 72), PackedVector2Array([Vector2(-26, -10), Vector2(20, -14), Vector2(28, 12), Vector2(-20, 16)])],
+		[Vector2(-34, 20), PackedVector2Array([Vector2(-14, -22), Vector2(12, -16), Vector2(10, 24), Vector2(-16, 18)])],
+		[Vector2(-36, -40), PackedVector2Array([Vector2(-12, -20), Vector2(14, -14), Vector2(8, 18), Vector2(-16, 12)])],
+	]
+	for chunk in rim_chunks:
+		var brick := Polygon2D.new()
+		brick.color = Color(0.44, 0.3, 0.21, 1.0)
+		brick.polygon = chunk[1]
+		brick.position = chunk[0]
+		root.add_child(brick)
+		var edge := Polygon2D.new()
+		edge.color = Color(0.56, 0.4, 0.28, 1.0)
+		var inner: PackedVector2Array = chunk[1]
+		var hi := PackedVector2Array()
+		for p in inner:
+			hi.append(p * 0.55)
+		edge.polygon = hi
+		edge.position = chunk[0]
+		root.add_child(edge)
+
+	## Mortar cracks radiating from impact.
+	for crack in [
+		[Vector2(38, -52), Vector2(72, -78)],
+		[Vector2(46, -6), Vector2(78, 12)],
+		[Vector2(30, 44), Vector2(68, 72)],
+		[Vector2(-34, -60), Vector2(-62, -86)],
+		[Vector2(-40, 24), Vector2(-70, 46)],
+	]:
+		var line := Line2D.new()
+		line.width = 2.4
+		line.default_color = Color(0.11, 0.06, 0.05, 0.92)
+		line.points = PackedVector2Array([crack[0], crack[1]])
+		root.add_child(line)
+
+	## Floor rubble under the breach.
 	var rubble := Polygon2D.new()
-	rubble.position = pos + Vector2(10, 30)
-	rubble.color = Color(0.3, 0.25, 0.2)
+	rubble.color = Color(0.33, 0.23, 0.16, 1.0)
 	rubble.polygon = PackedVector2Array([
-		Vector2(-20, 0), Vector2(30, -10), Vector2(40, 20), Vector2(-10, 25)
+		Vector2(-34, 68), Vector2(10, 58), Vector2(42, 66), Vector2(56, 86),
+		Vector2(24, 96), Vector2(-16, 94), Vector2(-44, 80),
 	])
-	add_child(rubble)
+	root.add_child(rubble)
+	var rubble_hi := Polygon2D.new()
+	rubble_hi.color = Color(0.48, 0.34, 0.24, 1.0)
+	rubble_hi.polygon = PackedVector2Array([
+		Vector2(-12, 66), Vector2(22, 64), Vector2(34, 76), Vector2(6, 82), Vector2(-18, 76),
+	])
+	root.add_child(rubble_hi)
+
+	return root
+
+
+func _burst_breach_debris(at: Vector2) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	for _i in 12:
+		var shard := Polygon2D.new()
+		var s := rng.randf_range(3.5, 8.0)
+		shard.color = Color(
+			rng.randf_range(0.36, 0.55),
+			rng.randf_range(0.22, 0.36),
+			rng.randf_range(0.14, 0.22),
+			1.0
+		)
+		shard.polygon = PackedVector2Array([
+			Vector2(-s, -s * 0.55), Vector2(s * 0.85, -s * 0.45),
+			Vector2(s * 0.55, s * 0.7), Vector2(-s * 0.45, s * 0.5),
+		])
+		shard.z_index = 8
+		add_child(shard)
+		shard.global_position = at + Vector2(rng.randf_range(-8, 12), rng.randf_range(-22, 22))
+		var dest := shard.global_position + Vector2(
+			rng.randf_range(36.0, 120.0),
+			rng.randf_range(50.0, 140.0)
+		)
+		var life := rng.randf_range(0.5, 0.9)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(shard, "global_position", dest, life).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(shard, "rotation", rng.randf_range(-3.0, 3.0), life)
+		tw.tween_property(shard, "modulate:a", 0.0, life * 0.8).set_delay(life * 0.2)
+		tw.chain().tween_callback(shard.queue_free)
+
+
+func _shake_camera(cam: Camera2D, duration: float, amplitude: float) -> void:
+	if cam == null or not is_instance_valid(cam):
+		await get_tree().create_timer(duration).timeout
+		return
+	var base := cam.position
+	var elapsed := 0.0
+	while elapsed < duration and is_instance_valid(cam):
+		elapsed += get_process_delta_time()
+		var falloff := 1.0 - clampf(elapsed / duration, 0.0, 1.0)
+		cam.position = base + Vector2(
+			randf_range(-amplitude, amplitude) * falloff,
+			randf_range(-amplitude, amplitude) * falloff * 0.65
+		)
+		await get_tree().process_frame
+	if is_instance_valid(cam):
+		cam.position = base
 
 
 func _on_boss_defeated() -> void:
@@ -779,51 +898,84 @@ func _play_defeat_cutscene() -> void:
 	var boss := _boss
 	if boss == null or not is_instance_valid(boss):
 		GameState.intro_cutscene_playing = false
+		_cutscene_running = false
 		if player:
 			player.set_control_locked(false)
 		return
 
+	## Reward drops where the boss died; camera rides the fall.
 	var chest: Node = RewardChestScript.new()
 	chest.position = Vector2(boss.global_position.x, ARENA_TOP - 8)
 	add_child(chest)
 
 	var saved_zoom := Vector2(1.2, 1.2)
+	var start: Vector2 = (boss as Node2D).global_position
 	if cam and player:
 		saved_zoom = cam.zoom
 		cam.reparent(boss)
 		cam.position = Vector2(0, -20)
-		var tw := create_tween()
-		tw.tween_property(cam, "zoom", Vector2(1.55, 1.55), 0.5)
-		await tw.finished
+		var zoom_tw := create_tween()
+		zoom_tw.tween_property(cam, "zoom", Vector2(1.62, 1.62), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await zoom_tw.finished
 
-	await get_tree().create_timer(0.4).timeout
-	## Breach the left wall and tumble out that side.
-	_spawn_broken_wall_decor(Vector2(60, ARENA_TOP - 110))
-	var tw2 := create_tween()
-	tw2.tween_property(boss, "global_position", Vector2(-40, ARENA_TOP - 88), 0.55).set_ease(Tween.EASE_IN)
-	await tw2.finished
-	var tw3 := create_tween()
-	tw3.tween_property(boss, "global_position", Vector2(-120, ARENA_TOP + 360), 0.85).set_ease(Tween.EASE_IN)
-	tw3.parallel().tween_property(boss, "rotation", -2.8, 0.85)
-	tw3.parallel().tween_property(boss, "modulate:a", 0.0, 0.85)
-	await tw3.finished
+	## Beat 1 — stunned hitch, then wind-up stagger away from the wall.
+	await get_tree().create_timer(0.3).timeout
+	if not is_instance_valid(boss):
+		_spawn_broken_wall_decor(Vector2(36.0, ARENA_TOP - 100.0))
+		GameState.mark_collected("wickwright_defeated")
+		SaveManager.autosave()
+		await _finish_defeat_cutscene(cam, player, saved_zoom, null)
+		return
+	var wind: Vector2 = start + Vector2(56.0, -14.0)
+	var impact: Vector2 = Vector2(48.0, ARENA_TOP - 100.0)
+	var wind_tw := create_tween()
+	wind_tw.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	wind_tw.tween_property(boss, "global_position", wind, 0.4)
+	wind_tw.tween_interval(0.1)
+	wind_tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	wind_tw.tween_property(boss, "global_position", impact, 0.32)
+	await wind_tw.finished
+	if not is_instance_valid(boss):
+		_spawn_broken_wall_decor(Vector2(36.0, ARENA_TOP - 100.0))
+		GameState.mark_collected("wickwright_defeated")
+		SaveManager.autosave()
+		await _finish_defeat_cutscene(cam, player, saved_zoom, null)
+		return
+
+	## Beat 2 — wall ruptures on impact; debris + shake.
+	_spawn_broken_wall_decor(Vector2(36.0, ARENA_TOP - 100.0))
+	_burst_breach_debris(Vector2(48.0, ARENA_TOP - 90.0))
+	AudioManager.play_break()
+	await _shake_camera(cam, 0.38, 12.0)
+
+	## Beat 3 — tumble through the hole and out of frame.
+	if is_instance_valid(boss):
+		var tumble := create_tween()
+		tumble.set_parallel(true)
+		tumble.tween_property(boss, "global_position", Vector2(-90.0, ARENA_TOP + 280.0), 0.95).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tumble.tween_property(boss, "rotation", -2.6, 0.95).set_trans(Tween.TRANS_SINE)
+		tumble.tween_property(boss, "modulate:a", 0.0, 0.75).set_delay(0.25)
+		await tumble.finished
 
 	GameState.mark_collected("wickwright_defeated")
 	SaveManager.autosave()
+	await _finish_defeat_cutscene(cam, player, saved_zoom, boss)
 
+
+func _finish_defeat_cutscene(cam: Camera2D, player: Player, saved_zoom: Vector2, boss: Node) -> void:
 	if cam and player and is_instance_valid(player):
 		cam.reparent(player)
 		cam.position = Vector2(0, -30)
-		var tw4 := create_tween()
-		tw4.tween_property(cam, "zoom", saved_zoom, 0.4)
-		await tw4.finished
-
-	if is_instance_valid(boss):
+		var zt := create_tween()
+		zt.tween_property(cam, "zoom", saved_zoom, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await zt.finished
+	if boss != null and is_instance_valid(boss):
 		boss.queue_free()
 	_boss = null
-	if player:
+	if player and is_instance_valid(player):
 		player.set_control_locked(false)
 	GameState.intro_cutscene_playing = false
+	_cutscene_running = false
 	var ui := get_tree().get_first_node_in_group("tutorial_hint")
 	if ui and ui.has_method("show_hint"):
-		ui.show_hint("The Wickwright falls. A brass pot remains — strike it open.", 4.5)
+		ui.show_hint("The Wickwright crashes through the wall. A brass pot remains — strike it open.", 4.5)

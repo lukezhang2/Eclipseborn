@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.88 — Wickwright defeat cutscene: wind-up slam, impact shake, debris burst; layered brick wall breach replaces flat hole; `index-0_1_88.pck`
 - v0.1.87 — Editor palette reorganized (Terrain/Lights/Doors/Props/Scenery/Actors); new houses create selectable zones (removed when facade deleted); `index-0_1_87.pck`
 - v0.1.86 — Tower door Interact-only; death/cutscene state cleared on zone change; checkpoints zone-aware so leaving tower can't softlock death; `index-0_1_86.pck`
 - v0.1.85 — Demo end via shaft descent; Wickwright falls left; Match-the-Hour removed (levers slam all ON); `index-0_1_85.pck`
