@@ -154,6 +154,8 @@ func _physics_process(delta: float) -> void:
 
 	## Ladder climb — hold look_up (W) / look_down while overlapping a ladder.
 	if _try_handle_climb(delta):
+		if Input.is_action_just_pressed("attack") and _attack_phase == "none":
+			_start_attack_from_ladder()
 		move_and_slide()
 		_finish_floor_audio(0.0)
 		_update_visual(0.0)
@@ -218,10 +220,20 @@ func _try_handle_climb(delta: float) -> bool:
 		if not (_ladder as Ladder).contains_player(self):
 			_exit_climb(false)
 			return false
+		## Hold still on the rung while the attack plays; don't leave climb state.
+		if _attack_phase != "none":
+			velocity = Vector2.ZERO
+			if _ladder is Ladder:
+				global_position.x = (_ladder as Ladder).global_position.x
+			return true
 		_apply_climb_motion(delta)
-		return true
+		## Motion may have stepped off the top/bottom — only keep climb ownership if still climbing.
+		return _climbing
 
 	if near == null:
+		return false
+	## Don't remount mid-attack (keeps ground/air swing from snapping onto a ladder).
+	if _attack_phase != "none":
 		return false
 	var want_up := Input.is_action_pressed("look_up")
 	var want_down := Input.is_action_pressed("look_down") or (
@@ -236,7 +248,7 @@ func _try_handle_climb(delta: float) -> bool:
 	if want_up or (want_down and (not is_on_floor() or global_position.y <= (near as Ladder).top_y() + 8.0)):
 		_enter_climb(near)
 		_apply_climb_motion(delta)
-		return true
+		return _climbing
 	return false
 
 
@@ -253,10 +265,8 @@ func _enter_climb(ladder: Node) -> void:
 	_pushing = false
 	_pulling = false
 	crouching = false
-	_attack_phase = "none"
-	_attack_timer = 0.0
-	if hitbox:
-		hitbox.deactivate()
+	## Mounting cancels any in-progress swing so we never blend walk-attack into climb.
+	_cancel_attack()
 	## Snap onto the ladder center so climb reads cleanly.
 	if ladder is Ladder:
 		global_position.x = ladder.global_position.x
@@ -271,12 +281,23 @@ func _exit_climb(jump_off: bool) -> void:
 		remove_collision_exception_with((_ladder as Ladder).top_cap)
 	_climbing = false
 	_ladder = null
+	## Leaving the ladder mid-swing must not keep climb ownership or a stuck attack pose.
+	_cancel_attack()
 	if jump_off:
 		velocity.y = JUMP_VELOCITY * 0.72
 		_jumps_remaining = 1 if GameState.has_double_jump else 0
 		AudioManager.play_jump()
 	else:
 		velocity.y = mini(velocity.y, 40.0)
+
+
+func _cancel_attack() -> void:
+	if _attack_phase == "none":
+		return
+	_attack_phase = "none"
+	_attack_timer = 0.0
+	if hitbox:
+		hitbox.deactivate()
 
 
 func _apply_climb_motion(_delta: float) -> void:
@@ -554,9 +575,20 @@ func _try_enter_hatch() -> void:
 			return
 
 
+func _start_attack_from_ladder() -> void:
+	## Aim from held climb keys / facing so the swing matches what the player expects.
+	if Input.is_action_pressed("look_up"):
+		aim_dir = Vector2.UP
+	elif Input.is_action_pressed("look_down") or Input.is_action_pressed("crouch"):
+		aim_dir = Vector2.DOWN
+	else:
+		aim_dir = Vector2.RIGHT if facing > 0.0 else Vector2.LEFT
+	_start_attack()
+
+
 func _start_attack() -> void:
-	# Ground down-slash requires crouch; air down-slash allowed without crouch.
-	if aim_dir == Vector2.DOWN and is_on_floor() and not crouching:
+	# Ground down-slash requires crouch; air/ladder down-slash allowed without crouch.
+	if aim_dir == Vector2.DOWN and is_on_floor() and not crouching and not _climbing:
 		return
 	_attack_phase = "startup"
 	_attack_timer = ATTACK_STARTUP
@@ -594,6 +626,7 @@ func _update_attack(delta: float) -> void:
 		"recovery":
 			_attack_phase = "none"
 			hitbox.deactivate()
+			## Attack finished — if still on the ladder, climb visual resumes via _update_visual.
 
 
 func _body_half_extents() -> Vector2:
@@ -737,11 +770,22 @@ func _damage_suffix() -> String:
 
 func _update_visual(dir: float) -> void:
 	visual.scale.x = facing
+	## Attack poses own the sprite until recovery ends; then climb/idle/etc. take over.
 	if _attack_phase != "none":
 		return
 	var base := "idle"
+	## Climb anim ONLY while climb state is active AND still overlapping that ladder.
 	if _climbing:
-		base = "climb" if absf(velocity.y) > 8.0 or absf(velocity.x) > 8.0 else "climb_idle"
+		var on_ladder := (
+			_ladder != null
+			and is_instance_valid(_ladder)
+			and (_ladder as Ladder).contains_player(self)
+		)
+		if on_ladder:
+			base = "climb" if absf(velocity.y) > 8.0 or absf(velocity.x) > 8.0 else "climb_idle"
+		else:
+			## Physics will clear _climbing next frame; don't flash climb frames off-ladder.
+			base = "fall" if velocity.y > 40.0 else "idle"
 	elif _pulling:
 		base = "pull"
 	elif _pushing:

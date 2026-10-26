@@ -28,6 +28,7 @@ _(none)_
 _(none)_
 
 ### Done recently
+- v0.1.92 — Attack while climbing; hold on rung during swing; climb anim resumes only if still on ladder; `index-0_1_92.pck`
 - v0.1.91 — Unwedge stuck fall-in-place (snap to nearby floor / cancel phantom fall anim); `index-0_1_91.pck`
 - v0.1.90 — Fix crate pull self-acceleration (double-move) and wall-wedge (stand-off gap + wall block); `index-0_1_90.pck`
 - v0.1.89 — Snuff arena lamps after Wickwright defeat (no leftover wash circles); dial etching replaces floor disc; crystal/chest cleanup; `index-0_1_89.pck`
